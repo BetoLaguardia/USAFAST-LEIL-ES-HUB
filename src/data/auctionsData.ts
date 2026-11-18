@@ -1,4 +1,4 @@
-import { AuctionLot, GradeType } from '../types/auction';
+import type { AuctionLot, GradeType } from '../types/auction.ts';
 
 export const GRADE_EXPLANATIONS: Record<GradeType, {
   label: string;
