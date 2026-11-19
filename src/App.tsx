@@ -15,6 +15,7 @@ import { AdminLoginGate, ClientLoginGate } from './components/AuthGates';
 import { INITIAL_AUCTIONS, DEFAULT_PTAX_USD_BRL, GRADE_EXPLANATIONS } from './data/auctionsData';
 import { AuctionLot, GradeType, SystemUser, AdminOffer } from './types/auction';
 import { apiService } from './services/apiService';
+import { supabase } from './services/supabaseClient';
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
@@ -259,6 +260,88 @@ export default function App() {
 
   const hasLocalUpdateRef = React.useRef(false);
 
+  const UNSYNCED_FLAG_KEY = 'us_iphone_unsynced_local';
+
+  const syncAuctionsToSupabaseDirect = async (lots: AuctionLot[]): Promise<boolean> => {
+    if (!supabase || lots.length === 0) return false;
+    try {
+      const { error: deleteError } = await supabase
+        .from('leiloes_importados')
+        .delete()
+        .neq('id', 0);
+      if (deleteError) return false;
+
+      const chunkSize = 150;
+      for (let i = 0; i < lots.length; i += chunkSize) {
+        const chunk = lots.slice(i, i + chunkSize).map(lot => ({ data: lot }));
+        const { error: insertError } = await supabase
+          .from('leiloes_importados')
+          .insert(chunk);
+        if (insertError) return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const fetchAuctionsFromSupabaseDirect = async (): Promise<AuctionLot[] | null> => {
+    if (!supabase) return null;
+    try {
+      const pageSize = 1000;
+      let from = 0;
+      const allRows: AuctionLot[] = [];
+      while (true) {
+        const { data: rows, error } = await supabase
+          .from('leiloes_importados')
+          .select('data')
+          .range(from, from + pageSize - 1);
+        if (error || !rows || rows.length === 0) break;
+        for (const r of rows) {
+          if (r && r.data) allRows.push(r.data as AuctionLot);
+        }
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+      return allRows.length > 0 ? allRows : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const postAuctionsToBackend = async (lots: AuctionLot[]): Promise<boolean> => {
+    try {
+      const chunkSize = 1000;
+      for (let i = 0; i < lots.length; i += chunkSize) {
+        const chunk = lots.slice(i, i + chunkSize);
+        const mode = i === 0 ? 'replace' : 'append';
+        const res = await fetch('/api/auctions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auctions: chunk, mode })
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (!data || !data.ok) {
+          throw new Error(data?.error || 'Falha ao salvar lote');
+        }
+      }
+      console.log(`[App.tsx] Backend /api/auctions POST synced ${lots.length} lots`);
+      return true;
+    } catch (err) {
+      console.warn('[App.tsx] Backend /api/auctions POST failed, trying direct Supabase fallback:', err);
+    }
+
+    const directOk = await syncAuctionsToSupabaseDirect(lots);
+    if (directOk) {
+      console.log('[App.tsx] Direct Supabase batch sync succeeded!');
+      return true;
+    }
+    return false;
+  };
+
   // Helper to persist auctions (localStorage + backend /api/auctions for cross-device sync)
   const handleUpdateAuctions = (newAuctions: AuctionLot[]) => {
     hasLocalUpdateRef.current = true;
@@ -266,18 +349,19 @@ export default function App() {
     setAuctions(newAuctions);
     try {
       localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(newAuctions));
+      localStorage.setItem(UNSYNCED_FLAG_KEY, 'true');
       console.log(`[App.tsx] Saved ${newAuctions.length} lots to localStorage key 'us_iphone_auctions_v1'`);
     } catch (e: any) {
       console.error('[App.tsx] Failed to save to localStorage:', e);
     }
-    fetch('/api/auctions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ auctions: newAuctions })
-    })
-      .then(res => res.json())
-      .then(data => console.log('[App.tsx] Backend /api/auctions POST response:', data))
-      .catch(err => console.warn('[App.tsx] Backend /api/auctions POST failed (using local storage):', err));
+
+    postAuctionsToBackend(newAuctions).then(synced => {
+      if (synced) {
+        try {
+          localStorage.removeItem(UNSYNCED_FLAG_KEY);
+        } catch (e) {}
+      }
+    });
   };
 
   useEffect(() => {
@@ -289,38 +373,76 @@ export default function App() {
         .map(l => ({ ...l, title: stripLotPrefix(l.title) }));
     };
 
-    fetch('/api/auctions')
-      .then(res => res.json())
-      .then(data => {
-        if (!hasLocalUpdateRef.current && data && Array.isArray(data.auctions) && data.auctions.length > 0) {
-          const backendLots: AuctionLot[] = sanitizeLots(data.auctions);
-          let localLots: AuctionLot[] = [];
-          try {
-            const saved = localStorage.getItem('us_iphone_auctions_v1');
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              if (Array.isArray(parsed)) localLots = sanitizeLots(parsed);
-            }
-          } catch (e) {}
+    const loadInitialAuctions = async () => {
+      let backendLots: AuctionLot[] = [];
 
-          if (localLots.length > backendLots.length) {
-            console.log(`[App.tsx] Preserving ${localLots.length} imported lots from localStorage (backend had ${backendLots.length}). Syncing to server...`);
-            setAuctions(localLots);
-            fetch('/api/auctions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ auctions: localLots })
-            }).catch(() => {});
-          } else if (backendLots.length > 0) {
-            console.log(`[App.tsx] Loaded ${backendLots.length} lots from backend /api/auctions`);
-            setAuctions(backendLots);
-            try {
-              localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(backendLots));
-            } catch (e) {}
+      try {
+        const pageSize = 1000;
+        let offset = 0;
+        const collected: any[] = [];
+
+        while (true) {
+          const res = await fetch(`/api/auctions?limit=${pageSize}&offset=${offset}`, { cache: 'no-store' });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
           }
+          const data = await res.json();
+          if (!data || !Array.isArray(data.auctions) || data.auctions.length === 0) {
+            break;
+          }
+          collected.push(...data.auctions);
+          if (!data.hasMore) {
+            break;
+          }
+          offset += data.auctions.length;
         }
-      })
-      .catch(err => console.warn('[App.tsx] Initial fetch from /api/auctions failed (using local storage):', err));
+
+        if (collected.length > 0) {
+          backendLots = sanitizeLots(collected);
+        }
+      } catch (err) {
+        console.warn('[App.tsx] Initial fetch from /api/auctions failed, trying Supabase fallback:', err);
+      }
+
+      if (backendLots.length === 0) {
+        const directLots = await fetchAuctionsFromSupabaseDirect();
+        if (directLots && directLots.length > 0) {
+          backendLots = sanitizeLots(directLots);
+        }
+      }
+
+      if (hasLocalUpdateRef.current) return;
+
+      let localLots: AuctionLot[] = [];
+      let hasUnsyncedLocal = false;
+      try {
+        hasUnsyncedLocal = localStorage.getItem(UNSYNCED_FLAG_KEY) === 'true';
+        const saved = localStorage.getItem('us_iphone_auctions_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) localLots = sanitizeLots(parsed);
+        }
+      } catch (e) {}
+
+      if (hasUnsyncedLocal && localLots.length > 0) {
+        console.log(`[App.tsx] Pushing ${localLots.length} unsynced local lots to backend...`);
+        setAuctions(localLots);
+        const synced = await postAuctionsToBackend(localLots);
+        if (synced) {
+          try {
+            localStorage.removeItem(UNSYNCED_FLAG_KEY);
+          } catch (e) {}
+        }
+      } else if (backendLots.length > 0) {
+        console.log(`[App.tsx] Loaded ${backendLots.length} lots from backend /api/auctions`);
+        setAuctions(backendLots);
+        try {
+          localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(backendLots));
+        } catch (e) {}
+      }
+    };
+
+    loadInitialAuctions();
   }, []);
 
   // Real-time live bidding polling effect (connects to PHP or simulated live pool)
