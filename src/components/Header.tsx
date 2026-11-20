@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gavel, UserPlus, ShieldCheck, DollarSign, Layers, Users, Lock, Menu, X, UserCheck, Globe } from 'lucide-react';
+import { Gavel, ShieldCheck, DollarSign, Layers, Users, Lock, Menu, X, UserCheck, Globe } from 'lucide-react';
 import { Language, TRANSLATIONS } from '../utils/i18n';
 
 export type AppPage = 'home' | 'leiloes' | 'gradeamento' | 'quem-somos' | 'cliente' | 'admin';
@@ -112,17 +112,6 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Gavel className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-400" />
                 <span>Sistema de Leilões</span>
-              </button>
-            )}
-
-            {!isClientAuthenticated && (
-              <button
-                onClick={() => onOpenSystem('register')}
-                className="inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-[10px] sm:text-xs transition-colors shadow-sm"
-                title="Cadastrar Arrematante no Sistema Oficial de Leilões"
-              >
-                <UserPlus className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>Cadastrar</span>
               </button>
             )}
           </div>
