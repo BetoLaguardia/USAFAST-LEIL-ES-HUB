@@ -19,7 +19,7 @@ import { supabase } from './services/supabaseClient';
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
-import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from './utils/verizonUtils';
+import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { 
   Search, 
@@ -675,6 +675,61 @@ export default function App() {
     return Array.from(modelMap.values()).sort((a, b) => b.totalUnits - a.totalUnits);
   }, [auctions, filterAuctionHouse]);
 
+  // Dynamic list of grades belonging ONLY to the currently selected auction (and model)
+  const availableGrades = useMemo(() => {
+    const GRADE_ORDER = ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND'];
+    const sourceLots = auctions.filter(lot => {
+      const house = (lot.auctionHouse || '').toLowerCase();
+      const title = (lot.title || '').toLowerCase();
+      if (house.includes('govdeals') || title.includes('govdeals')) return false;
+      if (house.includes('copart') || title.includes('copart')) return false;
+      if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
+      if (house.includes('apple certified') || title.includes('apple certified')) return false;
+      if (house.includes('marketplace') || title.includes('marketplace')) return false;
+      if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
+
+      if (filterAuctionHouse === 'VERIZON') {
+        if (!isVerizonLot(lot)) return false;
+      } else if (filterAuctionHouse === 'ASSURANT') {
+        if (lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse || '')) return false;
+      } else if (filterAuctionHouse !== 'all') {
+        if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) return false;
+      }
+
+      if (filterModel !== 'all') {
+        const hasInManifest = (lot.manifest || []).some(m => m.model === filterModel);
+        if (lot.modelFamily !== filterModel && !hasInManifest) return false;
+      }
+
+      return true;
+    });
+
+    const gradeSet = new Set<string>();
+    sourceLots.forEach(lot => {
+      if (isVerizonLot(lot)) {
+        gradeSet.add(mapVerizonGradeStrict(lot.grade));
+      } else {
+        const cleaned = (lot.grade || '').replace(/\(T\)/gi, '').trim();
+        if (cleaned) gradeSet.add(cleaned);
+      }
+    });
+
+    return Array.from(gradeSet).sort((a, b) => {
+      const idxA = GRADE_ORDER.indexOf(a);
+      const idxB = GRADE_ORDER.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }, [auctions, filterAuctionHouse, filterModel]);
+
+  useEffect(() => {
+    if (filterGrade !== 'all' && !availableGrades.includes(filterGrade)) {
+      setFilterGrade('all');
+    }
+  }, [availableGrades, filterGrade]);
+
   // Selection handlers for List Mode
   const handleToggleSelectLot = (lotId: string) => {
     setSelectedLotIds(prev =>
@@ -720,7 +775,9 @@ export default function App() {
       if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
 
       // 1. Clean grade representation
-      const cleanGrade = (lot.grade || '').replace(/\(T\)/gi, '').trim();
+      const cleanGrade = isVerizonLot(lot)
+        ? mapVerizonGradeStrict(lot.grade)
+        : (lot.grade || '').replace(/\(T\)/gi, '').trim();
 
       // Search query
       if (searchQuery.trim()) {
@@ -1243,10 +1300,7 @@ export default function App() {
                   >
                     {t.allGradesFilter}
                   </button>
-                  {(filterAuctionHouse === 'VERIZON'
-                    ? VERIZON_GRADES
-                    : ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND']
-                  ).map(gradeKey => (
+                  {availableGrades.map(gradeKey => (
                     <button
                       key={gradeKey}
                       onClick={() => setFilterGrade(filterGrade === gradeKey ? 'all' : gradeKey)}

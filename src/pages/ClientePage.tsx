@@ -81,12 +81,6 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     /verizon/i.test(selectedAuctionHouseFilter);
 
   React.useEffect(() => {
-    if (isVerizonFilterActive && selectedGradeFilter !== 'all' && !VERIZON_GRADES.includes(selectedGradeFilter)) {
-      setSelectedGradeFilter('all');
-    }
-  }, [isVerizonFilterActive, selectedGradeFilter]);
-
-  React.useEffect(() => {
     setClientPage(1);
   }, [clientSearch, selectedModelFilter, selectedGradeFilter, selectedCategoryFilter, selectedCapacityFilter, selectedAuctionHouseFilter, selectedAuctionSystemFilter, selectedLotTypeFilter]);
 
@@ -173,12 +167,49 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     [auctions]
   );
 
+  const matchesClientAuctionFilter = (lot: AuctionLot) => {
+    if (selectedAuctionHouseFilter !== 'all' && lot.auctionHouse !== selectedAuctionHouseFilter) return false;
+    if (selectedAuctionSystemFilter === 'VERIZON' && !isVerizonLot(lot)) return false;
+    if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && lot.sourceType !== 'MARKETPLACE_2' && !/marketplace 2|recirq/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && lot.sourceType !== 'MARKETPLACE_3' && !/marketplace 3|wesell/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MACBOOKS' && lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse)) return false;
+    return true;
+  };
+
+  const lotsForClientAuction = normalizedAuctions.filter(matchesClientAuctionFilter);
+  const lotsForClientGrades = lotsForClientAuction.filter(lot => {
+    if (selectedModelFilter === 'verizon') {
+      if (!isVerizonLot(lot)) return false;
+    } else if (selectedModelFilter !== 'all') {
+      const hasInManifest = (lot.manifest || []).some(m => m.model === selectedModelFilter);
+      if (lot.modelFamily !== selectedModelFilter && !hasInManifest) return false;
+    }
+    return true;
+  });
+
   // Dynamic list of models, grades and auction houses present in active catalog
-  const availableModels = Array.from(new Set(normalizedAuctions.map(a => a.modelFamily))).filter(Boolean).sort((a, b) => a.localeCompare(b));
-  const availableGrades = isVerizonFilterActive
-    ? [...VERIZON_GRADES]
-    : Array.from(new Set(normalizedAuctions.map(a => a.grade))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const availableModels = Array.from(new Set(lotsForClientAuction.map(a => a.modelFamily))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const GRADE_ORDER = ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND'];
+  const availableGrades = Array.from(new Set(lotsForClientGrades.map(a => a.grade)))
+    .filter(g => Boolean(g) && (!isVerizonFilterActive || VERIZON_GRADES.includes(g)))
+    .sort((a, b) => {
+      const idxA = GRADE_ORDER.indexOf(a);
+      const idxB = GRADE_ORDER.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
   const availableAuctionHouses = Array.from(new Set(normalizedAuctions.map(a => a.auctionHouse))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+
+  React.useEffect(() => {
+    if (selectedGradeFilter !== 'all' && !availableGrades.includes(selectedGradeFilter)) {
+      setSelectedGradeFilter('all');
+    }
+  }, [availableGrades, selectedGradeFilter]);
 
   // Filtered devices for client
   const clientFilteredLots = normalizedAuctions.filter(lot => {
