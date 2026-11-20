@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Gavel, MapPin, Download, CheckCircle2, Battery, Smartphone, AlertTriangle, Lock, Layers, ChevronDown } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, mapVerizonGradeStrict, getLotMixSummary, parseBstockColorFromDesc } from '../utils/verizonUtils';
+import { isVerizonLot, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
+import { buildExpandedManifestUnits, exportLotManifestXlsx } from '../utils/manifestExport';
 
 interface AuctionDetailModalProps {
   lot: AuctionLot | null;
   isOpen: boolean;
   onClose: () => void;
-  onPlaceBid: (lotId: string, amountUsd: number) => void;
+  onPlaceBid: (lotId: string, amountUsd: number, selectedQuantity?: number) => void;
   onOpenSystem: () => void;
   currency: 'USD' | 'BRL';
   usdRate: number;
@@ -33,26 +34,45 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     : 0;
 
   const [bidValue, setBidValue] = useState<string>(defaultBidValue > 0 ? String(defaultBidValue) : '');
+  const [bidQuantity, setBidQuantity] = useState<number>(lot?.quantity || 1);
   const [bidStatus, setBidStatus] = useState<string | null>(null);
   const [bidError, setBidError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState<string>(lot?.imageUrl || '');
   const [mixExpanded, setMixExpanded] = useState<boolean>(true);
+  const [showAllManifestRows, setShowAllManifestRows] = useState<boolean>(false);
 
   useEffect(() => {
     if (lot) {
       const isVz = isVerizonLot(lot);
       const nextVal = isVz ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : '') : String(lot.currentBidUsd + 25);
       setBidValue(nextVal === '' ? '' : String(nextVal));
+      setBidQuantity(Math.max(1, lot.quantity || 1));
       setActiveImage(lot.imageUrl);
       setBidStatus(null);
       setBidError(null);
       setMixExpanded(true);
+      setShowAllManifestRows(false);
     }
   }, [lot?.id]);
 
+  const expandedManifest = useMemo(
+    () => (lot ? buildExpandedManifestUnits(lot) : { units: [], totalLotQuantity: 0, isTruncated: false }),
+    [lot]
+  );
+
   if (!isOpen || !lot) return null;
 
-  const minBid = verizon ? 1 : lot.currentBidUsd + 25;
+  const effectiveQty = verizon
+    ? Math.max(1, lot.quantity)
+    : Math.max(1, Math.min(Math.max(1, lot.quantity), bidQuantity));
+
+  const unitReferenceUsd = lot.currentBidUsd > 0 ? lot.currentBidUsd / Math.max(1, lot.quantity) : 50;
+  const minBid = verizon
+    ? 1
+    : effectiveQty >= lot.quantity
+      ? lot.currentBidUsd + 25
+      : Math.max(25, Math.round(unitReferenceUsd * effectiveQty) + 25);
+
   const parsedBid = Number(bidValue);
   const mix = getLotMixSummary(lot);
 
@@ -64,6 +84,17 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     description: ''
   };
 
+  const handleChangeBidQuantity = (nextRaw: number) => {
+    if (verizon) return;
+    const clamped = Math.max(1, Math.min(Math.max(1, lot.quantity), Math.round(nextRaw) || 1));
+    setBidQuantity(clamped);
+    setBidError(null);
+    const suggested = clamped >= lot.quantity
+      ? lot.currentBidUsd + 25
+      : Math.max(25, Math.round(unitReferenceUsd * clamped) + 25);
+    setBidValue(String(suggested));
+  };
+
   const handleBidSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setBidError(null);
@@ -71,49 +102,21 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
       setBidError(
         verizon
           ? 'Informe um valor de oferta maior que $0 USD para enviar seu lance.'
-          : `O lance mínimo precisa ser de $${minBid.toLocaleString()} USD.`
+          : `O lance mínimo para ${effectiveQty} ${effectiveQty === 1 ? 'unidade' : 'unidades'} precisa ser de $${minBid.toLocaleString()} USD.`
       );
       return;
     }
-    onPlaceBid(lot.id, parsedBid);
+    onPlaceBid(lot.id, parsedBid, effectiveQty);
     setBidStatus(
       verizon
         ? `Oferta de $${parsedBid.toLocaleString()} USD (${lot.quantity} un. fixas) enviada para ${lot.auctionHouse}!`
-        : `Lance de $${parsedBid.toLocaleString()} USD enviado com sucesso para ${lot.auctionHouse}!`
+        : `Lance de $${parsedBid.toLocaleString()} USD para ${effectiveQty} ${effectiveQty === 1 ? 'unidade' : 'unidades'} enviado com sucesso para ${lot.auctionHouse}!`
     );
     setTimeout(() => setBidStatus(null), 4000);
   };
 
-  const handleDownloadCsv = () => {
-    const headers = ['Item', 'Qtd', 'Modelo', 'Armazenamento', 'Cor', 'Grade', 'Bateria %', 'IMEI Status', 'Operadora', 'Part #', 'Origem Estoque', 'Descricao'];
-    const rows = lot.manifest.map((item, idx) => {
-      const displayColor = item.itemDescription
-        ? parseBstockColorFromDesc(item.itemDescription, item.color === 'Black' ? '' : item.color)
-        : item.color;
-      return [
-        `#${idx + 1}`,
-        item.qty || 1,
-        `"${item.model}"`,
-        item.storage,
-        displayColor,
-        verizon ? mapVerizonGradeStrict(item.grade || displayLotGrade) : item.grade,
-        `${item.batteryHealth}%`,
-        item.imeiMasked,
-        item.carrierStatus,
-        item.partNumber || '-',
-        item.inventorySource || 'Carrier Return',
-        `"${item.itemDescription || '-'}"`
-      ];
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `manifesto_lote_${lot.lotNumber}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadXlsx = () => {
+    exportLotManifestXlsx(lot, currency, usdRate);
   };
 
   const formattedCurrentPrice = currency === 'USD'
@@ -125,9 +128,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     ? `$ ${(lot.estimatedBrazilRetailBrl / usdRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD`
     : `R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}`;
 
+  const visibleManifestUnits = showAllManifestRows
+    ? expandedManifest.units
+    : expandedManifest.units.slice(0, 100);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
-      <div 
+      <div
         className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
@@ -170,12 +177,12 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
               </a>
             )}
             <button
-              onClick={handleDownloadCsv}
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors"
-              title="Baixar lista completa de aparelhos em CSV"
+              onClick={handleDownloadXlsx}
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors"
+              title="Baixar planilha XLSX USAFAST LEILÕES com todos os aparelhos"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Manifesto (CSV)</span>
+              <span>Exportar Planilha (XLSX)</span>
             </button>
             <button
               onClick={onClose}
@@ -302,7 +309,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-950/50 border border-slate-800 rounded-xl text-xs">
                 <div>
                   <span className="text-slate-400 block text-[11px]">Classificação / Grade</span>
-                  <span className={`font-bold font-mono ${gradeInfo.textColor}`}>{lot.grade}</span>
+                  <span className={`font-bold font-mono ${gradeInfo.textColor}`}>{displayLotGrade}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[11px]">Saúde de Bateria</span>
@@ -410,12 +417,64 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                   </div>
                 ) : (
                   <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium px-1">
-                    <span>Lance Mínimo Requerido:</span>
+                    <span>Lance Mínimo Requerido ({effectiveQty} un.):</span>
                     <span className="text-amber-400 font-mono font-bold">${minBid.toLocaleString()} USD</span>
                   </div>
                 )}
 
                 <form onSubmit={handleBidSubmit} className="pt-2 border-t border-slate-800/80 space-y-3">
+                  {/* Quantity selector for non-Verizon lots */}
+                  {!verizon && (
+                    <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[11px] font-semibold text-slate-300 block">
+                          Quantidade de Aparelhos para Lance:
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Disponível no lote: {lot.quantity} {lot.quantity === 1 ? 'aparelho' : 'aparelhos'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleChangeBidQuantity(effectiveQty - 1)}
+                          disabled={effectiveQty <= 1}
+                          className="w-7 h-7 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center transition-colors"
+                          aria-label="Diminuir quantidade"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={Math.max(1, lot.quantity)}
+                          value={effectiveQty}
+                          onChange={e => handleChangeBidQuantity(Number(e.target.value))}
+                          className="w-16 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-center text-xs font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleChangeBidQuantity(effectiveQty + 1)}
+                          disabled={effectiveQty >= lot.quantity}
+                          className="w-7 h-7 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center transition-colors"
+                          aria-label="Aumentar quantidade"
+                        >
+                          +
+                        </button>
+                        {lot.quantity > 1 && effectiveQty !== lot.quantity && (
+                          <button
+                            type="button"
+                            onClick={() => handleChangeBidQuantity(lot.quantity)}
+                            className="ml-1 px-2 py-1 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-bold transition-colors"
+                          >
+                            Lote Todo ({lot.quantity})
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-2.5 text-slate-400 font-mono font-bold">$</span>
@@ -437,7 +496,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-2 shadow-md shadow-amber-500/10 shrink-0"
                     >
                       <Gavel className="w-4 h-4" />
-                      <span>{verizon ? 'Enviar Oferta Livre' : 'Dar Lance Agora'}</span>
+                      <span>
+                        {verizon
+                          ? 'Enviar Oferta Livre'
+                          : `Dar Lance (${effectiveQty} un.)`}
+                      </span>
                     </button>
                   </div>
 
@@ -446,7 +509,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       <span>Equivalente aproximado (PTAX):</span>
                       <span className="text-slate-200 font-semibold">
                         R$ {(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                        {lot.quantity > 1 ? ` (~$${Math.round(parsedBid / lot.quantity).toLocaleString()} / un.)` : ''}
+                        {effectiveQty > 1 ? ` (~$${Math.round(parsedBid / effectiveQty).toLocaleString()} / un.)` : ''}
                       </span>
                     </div>
                   )}
@@ -475,21 +538,21 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                         <span className="text-[11px] text-slate-400">Sugestões:</span>
                         <button
                           type="button"
-                          onClick={() => setBidValue(String(lot.currentBidUsd + 25))}
+                          onClick={() => setBidValue(String(minBid))}
                           className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
                         >
-                          + $25
+                          Mín (${minBid.toLocaleString()})
                         </button>
                         <button
                           type="button"
-                          onClick={() => setBidValue(String(lot.currentBidUsd + 50))}
+                          onClick={() => setBidValue(String(minBid + 50))}
                           className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
                         >
                           + $50
                         </button>
                         <button
                           type="button"
-                          onClick={() => setBidValue(String(lot.currentBidUsd + 100))}
+                          onClick={() => setBidValue(String(minBid + 100))}
                           className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
                         >
                           + $100
@@ -594,87 +657,92 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             </div>
           )}
 
-          {/* Device Manifest Table (Itemized breakdown) */}
+          {/* Device Manifest Table (Expanded unit-by-unit breakdown) */}
           <div className="space-y-3 pt-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Smartphone className="w-4 h-4 text-amber-400" />
-                  Manifesto Técnico Item a Item ({lot.manifest.length} registros · {lot.quantity} aparelhos)
+                  Manifesto Técnico — Aparelhos do Lote ({expandedManifest.units.length}{expandedManifest.isTruncated ? ` exibidos de ${expandedManifest.totalLotQuantity}` : ''} {expandedManifest.totalLotQuantity === 1 ? 'aparelho' : 'aparelhos'})
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  Detalhamento completo de modelos, capacidades, cores, grades e part numbers do lote.
+                  Relação individual de cada aparelho com modelo, capacidade, cor, grade, bateria, tela, carcaça, iCloud e IMEI.
                 </p>
               </div>
 
               <button
-                onClick={handleDownloadCsv}
-                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors flex items-center gap-1.5"
+                onClick={handleDownloadXlsx}
+                className="px-3.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Exportar CSV</span>
+                <span>Exportar Planilha XLSX (USAFAST LEILÕES)</span>
               </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950/60 max-h-64 overflow-y-auto">
+            <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950/60 max-h-80 overflow-y-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 text-[11px]">
-                    <th className="py-2 px-3 font-semibold">#</th>
-                    <th className="py-2 px-3 font-semibold">Qtd</th>
-                    <th className="py-2 px-3 font-semibold">Modelo & Peça</th>
-                    <th className="py-2 px-3 font-semibold">Armazenamento</th>
-                    <th className="py-2 px-3 font-semibold">Cor</th>
-                    <th className="py-2 px-3 font-semibold">Grade</th>
-                    <th className="py-2 px-3 font-semibold">Part #</th>
-                    <th className="py-2 px-3 font-semibold">Origem Estoque</th>
-                    <th className="py-2 px-3 font-semibold">Bateria</th>
-                    <th className="py-2 px-3 font-semibold">IMEI / Clean ESN</th>
+                  <tr className="border-b border-slate-800 bg-slate-900/95 text-slate-400 text-[11px] sticky top-0 z-10">
+                    <th className="py-2.5 px-3 font-semibold">Aparelho</th>
+                    <th className="py-2.5 px-3 font-semibold">Modelo & Descrição</th>
+                    <th className="py-2.5 px-3 font-semibold">Armazenamento</th>
+                    <th className="py-2.5 px-3 font-semibold">Cor</th>
+                    <th className="py-2.5 px-3 font-semibold">Grade</th>
+                    <th className="py-2.5 px-3 font-semibold">Bateria</th>
+                    <th className="py-2.5 px-3 font-semibold">Operadora</th>
+                    <th className="py-2.5 px-3 font-semibold">iCloud / FMI</th>
+                    <th className="py-2.5 px-3 font-semibold">Tela</th>
+                    <th className="py-2.5 px-3 font-semibold">Carcaça</th>
+                    <th className="py-2.5 px-3 font-semibold">IMEI / ESN</th>
+                    <th className="py-2.5 px-3 font-semibold">Part #</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-200">
-                  {lot.manifest.map((dev, idx) => {
-                    const displayColor = dev.itemDescription
-                      ? parseBstockColorFromDesc(dev.itemDescription, dev.color === 'Black' ? '' : dev.color)
-                      : dev.color;
-                    return (
-                      <tr key={dev.id} className="hover:bg-slate-900/40 transition-colors">
-                        <td className="py-2 px-3 font-mono text-slate-400">{idx + 1}</td>
-                        <td className="py-2 px-3 font-mono font-bold text-amber-300">{dev.qty || 1}x</td>
-                        <td className="py-2 px-3">
-                          <span className="font-semibold text-white block">{dev.model}</span>
-                          {dev.itemDescription && (
-                            <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" title={dev.itemDescription}>
-                              {dev.itemDescription}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-3 font-mono">{dev.storage}</td>
-                        <td className="py-2 px-3 text-slate-300">{displayColor}</td>
-                        <td className="py-2 px-3">
-                          {(() => {
-                            const devGrade = verizon ? mapVerizonGradeStrict(dev.grade || displayLotGrade) : dev.grade;
-                            return (
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_EXPLANATIONS[devGrade]?.badgeColor || ''}`}>
-                                {devGrade}
-                              </span>
-                            );
-                          })()}
-                        </td>
-                        <td className="py-2 px-3 font-mono text-slate-400">{dev.partNumber || '-'}</td>
-                        <td className="py-2 px-3">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">
-                            {dev.inventorySource || 'Carrier Clean'}
+                  {visibleManifestUnits.map((dev) => (
+                    <tr key={dev.id} className="hover:bg-slate-900/40 transition-colors">
+                      <td className="py-2 px-3 font-mono font-bold text-amber-300 whitespace-nowrap">
+                        #{dev.unitIndex}
+                      </td>
+                      <td className="py-2 px-3">
+                        <span className="font-semibold text-white block whitespace-nowrap">{dev.model}</span>
+                        {dev.itemDescription && (
+                          <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" title={dev.itemDescription}>
+                            {dev.itemDescription}
                           </span>
-                        </td>
-                        <td className="py-2 px-3 font-mono text-emerald-400 font-semibold">{dev.batteryHealth}%</td>
-                        <td className="py-2 px-3 font-mono text-slate-400">{dev.imeiMasked}</td>
-                      </tr>
-                    );
-                  })}
+                        )}
+                      </td>
+                      <td className="py-2 px-3 font-mono whitespace-nowrap">{dev.storage}</td>
+                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.resolvedColor}</td>
+                      <td className="py-2 px-3 whitespace-nowrap">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_EXPLANATIONS[dev.resolvedGrade]?.badgeColor || 'bg-amber-500/15 text-amber-300 border-amber-500/30'}`}>
+                          {dev.resolvedGrade}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 font-mono text-emerald-400 font-semibold whitespace-nowrap">{dev.batteryHealth}%</td>
+                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.carrierStatus}</td>
+                      <td className="py-2 px-3 text-emerald-300 whitespace-nowrap">{dev.icloudStatus}</td>
+                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.screenCondition}</td>
+                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.housingCondition}</td>
+                      <td className="py-2 px-3 font-mono text-slate-400 whitespace-nowrap">{dev.imeiMasked}</td>
+                      <td className="py-2 px-3 font-mono text-slate-400 whitespace-nowrap">{dev.partNumber || '-'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
+
+            {expandedManifest.units.length > 100 && !showAllManifestRows && (
+              <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+                <span>Mostrando os primeiros 100 aparelhos de {expandedManifest.units.length}.</span>
+                <button
+                  type="button"
+                  onClick={() => setShowAllManifestRows(true)}
+                  className="text-amber-400 hover:text-amber-300 font-semibold underline"
+                >
+                  Mostrar todos os {expandedManifest.units.length} aparelhos
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Bid History Table */}
@@ -725,4 +793,3 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     </div>
   );
 };
-

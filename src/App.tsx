@@ -552,11 +552,21 @@ export default function App() {
   }, []);
 
   // Place a Bid Handler (Connected to PHP API / Simulated Bridge)
-  const handlePlaceBid = (lotId: string, amountUsd: number) => {
-    const bidderName = currentUser.name ? `${currentUser.name} (Você)` : 'Arrematante Autorizado (Você)';
+  const handlePlaceBid = (lotId: string, amountUsd: number, selectedQuantity?: number) => {
+    const targetLot = auctions.find(a => a.id === lotId);
+    const bidQty = targetLot
+      ? (isVerizonLot(targetLot)
+          ? targetLot.quantity
+          : Math.max(1, Math.min(Math.max(1, targetLot.quantity), selectedQuantity || targetLot.quantity)))
+      : (selectedQuantity || 1);
+
+    const baseBidderName = currentUser.name ? `${currentUser.name} (Você)` : 'Arrematante Autorizado (Você)';
+    const bidderLabel = targetLot && bidQty < targetLot.quantity
+      ? `${baseBidderName} (${bidQty} de ${targetLot.quantity} un.)`
+      : baseBidderName;
 
     // Trigger API / Backend submission
-    apiService.submitBid(lotId, amountUsd, bidderName).catch(err => {
+    apiService.submitBid(lotId, amountUsd, bidderLabel).catch(err => {
       console.warn('Falha no envio da API PHP, operando localmente:', err);
     });
 
@@ -565,15 +575,17 @@ export default function App() {
         const newBidHistory = [
           {
             id: `bid-${Date.now()}`,
-            bidderName,
+            bidderName: bidderLabel,
             amountUsd,
             timestamp: 'Agora'
           },
           ...lot.bidsHistory
         ];
+        const shouldUpdateLotCurrentBid =
+          bidQty >= lot.quantity || lot.currentBidUsd === 0 || amountUsd > lot.currentBidUsd;
         return {
           ...lot,
-          currentBidUsd: amountUsd,
+          currentBidUsd: shouldUpdateLotCurrentBid ? amountUsd : lot.currentBidUsd,
           totalBidsCount: lot.totalBidsCount + 1,
           bidsHistory: newBidHistory
         };
@@ -583,12 +595,15 @@ export default function App() {
 
     handleUpdateAuctions(updatedAuctions);
 
-    const targetLot = auctions.find(a => a.id === lotId);
     if (targetLot) {
+      const lotTitleWithQty = bidQty < targetLot.quantity
+        ? `${targetLot.title} (${bidQty} de ${targetLot.quantity} un.)`
+        : targetLot.title;
+
       const updatedBids = [
         {
           lotId,
-          lotTitle: targetLot.title,
+          lotTitle: lotTitleWithQty,
           amountUsd,
           timestamp: 'Agora mesmo',
           status: 'vencendo' as const
@@ -608,7 +623,7 @@ export default function App() {
           id: `off-${Date.now()}`,
           lotId,
           lotNumber: targetLot.lotNumber || `US-${lotId.slice(-5)}`,
-          lotTitle: targetLot.title,
+          lotTitle: lotTitleWithQty,
           clientName: currentUser.name || 'Arrematante Autorizado',
           clientEmail: currentUser.email || 'cliente@usafastleiloes.com',
           amountUsd,
@@ -622,7 +637,7 @@ export default function App() {
       } catch (e) {}
     }
 
-    showToast(`⚡ Lance de $${amountUsd.toLocaleString()} USD computado com sucesso!`);
+    showToast(`⚡ Lance de $${amountUsd.toLocaleString()} USD (${bidQty} un.) computado com sucesso!`);
   };
 
   const handleOpenSystem = (tab: 'terminal' | 'register' = 'terminal') => {

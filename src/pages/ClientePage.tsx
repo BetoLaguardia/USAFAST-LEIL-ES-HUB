@@ -43,7 +43,7 @@ interface ClientePageProps {
     timestamp: string;
     status: 'vencendo' | 'superado';
   }[];
-  onPlaceBid: (lotId: string, amountUsd: number) => void;
+  onPlaceBid: (lotId: string, amountUsd: number, selectedQuantity?: number) => void;
   onSelectLot: (lot: AuctionLot) => void;
   currency: 'USD' | 'BRL';
   usdRate: number;
@@ -157,7 +157,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     }
     const isVerizon = isVerizonLot(quickBidLot);
     const finalUnits = isVerizon ? quickBidLot.quantity : Math.max(1, Math.min(quickBidLot.quantity, quickBidUnits));
-    onPlaceBid(quickBidLot.id, quickBidAmount);
+    onPlaceBid(quickBidLot.id, quickBidAmount, finalUnits);
     showSuccess(`🎉 Oferta de $${quickBidAmount.toLocaleString()} USD (${finalUnits} un.) computada com sucesso no lote ${quickBidLot.lotNumber}!`);
     setQuickBidLot(null);
   };
