@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock } from 'lucide-react';
-import { AuctionLot, SystemUser } from '../types/auction';
+import { AuctionLot, SystemUser, UserAccessType } from '../types/auction';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
 import { registerClientWithSupabase } from '../services/authService';
@@ -36,6 +36,8 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
     email: currentUser.email || '',
     cpfCnpj: currentUser.cpfCnpj || '',
     phone: currentUser.phone || '',
+    consultantName: currentUser.consultantName || '',
+    requestedUserType: 'client' as UserAccessType,
     password: '',
     companyType: 'lojista',
     monthlyVolume: '10-30',
@@ -65,7 +67,15 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegisterError(null);
-    if (!formData.name || !formData.email || !formData.cpfCnpj || !formData.phone) {
+    if (
+      !formData.name.trim() ||
+      !formData.email.trim() ||
+      !formData.cpfCnpj.trim() ||
+      !formData.phone.trim() ||
+      !formData.consultantName.trim() ||
+      !formData.companyType ||
+      !formData.monthlyVolume
+    ) {
       setRegisterError('Preencha todos os campos obrigatórios.');
       return;
     }
@@ -80,6 +90,8 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
       email: formData.email.trim(),
       cpfCnpj: formData.cpfCnpj.trim(),
       phone: formData.phone.trim(),
+      consultantName: formData.consultantName.trim(),
+      requestedUserType: formData.requestedUserType,
       whatsappNotificationEnabled: true,
       password: formData.password,
     });
@@ -432,13 +444,13 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-300 block mb-1">CPF ou CNPJ do Arrematante *</label>
+                      <label className="text-xs text-slate-300 block mb-1">Documento ID *</label>
                       <input
                         type="text"
                         required
                         value={formData.cpfCnpj}
                         onChange={e => setFormData({ ...formData, cpfCnpj: e.target.value })}
-                        placeholder="Digite seu CPF ou CNPJ"
+                        placeholder="Digite seu Documento ID"
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>
@@ -454,6 +466,17 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                       />
                     </div>
                     <div>
+                      <label className="text-xs text-slate-300 block mb-1">Consultor Responsável *</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.consultantName}
+                        onChange={e => setFormData({ ...formData, consultantName: e.target.value })}
+                        placeholder="Nome do consultor responsável"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
                       <label className="text-xs text-slate-300 block mb-1">Senha de Acesso *</label>
                       <input
                         type="password"
@@ -465,8 +488,9 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-slate-300 block mb-1">Perfil do Comprador</label>
+                      <label className="text-xs text-slate-300 block mb-1">Perfil do Comprador *</label>
                       <select
+                        required
                         value={formData.companyType}
                         onChange={e => setFormData({ ...formData, companyType: e.target.value })}
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
@@ -477,8 +501,9 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs text-slate-300 block mb-1">Volume Mensal Pretendido</label>
+                      <label className="text-xs text-slate-300 block mb-1">Volume Mensal Pretendido *</label>
                       <select
+                        required
                         value={formData.monthlyVolume}
                         onChange={e => setFormData({ ...formData, monthlyVolume: e.target.value })}
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
@@ -486,6 +511,19 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         <option value="1-5">1 a 5 aparelhos por mês</option>
                         <option value="10-30">10 a 30 aparelhos (Lotes Pequenos)</option>
                         <option value="50+">50+ aparelhos (Paletes Fechados de Atacado)</option>
+                      </select>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs text-slate-300 block mb-1">Tipo de Cadastro / Acesso Solicitado *</label>
+                      <select
+                        required
+                        value={formData.requestedUserType}
+                        onChange={e => setFormData({ ...formData, requestedUserType: e.target.value as UserAccessType })}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                      >
+                        <option value="client">Cliente Normal (Acesso ao Painel do Cliente)</option>
+                        <option value="admin_credenciado">Admin Credenciado (Dashboard Geral e Ofertas Computadas)</option>
+                        <option value="admin_geral">Admin Geral (Acesso Administrativo Completo)</option>
                       </select>
                     </div>
                   </div>

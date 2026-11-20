@@ -13,6 +13,7 @@ import {
   listClientsForAdmin,
   registerClientInSupabase,
   resolveClientIdentifier,
+  updateClientAccessType,
   updateClientApprovalStatus,
 } from './server/authService.ts';
 
@@ -104,6 +105,11 @@ async function startServer() {
 
     if (action === 'update-client-status') {
       const result = await updateClientApprovalStatus(authHeader, body);
+      return res.status(result.status).json(result);
+    }
+
+    if (action === 'update-client-access') {
+      const result = await updateClientAccessType(authHeader, body);
       return res.status(result.status).json(result);
     }
 

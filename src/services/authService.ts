@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { SystemUser } from '../types/auction';
+import { SystemUser, UserAccessType } from '../types/auction';
 
 export const EMPTY_SYSTEM_USER: SystemUser = {
   name: '',
@@ -9,8 +9,11 @@ export const EMPTY_SYSTEM_USER: SystemUser = {
   biddingLimitUsd: 0,
   verifiedStatus: false,
   registeredDate: '',
+  consultantName: '',
   approvalStatus: 'PENDING',
   role: 'client',
+  userType: 'client',
+  requestedUserType: 'client',
 };
 
 export function clearLegacyAuthStorage() {
@@ -69,6 +72,18 @@ export async function signInAdminWithSupabase(
   const profile = await fetchProfileWithToken(data.session.access_token);
   if (!profile.ok || profile.role !== 'admin' || !profile.user) {
     await supabase.auth.signOut();
+    if (profile.user?.approvalStatus === 'PENDING') {
+      return {
+        ok: false,
+        error: '⏳ Seu cadastro ainda está pendente de aprovação pelo Admin Geral.',
+      };
+    }
+    if (profile.user?.approvalStatus === 'REJECTED') {
+      return {
+        ok: false,
+        error: '🚫 Seu cadastro foi suspenso ou recusado pelo Admin Geral.',
+      };
+    }
     return {
       ok: false,
       error: 'Esta conta não possui permissão de administrador.',
@@ -91,7 +106,7 @@ export async function signInClientWithSupabase(
   const password = passwordInput;
 
   if (!identifier || !password) {
-    return { ok: false, error: 'Informe seu e-mail/CPF/CNPJ e senha.' };
+    return { ok: false, error: 'Informe seu e-mail/Documento ID e senha.' };
   }
 
   let resolvedEmail = identifier.toLowerCase();
@@ -105,7 +120,7 @@ export async function signInClientWithSupabase(
     if (!res.ok || !resData?.ok || !resData?.email) {
       return {
         ok: false,
-        error: 'E-mail/CPF ou senha incorretos. Verifique seus dados ou realize seu cadastro.',
+        error: 'E-mail/Documento ID ou senha incorretos. Verifique seus dados ou realize seu cadastro.',
       };
     }
     resolvedEmail = String(resData.email).toLowerCase();
@@ -119,7 +134,7 @@ export async function signInClientWithSupabase(
   if (error || !data?.session?.access_token) {
     return {
       ok: false,
-      error: 'E-mail/CPF ou senha incorretos. Verifique seus dados ou realize seu cadastro.',
+      error: 'E-mail/Documento ID ou senha incorretos. Verifique seus dados ou realize seu cadastro.',
     };
   }
 
@@ -160,6 +175,8 @@ export async function registerClientWithSupabase(payload: {
   email: string;
   cpfCnpj: string;
   phone: string;
+  consultantName: string;
+  requestedUserType?: UserAccessType;
   whatsappNotificationEnabled?: boolean;
   password: string;
 }): Promise<{ ok: boolean; user?: SystemUser; error?: string }> {
@@ -252,7 +269,8 @@ export async function fetchAdminClients(): Promise<{
 export async function updateAdminClientStatus(
   clientId: string | undefined,
   email: string,
-  approvalStatus: 'APPROVED' | 'REJECTED'
+  approvalStatus: 'APPROVED' | 'REJECTED',
+  userType?: UserAccessType
 ): Promise<{ ok: boolean; client?: SystemUser; error?: string }> {
   if (!supabase) {
     return { ok: false, error: 'Supabase não configurado.' };
@@ -274,11 +292,46 @@ export async function updateAdminClientStatus(
       clientId,
       email,
       approvalStatus,
+      ...(userType ? { userType } : {}),
     }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json?.ok) {
     return { ok: false, error: json?.error || 'Falha ao atualizar cliente.' };
+  }
+  return { ok: true, client: json.client as SystemUser };
+}
+
+export async function updateAdminClientAccessType(
+  clientId: string | undefined,
+  email: string,
+  userType: UserAccessType
+): Promise<{ ok: boolean; client?: SystemUser; error?: string }> {
+  if (!supabase) {
+    return { ok: false, error: 'Supabase não configurado.' };
+  }
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) {
+    return { ok: false, error: 'Sessão administrativa expirada.' };
+  }
+
+  const res = await fetch('/api/auth', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      action: 'update-client-access',
+      clientId,
+      email,
+      userType,
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.ok) {
+    return { ok: false, error: json?.error || 'Falha ao atualizar tipo de acesso.' };
   }
   return { ok: true, client: json.client as SystemUser };
 }

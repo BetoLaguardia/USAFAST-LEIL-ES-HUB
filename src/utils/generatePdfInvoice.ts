@@ -229,7 +229,7 @@ export const downloadOfficialInvoicePdf = (data: InvoiceData) => {
           <div class="info-card">
             <h3>Dados do Arrematante (Comprador)</h3>
             <p><strong>Nome / Razão:</strong> ${data.user.name}</p>
-            <p><strong>CPF / CNPJ:</strong> ${data.user.cpfCnpj}</p>
+            <p><strong>Documento ID:</strong> ${data.user.cpfCnpj}</p>
             <p><strong>E-mail:</strong> ${data.user.email}</p>
             <p><strong>Telefone:</strong> ${data.user.phone}</p>
           </div>

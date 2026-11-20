@@ -1,5 +1,7 @@
 import { createClient, SupabaseClient, type User } from '@supabase/supabase-js';
 
+export type UserAccessType = 'client' | 'admin_geral' | 'admin_credenciado';
+
 function getSupabaseAdminClient(): SupabaseClient | null {
   const supabaseUrl =
     process.env.SUPABASE_URL ||
@@ -20,11 +22,37 @@ function getSupabaseAdminClient(): SupabaseClient | null {
   });
 }
 
-function normalizeDigits(val: string): string {
-  return String(val || '').replace(/\D/g, '');
+function normalizeDocId(val: string): string {
+  return String(val || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 }
 
-function mapClientRowToUser(row: any) {
+function normalizeUserType(val: unknown): UserAccessType {
+  const s = String(val || '').trim().toLowerCase();
+  if (s === 'admin_geral' || s === 'admin') return 'admin_geral';
+  if (s === 'admin_credenciado') return 'admin_credenciado';
+  return 'client';
+}
+
+function mapClientRowToUser(row: any, authUser?: User) {
+  const isApproved =
+    row.approval_status === 'APPROVED' || Boolean(row.verified_status);
+  const requestedUserType = normalizeUserType(
+    authUser?.user_metadata?.requested_user_type ||
+      authUser?.user_metadata?.user_type ||
+      row.requested_user_type ||
+      'client'
+  );
+  const storedUserType = normalizeUserType(
+    authUser?.app_metadata?.user_type ||
+      authUser?.user_metadata?.user_type ||
+      (authUser?.app_metadata?.role === 'admin' ? 'admin_geral' : 'client')
+  );
+  const effectiveUserType: UserAccessType = isApproved
+    ? storedUserType
+    : 'client';
+  const effectiveRole: 'admin' | 'client' =
+    isApproved && effectiveUserType !== 'client' ? 'admin' : 'client';
+
   return {
     id: row.id,
     name: row.name || '',
@@ -35,19 +63,33 @@ function mapClientRowToUser(row: any) {
     whatsappNotificationEnabled: true,
     biddingLimitUsd: Number(row.bidding_limit_usd ?? 25000),
     verifiedStatus: Boolean(row.verified_status),
-    approvalStatus: (row.approval_status || (row.verified_status ? 'APPROVED' : 'PENDING')) as
+    approvalStatus: (row.approval_status ||
+      (row.verified_status ? 'APPROVED' : 'PENDING')) as
       | 'APPROVED'
       | 'PENDING'
       | 'REJECTED',
     registeredDate: row.registered_date || '',
-    role: 'client' as const,
+    consultantName:
+      row.consultant_name ||
+      authUser?.user_metadata?.consultant_name ||
+      '',
+    role: effectiveRole,
+    userType: effectiveUserType,
+    requestedUserType,
   };
 }
 
 function mapSystemUserToUser(row: any, fallbackAuthUser?: User) {
+  const sysRole = String(row?.role || '').toLowerCase();
+  const userType: UserAccessType =
+    sysRole === 'admin_credenciado' ? 'admin_credenciado' : 'admin_geral';
+
   return {
     id: row?.id || fallbackAuthUser?.id,
-    name: row?.full_name || fallbackAuthUser?.user_metadata?.full_name || 'Administrador',
+    name:
+      row?.full_name ||
+      fallbackAuthUser?.user_metadata?.full_name ||
+      'Administrador',
     email: row?.email || fallbackAuthUser?.email || '',
     cpfCnpj: '',
     phone: row?.phone || '',
@@ -58,6 +100,8 @@ function mapSystemUserToUser(row: any, fallbackAuthUser?: User) {
     approvalStatus: 'APPROVED' as const,
     registeredDate: '',
     role: 'admin' as const,
+    userType,
+    requestedUserType: userType,
   };
 }
 
@@ -80,7 +124,7 @@ async function authenticateBearerToken(
   return { user: data.user };
 }
 
-async function resolveAdminRecord(sb: SupabaseClient, authUser: User) {
+async function resolveSystemAdminRecord(sb: SupabaseClient, authUser: User) {
   const emailLower = (authUser.email || '').toLowerCase();
 
   const { data: byId } = await sb
@@ -89,7 +133,12 @@ async function resolveAdminRecord(sb: SupabaseClient, authUser: User) {
     .eq('id', authUser.id)
     .maybeSingle();
 
-  if (byId && String(byId.role).toLowerCase() === 'admin') {
+  if (
+    byId &&
+    ['admin', 'admin_geral', 'admin_credenciado'].includes(
+      String(byId.role).toLowerCase()
+    )
+  ) {
     return byId;
   }
 
@@ -100,22 +149,51 @@ async function resolveAdminRecord(sb: SupabaseClient, authUser: User) {
       .ilike('email', emailLower)
       .maybeSingle();
 
-    if (byEmail && String(byEmail.role).toLowerCase() === 'admin') {
+    if (
+      byEmail &&
+      ['admin', 'admin_geral', 'admin_credenciado'].includes(
+        String(byEmail.role).toLowerCase()
+      )
+    ) {
       return byEmail;
     }
   }
 
-  if (authUser.app_metadata?.role === 'admin') {
-    return {
-      id: authUser.id,
-      email: authUser.email,
-      full_name: authUser.user_metadata?.full_name || 'Administrador',
-      role: 'admin',
-      phone: authUser.user_metadata?.phone || '',
-    };
+  return null;
+}
+
+async function findClientRowForAuthUser(sb: SupabaseClient, authUser: User) {
+  const { data: clientById } = await sb
+    .from('clients')
+    .select('*')
+    .eq('id', authUser.id)
+    .maybeSingle();
+
+  if (clientById) return clientById;
+
+  const emailLower = (authUser.email || '').toLowerCase();
+  if (emailLower) {
+    const { data: clientByEmail } = await sb
+      .from('clients')
+      .select('*')
+      .ilike('email', emailLower)
+      .maybeSingle();
+    if (clientByEmail) return clientByEmail;
   }
 
   return null;
+}
+
+async function isCallerAdminGeral(sb: SupabaseClient, authUser: User): Promise<boolean> {
+  const sysAdmin = await resolveSystemAdminRecord(sb, authUser);
+  if (sysAdmin) {
+    return String(sysAdmin.role).toLowerCase() !== 'admin_credenciado';
+  }
+
+  const clientRow = await findClientRowForAuthUser(sb, authUser);
+  if (!clientRow) return false;
+  const mapped = mapClientRowToUser(clientRow, authUser);
+  return mapped.role === 'admin' && mapped.userType === 'admin_geral';
 }
 
 export async function resolveClientIdentifier(identifier: string) {
@@ -126,15 +204,15 @@ export async function resolveClientIdentifier(identifier: string) {
 
   const clean = String(identifier || '').trim();
   if (!clean) {
-    return { ok: false, status: 400, error: 'Informe seu e-mail ou CPF/CNPJ.' };
+    return { ok: false, status: 400, error: 'Informe seu e-mail ou Documento ID.' };
   }
 
   if (clean.includes('@')) {
     return { ok: true, status: 200, email: clean.toLowerCase() };
   }
 
-  const digits = normalizeDigits(clean);
-  if (!digits) {
+  const normalized = normalizeDocId(clean);
+  if (!normalized) {
     return { ok: false, status: 404, error: 'Cadastro não encontrado.' };
   }
 
@@ -146,9 +224,9 @@ export async function resolveClientIdentifier(identifier: string) {
     return { ok: false, status: 500, error: 'Falha ao consultar cadastro.' };
   }
 
-  const matched = (clients || []).find((c: any) => normalizeDigits(c.cpf_cnpj) === digits);
+  const matched = (clients || []).find((c: any) => normalizeDocId(c.cpf_cnpj) === normalized);
   if (!matched?.email) {
-    return { ok: false, status: 404, error: 'E-mail ou CPF/CNPJ não encontrado.' };
+    return { ok: false, status: 404, error: 'E-mail ou Documento ID não encontrado.' };
   }
 
   return { ok: true, status: 200, email: String(matched.email).toLowerCase() };
@@ -165,39 +243,27 @@ export async function getAuthenticatedProfile(authHeader?: string) {
     return { ok: false, status: 401, error: authErr || 'Não autenticado.' };
   }
 
-  const adminRecord = await resolveAdminRecord(sb, authUser);
+  const adminRecord = await resolveSystemAdminRecord(sb, authUser);
   if (adminRecord) {
+    const mappedAdmin = mapSystemUserToUser(adminRecord, authUser);
     return {
       ok: true,
       status: 200,
       role: 'admin' as const,
-      user: mapSystemUserToUser(adminRecord, authUser),
+      userType: mappedAdmin.userType,
+      user: mappedAdmin,
     };
   }
 
-  const emailLower = (authUser.email || '').toLowerCase();
-  const { data: clientById } = await sb
-    .from('clients')
-    .select('*')
-    .eq('id', authUser.id)
-    .maybeSingle();
-
-  let clientRow = clientById;
-  if (!clientRow && emailLower) {
-    const { data: clientByEmail } = await sb
-      .from('clients')
-      .select('*')
-      .ilike('email', emailLower)
-      .maybeSingle();
-    clientRow = clientByEmail;
-  }
-
+  const clientRow = await findClientRowForAuthUser(sb, authUser);
   if (clientRow) {
+    const mapped = mapClientRowToUser(clientRow, authUser);
     return {
       ok: true,
       status: 200,
-      role: 'client' as const,
-      user: mapClientRowToUser(clientRow),
+      role: mapped.role,
+      userType: mapped.userType,
+      user: mapped,
     };
   }
 
@@ -213,6 +279,8 @@ export async function registerClientInSupabase(payload: {
   email?: string;
   cpfCnpj?: string;
   phone?: string;
+  consultantName?: string;
+  requestedUserType?: UserAccessType;
   whatsappNotificationEnabled?: boolean;
   password?: string;
 }) {
@@ -225,9 +293,11 @@ export async function registerClientInSupabase(payload: {
   const email = String(payload.email || '').trim().toLowerCase();
   const cpfCnpj = String(payload.cpfCnpj || '').trim();
   const phone = String(payload.phone || '').trim();
+  const consultantName = String(payload.consultantName || '').trim();
+  const requestedUserType = normalizeUserType(payload.requestedUserType);
   const password = String(payload.password || '');
 
-  if (!name || !email || !cpfCnpj || !phone) {
+  if (!name || !email || !cpfCnpj || !phone || !consultantName) {
     return { ok: false, status: 400, error: 'Preencha todos os campos obrigatórios do cadastro.' };
   }
 
@@ -235,7 +305,7 @@ export async function registerClientInSupabase(payload: {
     return { ok: false, status: 400, error: 'A senha deve conter pelo menos 6 caracteres.' };
   }
 
-  // Check duplicate email or CPF/CNPJ in clients table
+  // Check duplicate email or Documento ID in clients table
   const { data: existingClients, error: existingErr } = await sb
     .from('clients')
     .select('id, email, cpf_cnpj');
@@ -244,31 +314,34 @@ export async function registerClientInSupabase(payload: {
     return { ok: false, status: 500, error: 'Erro ao verificar cadastros existentes.' };
   }
 
-  const normalizedDoc = normalizeDigits(cpfCnpj);
+  const normalizedDoc = normalizeDocId(cpfCnpj);
   const duplicate = (existingClients || []).find(
     (c: any) =>
       String(c.email || '').toLowerCase() === email ||
-      (normalizedDoc && normalizeDigits(c.cpf_cnpj) === normalizedDoc)
+      (normalizedDoc && normalizeDocId(c.cpf_cnpj) === normalizedDoc)
   );
 
   if (duplicate) {
     return {
       ok: false,
       status: 409,
-      error: 'Já existe um cadastro registrado com este e-mail ou CPF/CNPJ.',
+      error: 'Já existe um cadastro registrado com este e-mail ou Documento ID.',
     };
   }
 
-  // Create user in Supabase Auth
+  // Create user in Supabase Auth (always starts pending as 'client' until Admin Geral approves)
   const { data: createdAuth, error: createAuthErr } = await sb.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    app_metadata: { role: 'client' },
+    app_metadata: { role: 'client', user_type: 'client' },
     user_metadata: {
       name,
       cpf_cnpj: cpfCnpj,
       phone,
+      consultant_name: consultantName,
+      requested_user_type: requestedUserType,
+      user_type: 'client',
       whatsappNotificationEnabled: Boolean(payload.whatsappNotificationEnabled ?? true),
     },
   });
@@ -303,7 +376,6 @@ export async function registerClientInSupabase(payload: {
     .single();
 
   if (insertErr) {
-    // Rollback created auth user so no orphan remains
     await sb.auth.admin.deleteUser(createdAuth.user.id).catch(() => {});
     return {
       ok: false,
@@ -315,7 +387,7 @@ export async function registerClientInSupabase(payload: {
   return {
     ok: true,
     status: 201,
-    user: mapClientRowToUser(insertedClient),
+    user: mapClientRowToUser(insertedClient, createdAuth.user),
   };
 }
 
@@ -330,9 +402,9 @@ export async function listClientsForAdmin(authHeader?: string) {
     return { ok: false, status: 401, error: authErr || 'Não autenticado.' };
   }
 
-  const adminRecord = await resolveAdminRecord(sb, authUser);
-  if (!adminRecord) {
-    return { ok: false, status: 403, error: 'Acesso restrito a administradores.' };
+  const allowed = await isCallerAdminGeral(sb, authUser);
+  if (!allowed) {
+    return { ok: false, status: 403, error: 'Acesso restrito ao Usuário Admin Geral.' };
   }
 
   const { data: rows, error } = await sb
@@ -344,10 +416,18 @@ export async function listClientsForAdmin(authHeader?: string) {
     return { ok: false, status: 500, error: 'Erro ao buscar lista de clientes.' };
   }
 
+  const authById = new Map<string, User>();
+  try {
+    const { data: authList } = await sb.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    for (const u of authList?.users || []) {
+      authById.set(u.id, u);
+    }
+  } catch {}
+
   return {
     ok: true,
     status: 200,
-    clients: (rows || []).map(mapClientRowToUser),
+    clients: (rows || []).map((row: any) => mapClientRowToUser(row, authById.get(row.id))),
   };
 }
 
@@ -357,6 +437,7 @@ export async function updateClientApprovalStatus(
     clientId?: string;
     email?: string;
     approvalStatus?: 'APPROVED' | 'REJECTED' | 'PENDING';
+    userType?: UserAccessType;
   }
 ) {
   const sb = getSupabaseAdminClient();
@@ -369,9 +450,9 @@ export async function updateClientApprovalStatus(
     return { ok: false, status: 401, error: authErr || 'Não autenticado.' };
   }
 
-  const adminRecord = await resolveAdminRecord(sb, authUser);
-  if (!adminRecord) {
-    return { ok: false, status: 403, error: 'Acesso restrito a administradores.' };
+  const allowed = await isCallerAdminGeral(sb, authUser);
+  if (!allowed) {
+    return { ok: false, status: 403, error: 'Apenas o Admin Geral pode aprovar ou gerenciar cadastros.' };
   }
 
   const nextStatus = payload.approvalStatus;
@@ -403,9 +484,142 @@ export async function updateClientApprovalStatus(
     return { ok: false, status: 404, error: 'Cliente não encontrado.' };
   }
 
+  let matchedAuthUser: User | undefined;
+  try {
+    const { data: authData } = await sb.auth.admin.getUserById(updated.id);
+    matchedAuthUser = authData?.user || undefined;
+
+    if (matchedAuthUser) {
+      const targetUserType: UserAccessType =
+        nextStatus === 'APPROVED'
+          ? normalizeUserType(
+              payload.userType ??
+                matchedAuthUser.app_metadata?.user_type ??
+                matchedAuthUser.user_metadata?.user_type ??
+                matchedAuthUser.user_metadata?.requested_user_type ??
+                'client'
+            )
+          : 'client';
+
+      const targetRole =
+        nextStatus === 'APPROVED' && targetUserType !== 'client'
+          ? 'admin'
+          : 'client';
+
+      const { data: updatedAuth } = await sb.auth.admin.updateUserById(updated.id, {
+        app_metadata: {
+          ...(matchedAuthUser.app_metadata || {}),
+          role: targetRole,
+          user_type: targetUserType,
+        },
+        user_metadata: {
+          ...(matchedAuthUser.user_metadata || {}),
+          user_type: targetUserType,
+        },
+      });
+      if (updatedAuth?.user) {
+        matchedAuthUser = updatedAuth.user;
+      }
+    }
+  } catch {}
+
   return {
     ok: true,
     status: 200,
-    client: mapClientRowToUser(updated),
+    client: mapClientRowToUser(updated, matchedAuthUser),
+  };
+}
+
+export async function updateClientAccessType(
+  authHeader: string | undefined,
+  payload: {
+    clientId?: string;
+    email?: string;
+    userType?: UserAccessType;
+  }
+) {
+  const sb = getSupabaseAdminClient();
+  if (!sb) {
+    return { ok: false, status: 500, error: 'Serviço de banco de dados não configurado.' };
+  }
+
+  const { user: authUser, error: authErr } = await authenticateBearerToken(sb, authHeader);
+  if (!authUser) {
+    return { ok: false, status: 401, error: authErr || 'Não autenticado.' };
+  }
+
+  const allowed = await isCallerAdminGeral(sb, authUser);
+  if (!allowed) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Apenas o Admin Geral pode alterar o tipo de acesso dos usuários.',
+    };
+  }
+
+  const nextUserType = normalizeUserType(payload.userType);
+  if (!['client', 'admin_geral', 'admin_credenciado'].includes(String(payload.userType || '').toLowerCase())) {
+    return { ok: false, status: 400, error: 'Tipo de acesso inválido.' };
+  }
+
+  let query = sb.from('clients').select('*');
+  if (payload.clientId) {
+    query = query.eq('id', payload.clientId);
+  } else if (payload.email) {
+    query = query.ilike('email', payload.email.trim());
+  } else {
+    return { ok: false, status: 400, error: 'Identificador do usuário não informado.' };
+  }
+
+  const { data: clientRow, error } = await query.maybeSingle();
+  if (error) {
+    return { ok: false, status: 500, error: 'Erro ao consultar usuário.' };
+  }
+  if (!clientRow) {
+    return { ok: false, status: 404, error: 'Usuário não encontrado.' };
+  }
+
+  const { data: authData, error: getUserErr } = await sb.auth.admin.getUserById(clientRow.id);
+  if (getUserErr || !authData?.user) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Este cadastro legado não possui conta de autenticação vinculada.',
+    };
+  }
+
+  const existingAuthUser = authData.user;
+  const isApproved =
+    clientRow.approval_status === 'APPROVED' || Boolean(clientRow.verified_status);
+  const nextRole = isApproved && nextUserType !== 'client' ? 'admin' : 'client';
+
+  const { data: updatedAuth, error: updateAuthErr } = await sb.auth.admin.updateUserById(
+    clientRow.id,
+    {
+      app_metadata: {
+        ...(existingAuthUser.app_metadata || {}),
+        role: nextRole,
+        user_type: nextUserType,
+      },
+      user_metadata: {
+        ...(existingAuthUser.user_metadata || {}),
+        user_type: nextUserType,
+        requested_user_type: nextUserType,
+      },
+    }
+  );
+
+  if (updateAuthErr || !updatedAuth?.user) {
+    return {
+      ok: false,
+      status: 500,
+      error: updateAuthErr?.message || 'Erro ao atualizar permissões do usuário.',
+    };
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    client: mapClientRowToUser(clientRow, updatedAuth.user),
   };
 }

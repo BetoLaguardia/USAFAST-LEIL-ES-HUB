@@ -15,7 +15,7 @@ import {
   ArrowLeft,
   Clock
 } from 'lucide-react';
-import { SystemUser } from '../types/auction';
+import { SystemUser, UserAccessType } from '../types/auction';
 import {
   registerClientWithSupabase,
   signInAdminWithSupabase,
@@ -195,9 +195,11 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regDoc, setRegDoc] = useState('');
+  const [regConsultant, setRegConsultant] = useState('');
+  const [regUserType, setRegUserType] = useState<UserAccessType>('client');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [regAcceptTerms, setRegAcceptTerms] = useState(true);
+  const [regAcceptTerms, setRegAcceptTerms] = useState(false);
   const [regWhatsappNotify, setRegWhatsappNotify] = useState(true);
 
   // Handle Client Login
@@ -211,7 +213,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
       onLoginSuccess(result.user);
     } else {
       setErrorMessage(
-        result.error || 'E-mail/CPF ou senha incorretos. Verifique seus dados ou realize seu cadastro.'
+        result.error || 'E-mail/Documento ID ou senha incorretos. Verifique seus dados ou realize seu cadastro.'
       );
       setIsSubmitting(false);
     }
@@ -222,6 +224,12 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
+
+    if (!regName.trim() || !regEmail.trim() || !regDoc.trim() || !regPhone.trim() || !regConsultant.trim()) {
+      setErrorMessage('Preencha todos os campos obrigatórios para concluir seu cadastro.');
+      setIsSubmitting(false);
+      return;
+    }
 
     if (regPassword.length < 6) {
       setErrorMessage('A senha deve conter pelo menos 6 caracteres.');
@@ -246,6 +254,8 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
       email: regEmail.trim(),
       phone: regPhone.trim(),
       cpfCnpj: regDoc.trim(),
+      consultantName: regConsultant.trim(),
+      requestedUserType: regUserType,
       whatsappNotificationEnabled: regWhatsappNotify,
       password: regPassword
     });
@@ -374,7 +384,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
             <form onSubmit={handleClientLogin} className="space-y-4">
               <div>
                 <label className="text-slate-300 text-xs font-semibold block mb-1.5">
-                  E-mail ou CPF / CNPJ do Arrematante:
+                  E-mail ou Documento ID do Arrematante:
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -384,7 +394,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     autoComplete="username"
                     value={loginEmailOrDoc}
                     onChange={e => setLoginEmailOrDoc(e.target.value)}
-                    placeholder="Digite seu e-mail ou CPF/CNPJ"
+                    placeholder="Digite seu e-mail ou Documento ID"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                 </div>
@@ -450,7 +460,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
             <form onSubmit={handleClientRegister} className="space-y-3.5">
               <div>
                 <label className="text-slate-300 text-xs font-semibold block mb-1">
-                  Nome Completo ou Razão Social:
+                  Nome Completo ou Razão Social: *
                 </label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -468,7 +478,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-300 text-xs font-semibold block mb-1">
-                    E-mail Comercial:
+                    E-mail Comercial: *
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -485,7 +495,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
                 <div>
                   <label className="text-slate-300 text-xs font-semibold block mb-1">
-                    CPF ou CNPJ:
+                    Documento ID: *
                   </label>
                   <div className="relative">
                     <FileText className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -494,7 +504,43 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       required
                       value={regDoc}
                       onChange={e => setRegDoc(e.target.value)}
-                      placeholder="Digite seu CPF ou CNPJ"
+                      placeholder="Digite seu Documento ID"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                    WhatsApp com DDD: *
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                    <input
+                      type="tel"
+                      required
+                      value={regPhone}
+                      onChange={e => setRegPhone(e.target.value)}
+                      placeholder="Digite seu WhatsApp com DDD"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                    Consultor Responsável: *
+                  </label>
+                  <div className="relative">
+                    <UserCheck className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      required
+                      value={regConsultant}
+                      onChange={e => setRegConsultant(e.target.value)}
+                      placeholder="Nome do consultor responsável"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
@@ -503,20 +549,25 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
               <div>
                 <label className="text-slate-300 text-xs font-semibold block mb-1">
-                  WhatsApp com DDD:
+                  Tipo de Cadastro / Acesso Solicitado: *
                 </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-                  <input
-                    type="tel"
-                    required
-                    value={regPhone}
-                    onChange={e => setRegPhone(e.target.value)}
-                    placeholder="Digite seu WhatsApp com DDD"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
-                  />
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-emerald-400 select-none mt-1.5 font-medium">
+                <select
+                  required
+                  value={regUserType}
+                  onChange={e => setRegUserType(e.target.value as UserAccessType)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                >
+                  <option value="client">Cliente Normal (Painel do Cliente)</option>
+                  <option value="admin_credenciado">Admin Credenciado (Dashboard Geral e Ofertas Computadas)</option>
+                  <option value="admin_geral">Admin Geral (Acesso Administrativo Completo)</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  O nível final de acesso será liberado após aprovação do Admin Geral.
+                </p>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-emerald-400 select-none font-medium">
                   <input
                     type="checkbox"
                     checked={regWhatsappNotify}
@@ -530,7 +581,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-slate-300 text-xs font-semibold block mb-1">
-                    Criar Senha:
+                    Criar Senha: *
                   </label>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -544,7 +595,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
                 <div>
                   <label className="text-slate-300 text-xs font-semibold block mb-1">
-                    Confirmar Senha:
+                    Confirmar Senha: *
                   </label>
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -561,12 +612,13 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                 <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-400 select-none">
                   <input
                     type="checkbox"
+                    required
                     checked={regAcceptTerms}
                     onChange={e => setRegAcceptTerms(e.target.checked)}
                     className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-0 bg-slate-950 mt-0.5"
                   />
                   <span>
-                    Concordo com a política de arrematação oficial e laudo de conferência de 30 pontos.
+                    Concordo com a política de arrematação oficial e laudo de conferência de 30 pontos. *
                   </span>
                 </label>
               </div>

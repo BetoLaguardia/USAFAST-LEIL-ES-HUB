@@ -1038,7 +1038,7 @@ export default function App() {
                     <span className="font-mono text-amber-400 font-bold text-sm block">01. Cadastro</span>
                     <h3 className="text-sm font-bold text-white">Habilitação Gratuita</h3>
                     <p className="text-slate-400 leading-relaxed">
-                      Cadastre seu CPF ou CNPJ no topo para liberar limite em dólares e sua suíte de recebimento em Miami.
+                      Cadastre seu Documento ID no topo para liberar limite em dólares e sua suíte de recebimento em Miami.
                     </p>
                   </div>
                   <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">

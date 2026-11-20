@@ -295,7 +295,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                {currentUser.name} · CPF/CNPJ: <span className="font-mono text-slate-300">{currentUser.cpfCnpj}</span> · {currentUser.email}
+                {currentUser.name} · Documento ID: <span className="font-mono text-slate-300">{currentUser.cpfCnpj}</span> · {currentUser.email}
               </p>
             </div>
           </div>
@@ -1540,8 +1540,12 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                 <span className="text-white font-bold text-sm">{currentUser.name}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">CPF ou CNPJ:</span>
+                <span className="text-slate-400 block text-[11px]">Documento ID:</span>
                 <span className="font-mono text-slate-200">{currentUser.cpfCnpj}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Consultor Responsável:</span>
+                <span className="text-slate-200 font-medium">{currentUser.consultantName || '-'}</span>
               </div>
               <div>
                 <span className="text-slate-400 block text-[11px]">E-mail Registrado:</span>

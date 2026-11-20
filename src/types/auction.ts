@@ -65,6 +65,8 @@ export interface AuctionLot {
   sourceType?: 'VERIZON' | 'CARRIER' | 'CUSTOM' | 'DEFAULT' | 'STOCK_APPLE' | 'ASSURANT' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS';
 }
 
+export type UserAccessType = 'client' | 'admin_geral' | 'admin_credenciado';
+
 export interface SystemUser {
   id?: string;
   name: string;
@@ -76,7 +78,10 @@ export interface SystemUser {
   biddingLimitUsd: number;
   verifiedStatus: boolean;
   registeredDate: string;
+  consultantName?: string;
   role?: 'client' | 'admin';
+  userType?: UserAccessType;
+  requestedUserType?: UserAccessType;
   approvalStatus?: 'APPROVED' | 'PENDING' | 'REJECTED';
 }
 

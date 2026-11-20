@@ -43,9 +43,9 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { AuctionLot, GradeType, SystemUser, AdminOffer } from '../types/auction';
+import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
-import { fetchAdminClients, updateAdminClientStatus } from '../services/authService';
+import { fetchAdminClients, updateAdminClientAccessType, updateAdminClientStatus } from '../services/authService';
 
 interface AdminPageProps {
   auctions: AuctionLot[];
@@ -66,8 +66,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   onUpdateUsdRate,
   onLogout
 }) => {
+  const isAdminCredenciado = currentUser.userType === 'admin_credenciado';
+  const isAdminGeral = !isAdminCredenciado;
+
   const [adminTab, setAdminTab] = useState<'dashboard' | 'upload' | 'lots' | 'offers' | 'clients' | 'settings'>('dashboard');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  React.useEffect(() => {
+    if (isAdminCredenciado && adminTab !== 'dashboard' && adminTab !== 'offers') {
+      setAdminTab('dashboard');
+    }
+  }, [isAdminCredenciado, adminTab]);
 
   const showNotice = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -2881,8 +2890,16 @@ $285.00
   // CLIENTES / PAINEL DE ARREMATANTES (SUPABASE)
   // ----------------------------------------------------
   const [clientsList, setClientsList] = useState<SystemUser[]>([]);
+  const [pendingUserTypeMap, setPendingUserTypeMap] = useState<Record<string, UserAccessType>>({});
+
+  const getUserTypeLabel = (ut?: UserAccessType) => {
+    if (ut === 'admin_geral') return 'Admin Geral';
+    if (ut === 'admin_credenciado') return 'Admin Credenciado';
+    return 'Cliente Normal';
+  };
 
   const loadClientsFromSupabase = async () => {
+    if (!isAdminGeral) return;
     const res = await fetchAdminClients();
     if (res.ok) {
       setClientsList(res.clients);
@@ -2890,16 +2907,29 @@ $285.00
   };
 
   React.useEffect(() => {
-    loadClientsFromSupabase();
-  }, []);
+    if (isAdminGeral) {
+      loadClientsFromSupabase();
+    }
+  }, [isAdminGeral]);
 
-  const handleApproveClient = async (emailOrIndex: string | number) => {
+  const handleApproveClient = async (emailOrIndex: string | number, explicitUserType?: UserAccessType) => {
+    if (!isAdminGeral) {
+      showNotice('Apenas o Admin Geral pode aprovar cadastros.', 'error');
+      return;
+    }
     const target = typeof emailOrIndex === 'number'
       ? clientsList[emailOrIndex]
       : clientsList.find(c => c.email === emailOrIndex);
     if (!target) return;
 
-    const res = await updateAdminClientStatus(target.id, target.email, 'APPROVED');
+    const chosenType: UserAccessType =
+      explicitUserType ||
+      pendingUserTypeMap[target.email] ||
+      target.requestedUserType ||
+      target.userType ||
+      'client';
+
+    const res = await updateAdminClientStatus(target.id, target.email, 'APPROVED', chosenType);
     if (!res.ok) {
       showNotice(res.error || 'Erro ao aprovar cadastro no banco de dados.', 'error');
       return;
@@ -2908,14 +2938,18 @@ $285.00
     setClientsList(prev =>
       prev.map(c =>
         (target.id && c.id === target.id) || c.email === target.email
-          ? { ...c, ...(res.client || {}), approvalStatus: 'APPROVED', verifiedStatus: true }
+          ? { ...c, ...(res.client || {}), approvalStatus: 'APPROVED', verifiedStatus: true, userType: chosenType }
           : c
       )
     );
-    showNotice(`✅ Cadastro de cliente aprovado com sucesso! Acesso liberado.`, 'success');
+    showNotice(`✅ Cadastro aprovado como ${getUserTypeLabel(chosenType)}! Acesso liberado.`, 'success');
   };
 
   const handleRejectClient = async (emailOrIndex: string | number) => {
+    if (!isAdminGeral) {
+      showNotice('Apenas o Admin Geral pode suspender cadastros.', 'error');
+      return;
+    }
     const target = typeof emailOrIndex === 'number'
       ? clientsList[emailOrIndex]
       : clientsList.find(c => c.email === emailOrIndex);
@@ -2934,7 +2968,27 @@ $285.00
           : c
       )
     );
-    showNotice(`🚫 Cadastro de cliente rejeitado/suspenso.`, 'error');
+    showNotice(`🚫 Cadastro rejeitado/suspenso.`, 'error');
+  };
+
+  const handleChangeClientAccessType = async (client: SystemUser, nextType: UserAccessType) => {
+    if (!isAdminGeral) {
+      showNotice('Apenas o Admin Geral pode alterar o tipo de acesso.', 'error');
+      return;
+    }
+    const res = await updateAdminClientAccessType(client.id, client.email, nextType);
+    if (!res.ok) {
+      showNotice(res.error || 'Não foi possível atualizar o tipo de acesso.', 'error');
+      return;
+    }
+    setClientsList(prev =>
+      prev.map(c =>
+        (client.id && c.id === client.id) || c.email === client.email
+          ? { ...c, ...(res.client || {}), userType: nextType }
+          : c
+      )
+    );
+    showNotice(`✅ Tipo de acesso de ${client.name} alterado para ${getUserTypeLabel(nextType)}.`, 'success');
   };
 
   const handleToggleClientVerify = (idx: number) => {
@@ -2993,8 +3047,12 @@ $285.00
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono font-bold">
-              USAFAST LEILÕES HUB · ADMIN
+            <span className={`px-2.5 py-0.5 rounded border text-xs font-mono font-bold ${
+              isAdminCredenciado
+                ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+            }`}>
+              {isAdminCredenciado ? 'USAFAST LEILÕES HUB · ADMIN CREDENCIADO' : 'USAFAST LEILÕES HUB · ADMIN GERAL'}
             </span>
             <span className="text-xs text-slate-500">·</span>
             <span className="text-xs text-emerald-400 font-mono">
@@ -3002,22 +3060,26 @@ $285.00
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
-            USAFAST LEILÕES HUB — Painel Executivo
+            USAFAST LEILÕES HUB — {isAdminCredenciado ? 'Painel Credenciado' : 'Painel Executivo'}
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Dashboard de pregões, gestão de ofertas computadas, importação de planilhas (Excel, CSV & XML) e controle de arrematações.
+            {isAdminCredenciado
+              ? 'Dashboard geral e acompanhamento de ofertas computadas pelos clientes.'
+              : 'Dashboard de pregões, gestão de ofertas computadas, importação de planilhas (Excel, CSV & XML) e controle de arrematações.'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handleDownloadTemplate}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5"
-            title="Baixar planilha modelo no formato Excel"
-          >
-            <Download className="w-3.5 h-3.5 text-amber-400" />
-            <span>Planilha Modelo (XLSX)</span>
-          </button>
+          {isAdminGeral && (
+            <button
+              onClick={handleDownloadTemplate}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5"
+              title="Baixar planilha modelo no formato Excel"
+            >
+              <Download className="w-3.5 h-3.5 text-amber-400" />
+              <span>Planilha Modelo (XLSX)</span>
+            </button>
+          )}
           {onLogout && (
             <button
               onClick={onLogout}
@@ -3057,53 +3119,57 @@ $285.00
           <span>Ofertas Computadas ({offersList.length})</span>
         </button>
 
-        <button
-          onClick={() => setAdminTab('upload')}
-          className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
-            adminTab === 'upload'
-              ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          <Upload className="w-4 h-4" />
-          <span>Importar Planilhas (Excel, CSV & XML)</span>
-        </button>
+        {isAdminGeral && (
+          <>
+            <button
+              onClick={() => setAdminTab('upload')}
+              className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
+                adminTab === 'upload'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              <span>Importar Planilhas (Excel, CSV & XML)</span>
+            </button>
 
-        <button
-          onClick={() => setAdminTab('lots')}
-          className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
-            adminTab === 'lots'
-              ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          <Gavel className="w-4 h-4" />
-          <span>Gerenciar Leilões ({auctions.length})</span>
-        </button>
+            <button
+              onClick={() => setAdminTab('lots')}
+              className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
+                adminTab === 'lots'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Gavel className="w-4 h-4" />
+              <span>Gerenciar Leilões ({auctions.length})</span>
+            </button>
 
-        <button
-          onClick={() => setAdminTab('clients')}
-          className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
-            adminTab === 'clients'
-              ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Painel de Clientes ({clientsList.length})</span>
-        </button>
+            <button
+              onClick={() => setAdminTab('clients')}
+              className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
+                adminTab === 'clients'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>Painel de Clientes ({clientsList.length})</span>
+            </button>
 
-        <button
-          onClick={() => setAdminTab('settings')}
-          className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
-            adminTab === 'settings'
-              ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span>Configurações & Cotação</span>
-        </button>
+            <button
+              onClick={() => setAdminTab('settings')}
+              className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
+                adminTab === 'settings'
+                  ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Configurações & Cotação</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* ======================================================== */}
@@ -3112,7 +3178,7 @@ $285.00
       {adminTab === 'dashboard' && (
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Top Operational Metrics */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+          <div className={`grid grid-cols-2 md:grid-cols-4 ${isAdminGeral ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3.5`}>
             <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1">
               <div className="flex items-center justify-between text-slate-400 text-[11px]">
                 <span>Lotes Ativos</span>
@@ -3165,18 +3231,20 @@ $285.00
               </span>
             </div>
 
-            <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1 col-span-2 lg:col-span-1">
-              <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                <span>Arrematantes</span>
-                <Users className="w-4 h-4 text-purple-400" />
+            {isAdminGeral && (
+              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1 col-span-2 lg:col-span-1">
+                <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                  <span>Arrematantes</span>
+                  <Users className="w-4 h-4 text-purple-400" />
+                </div>
+                <span className="text-2xl font-black text-white font-mono block">
+                  {clientsList.length}
+                </span>
+                <span className="text-[10px] text-emerald-400 block">
+                  {clientsList.filter(c => c.verifiedStatus).length} verificados com limite
+                </span>
               </div>
-              <span className="text-2xl font-black text-white font-mono block">
-                {clientsList.length}
-              </span>
-              <span className="text-[10px] text-emerald-400 block">
-                {clientsList.filter(c => c.verifiedStatus).length} verificados com limite
-              </span>
-            </div>
+            )}
           </div>
 
           {/* Quick Action Shortcuts */}
@@ -3188,13 +3256,15 @@ $285.00
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setAdminTab('upload')}
-                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg transition-colors flex items-center gap-1.5"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Importar Planilha (Excel / XML)</span>
-              </button>
+              {isAdminGeral && (
+                <button
+                  onClick={() => setAdminTab('upload')}
+                  className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Importar Planilha (Excel / XML)</span>
+                </button>
+              )}
               <button
                 onClick={() => setAdminTab('offers')}
                 className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
@@ -3202,13 +3272,15 @@ $285.00
                 <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Gerenciar Ofertas ({offersList.length})</span>
               </button>
-              <button
-                onClick={() => setAdminTab('lots')}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
-              >
-                <Gavel className="w-3.5 h-3.5 text-amber-400" />
-                <span>Ver Todos os Lotes</span>
-              </button>
+              {isAdminGeral && (
+                <button
+                  onClick={() => setAdminTab('lots')}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                >
+                  <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Ver Todos os Lotes</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -3416,7 +3488,7 @@ $285.00
       {/* ======================================================== */}
       {/* TAB 1: UPLOAD / IMPORTAR (EXCEL, CSV & TEXTO) */}
       {/* ======================================================== */}
-      {adminTab === 'upload' && (
+      {isAdminGeral && adminTab === 'upload' && (
         <div className="space-y-6">
           {/* Clear All Imported Spreadsheets Action Bar */}
           <div className="p-4 sm:p-5 bg-slate-900/80 border border-rose-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
@@ -4634,7 +4706,7 @@ $285.00
       {/* ======================================================== */}
       {/* TAB 2: GERENCIAR LEILÕES (EDIÇÃO, BUSCA & PAGINAÇÃO ULTRA-RÁPIDA) */}
       {/* ======================================================== */}
-      {adminTab === 'lots' && (() => {
+      {isAdminGeral && adminTab === 'lots' && (() => {
         const filteredAdminLots = auctions.filter(lot => {
           if (!adminLotSearch.trim()) return true;
           const q = adminLotSearch.toLowerCase();
@@ -5207,7 +5279,7 @@ $285.00
       {/* ======================================================== */}
       {/* TAB 4: CLIENTES & PAINEL DE ARREMATANTES */}
       {/* ======================================================== */}
-      {adminTab === 'clients' && (
+      {isAdminGeral && adminTab === 'clients' && (
         <div className="space-y-6">
           {/* SECTION 1: CADASTROS PENDENTES DE ANÁLISE */}
           <div className="p-5 bg-amber-500/5 border border-amber-500/30 rounded-2xl space-y-4 shadow-xl">
@@ -5224,7 +5296,7 @@ $285.00
                     </span>
                   </div>
                   <p className="text-xs text-slate-400">
-                    Novos clientes cadastrados no portal aguardando aprovação para liberação de acesso ao sistema e lances.
+                    Escolha o tipo de acesso (Cliente Normal, Admin Credenciado ou Admin Geral) antes de aprovar o cadastro.
                   </p>
                 </div>
               </div>
@@ -5241,27 +5313,53 @@ $285.00
                     <tr className="border-b border-slate-800 text-slate-400 text-[11px] bg-slate-900/80">
                       <th className="py-2.5 px-3">Nome / Razão Social</th>
                       <th className="py-2.5 px-3">E-mail</th>
-                      <th className="py-2.5 px-3">CPF / CNPJ</th>
+                      <th className="py-2.5 px-3">Documento ID</th>
+                      <th className="py-2.5 px-3">Consultor Responsável</th>
                       <th className="py-2.5 px-3">WhatsApp / Telefone</th>
                       <th className="py-2.5 px-3">Data Cadastro</th>
+                      <th className="py-2.5 px-3">Tipo de Acesso</th>
                       <th className="py-2.5 px-3 text-right">Ação de Credenciamento</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/80 text-slate-300">
-                    {clientsList.filter(c => c.approvalStatus === 'PENDING' || (!c.verifiedStatus && c.approvalStatus !== 'APPROVED')).map((client, idx) => (
-                      <tr key={idx} className="hover:bg-slate-900/50 transition-colors">
+                    {clientsList.filter(c => c.approvalStatus === 'PENDING' || (!c.verifiedStatus && c.approvalStatus !== 'APPROVED')).map((client, idx) => {
+                      const selectedPendingType: UserAccessType =
+                        pendingUserTypeMap[client.email] ||
+                        client.requestedUserType ||
+                        client.userType ||
+                        'client';
+
+                      return (
+                      <tr key={client.id || idx} className="hover:bg-slate-900/50 transition-colors">
                         <td className="py-3 px-3 font-bold text-white flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                           {client.name}
                         </td>
                         <td className="py-3 px-3 text-amber-200/90 font-mono">{client.email}</td>
                         <td className="py-3 px-3 font-mono">{client.cpfCnpj}</td>
+                        <td className="py-3 px-3 text-slate-300">{client.consultantName || '-'}</td>
                         <td className="py-3 px-3 font-mono text-slate-300">{client.phone}</td>
                         <td className="py-3 px-3 text-slate-400">{client.registeredDate || 'Recente'}</td>
+                        <td className="py-3 px-3">
+                          <select
+                            value={selectedPendingType}
+                            onChange={e =>
+                              setPendingUserTypeMap(prev => ({
+                                ...prev,
+                                [client.email]: e.target.value as UserAccessType
+                              }))
+                            }
+                            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-white font-semibold focus:outline-none focus:border-amber-400"
+                          >
+                            <option value="client">Cliente Normal</option>
+                            <option value="admin_credenciado">Admin Credenciado</option>
+                            <option value="admin_geral">Admin Geral</option>
+                          </select>
+                        </td>
                         <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <button
-                              onClick={() => handleApproveClient(client.email)}
+                              onClick={() => handleApproveClient(client.email, selectedPendingType)}
                               className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-500/10"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -5276,7 +5374,8 @@ $285.00
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -5287,9 +5386,9 @@ $285.00
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-white">Base Completa de Arrematantes Credenciados</h2>
+                <h2 className="text-base font-bold text-white">Base Completa de Usuários &amp; Arrematantes Credenciados</h2>
                 <p className="text-xs text-slate-400">
-                  Gerencie limites operacionais em dólares e permissões de acesso
+                  Gerencie permissões de acesso (Cliente Normal, Admin Credenciado ou Admin Geral) e status de habilitação
                 </p>
               </div>
               <div className="text-xs font-mono text-slate-400">
@@ -5303,32 +5402,62 @@ $285.00
                   <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 text-[11px]">
                     <th className="py-3 px-3">Arrematante / Razão Social</th>
                     <th className="py-3 px-3">E-mail</th>
-                    <th className="py-3 px-3">CPF / CNPJ</th>
+                    <th className="py-3 px-3">Documento ID</th>
+                    <th className="py-3 px-3">Consultor Responsável</th>
                     <th className="py-3 px-3">Telefone WhatsApp</th>
+                    <th className="py-3 px-3">Tipo de Acesso</th>
                     <th className="py-3 px-3">Limite de Arrematação</th>
                     <th className="py-3 px-3">Status de Habilitação</th>
                     <th className="py-3 px-3 text-right">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                  {clientsList.map((client, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                  {clientsList.map((client, idx) => {
+                    const isApproved = Boolean(client.verifiedStatus || client.approvalStatus === 'APPROVED');
+                    const effectiveDisplayType: UserAccessType = isApproved
+                      ? (client.userType || 'client')
+                      : (pendingUserTypeMap[client.email] || client.requestedUserType || client.userType || 'client');
+
+                    return (
+                    <tr key={client.id || idx} className="hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 px-3 font-semibold text-white">{client.name}</td>
                       <td className="py-3 px-3 text-slate-400">{client.email}</td>
                       <td className="py-3 px-3 font-mono">{client.cpfCnpj}</td>
+                      <td className="py-3 px-3 text-slate-300">{client.consultantName || '-'}</td>
                       <td className="py-3 px-3 font-mono text-slate-300">{client.phone}</td>
+                      <td className="py-3 px-3">
+                        <select
+                          value={effectiveDisplayType}
+                          onChange={e => {
+                            const nextType = e.target.value as UserAccessType;
+                            setPendingUserTypeMap(prev => ({ ...prev, [client.email]: nextType }));
+                            handleChangeClientAccessType(client, nextType);
+                          }}
+                          className={`rounded-lg px-2 py-1 text-[11px] font-bold border focus:outline-none ${
+                            effectiveDisplayType === 'admin_geral'
+                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                              : effectiveDisplayType === 'admin_credenciado'
+                              ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                              : 'bg-slate-950 text-slate-200 border-slate-700'
+                          }`}
+                        >
+                          <option value="client">Cliente Normal</option>
+                          <option value="admin_credenciado">Admin Credenciado</option>
+                          <option value="admin_geral">Admin Geral</option>
+                        </select>
+                      </td>
                       <td className="py-3 px-3 font-mono font-bold text-amber-400">
                         ${client.biddingLimitUsd.toLocaleString()} USD
                       </td>
                       <td className="py-3 px-3">
                         <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
-                          client.approvalStatus === 'APPROVED' || client.verifiedStatus
+                          isApproved
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                             : client.approvalStatus === 'REJECTED'
                             ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
                             : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
                         }`}>
-                          {client.approvalStatus === 'APPROVED' || client.verifiedStatus
+                          {isApproved
                             ? '● Habilitado / Aprovado'
                             : client.approvalStatus === 'REJECTED'
                             ? '✕ Suspenso / Rejeitado'
@@ -5336,7 +5465,7 @@ $285.00
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        {client.verifiedStatus || client.approvalStatus === 'APPROVED' ? (
+                        {isApproved ? (
                           <button
                             onClick={() => handleRejectClient(client.email)}
                             className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium transition-colors"
@@ -5345,7 +5474,7 @@ $285.00
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleApproveClient(client.email)}
+                            onClick={() => handleApproveClient(client.email, effectiveDisplayType)}
                             className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-[11px] font-bold transition-colors shadow-sm"
                           >
                             Aprovar Cadastro
@@ -5353,7 +5482,8 @@ $285.00
                         )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -5364,7 +5494,7 @@ $285.00
       {/* ======================================================== */}
       {/* TAB 5: CONFIGURAÇÕES GERAIS */}
       {/* ======================================================== */}
-      {adminTab === 'settings' && (
+      {isAdminGeral && adminTab === 'settings' && (
         <div className="max-w-2xl space-y-6 p-6 bg-slate-900/60 border border-slate-800 rounded-2xl">
           <h2 className="text-lg font-bold text-white">Parâmetros Operacionais do Sistema</h2>
           
