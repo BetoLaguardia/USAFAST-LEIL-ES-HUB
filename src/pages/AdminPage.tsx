@@ -3,6 +3,7 @@ import { supabase } from '../services/supabaseClient.ts';
 import * as XLSX from 'xlsx';
 import { getDeviceImageUrl, stripLotPrefix } from '../utils/deviceImages';
 import { fetchLivePtaxRate } from '../utils/ptaxService';
+import { isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc } from '../utils/verizonUtils';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -87,10 +88,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [isLoadingWeSell, setIsLoadingWeSell] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
-  const [verizonUnitRate, setVerizonUnitRate] = useState<number>(85);
   const [verizonExpandedLot, setVerizonExpandedLot] = useState<string | null>(null);
   const [replaceExistingLots, setReplaceExistingLots] = useState(false);
-  const [verizonImportMode, setVerizonImportMode] = useState<'individual' | 'grouped'>('individual');
+  const [verizonImportMode, setVerizonImportMode] = useState<'individual' | 'grouped'>('grouped');
 
   // ----------------------------------------------------
   // ASSURANT AUCTION ENGINE (+ $5 USD PER UNIT ADJUSTMENT)
@@ -242,22 +242,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   // Helper: map grade exclusively for VERIZON auctions
-  // "tire o grade B+(T), A+(T), C+(T) nao deixe aparecer altere tudo para DNA, DNB, DNC , DND isso só no verizon"
+  // Transform all grades strictly to DNA, DNB, DNC, DND (only for Verizon)
   const mapVerizonGrade = (raw: string): GradeType => {
-    const g = String(raw || '').trim().toUpperCase();
-    if (g.includes('DND') || g.includes('D(T)') || g.includes('D+(T)') || g.includes('GRADE D') || (g.includes('D') && !g.includes('DNA') && !g.includes('DNB') && !g.includes('DNC'))) {
-      return 'DND';
-    }
-    if (g.includes('DNC') || g.includes('C(T)') || g.includes('C+(T)') || g.includes('GRADE C') || g.includes('C+') || (g.includes('C') && !g.includes('DNA') && !g.includes('DNB'))) {
-      return 'DNC';
-    }
-    if (g.includes('DNB') || g.includes('B(T)') || g.includes('B+(T)') || g.includes('GRADE B') || g.includes('B+') || g.includes('B') || g.includes('A/B')) {
-      return 'DNB';
-    }
-    if (g.includes('DNA') || g.includes('A(T)') || g.includes('A+(T)') || g.includes('GRADE A') || g.includes('A+') || g.includes('A') || g.includes('MINT') || g.includes('NEW')) {
-      return 'DNA';
-    }
-    return 'DNC';
+    return mapVerizonGradeStrict(raw);
   };
 
   // Helper: parse date and time from Verizon CSV
@@ -297,7 +284,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   // Core parser for VERIZON standard rows
-  const processVerizonRows = (rawRows: any[], unitRate: number = verizonUnitRate) => {
+  const processVerizonRows = (rawRows: any[]) => {
     const groups = new Map<string, {
       lotNumber: string;
       title: string;
@@ -339,27 +326,28 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       }
 
       const g = groups.get(lotNum)!;
-      const q = parseInt(String(r['Qty'] || r['qty'] || 1), 10) || 1;
+      const q = Math.max(1, parseInt(String(r['Qty'] || r['qty'] || 1), 10) || 1);
       g.totalQty += q;
 
       const model = String(r['Model'] || r['model'] || g.primaryModel).trim();
       const cap = String(r['Capacity'] || r['capacity'] || '128GB').trim();
-      const color = String(r['Color'] || r['color'] || 'Black').trim();
+      const itemDescription = String(r['Item Description'] || r['itemDescription'] || '').trim();
+      const color = parseBstockColorFromDesc(itemDescription, String(r['Color'] || r['color'] || ''));
       const source = String(r['Inventory Source'] || r['inventorySource'] || 'Verizon Direct Return').trim();
 
       if (model) g.models.add(model);
       if (cap) g.capacities.add(cap);
-      if (color) g.colors.add(color);
+      if (color && color !== 'Misto / Padrão') g.colors.add(color);
       if (source) g.sources.add(source);
 
-      // Transform grade ONLY for Verizon: A(T) -> DNA, B(T) -> DNB, C(T) -> DNC, etc.
-      const mappedG = mapVerizonGrade(r['Grade'] || g.gradeRaw);
+      // Transform grade ONLY for Verizon: A(T) -> DNA, B(T) -> DNB, C(T) -> DNC, D(T) -> DND
+      const mappedG = mapVerizonGrade(String(r['Grade'] || g.gradeRaw));
 
       g.items.push({
         id: `dev-vz-${lotNum}-${idx}`,
         model,
         storage: cap || '128GB',
-        color: color || 'Black',
+        color: color || 'Misto / Padrão',
         grade: mappedG,
         batteryHealth: 84 + (idx % 16),
         imeiMasked: `359820******${String(100 + (idx * 17) % 899)}`,
@@ -369,7 +357,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         housingCondition: `Conforme Grade Verizon ${mappedG}`,
         partNumber: String(r['Part #'] || r['partNumber'] || '').trim(),
         inventorySource: source,
-        itemDescription: String(r['Item Description'] || r['itemDescription'] || '').trim(),
+        itemDescription,
         qty: q
       });
     });
@@ -380,33 +368,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
       // Clean title for Verizon to strip Lote, 5x, and map grades to DNA, DNB, DNC, DND
       const cleanTitle = cleanLotTitle(g.title)
-        .replace(/\bA\+\(T\)\b/gi, 'DNA')
-        .replace(/\bB\+\(T\)\b/gi, 'DNB')
-        .replace(/\bC\+\(T\)\b/gi, 'DNC')
-        .replace(/\bD\+\(T\)\b/gi, 'DND')
-        .replace(/\bA\(T\)\s*DNA\b/gi, 'DNA')
-        .replace(/\bB\(T\)\s*DNB\b/gi, 'DNB')
-        .replace(/\bC\(T\)\s*DNC\b/gi, 'DNC')
-        .replace(/\bD\(T\)\s*DND\b/gi, 'DND')
-        .replace(/\bA\(T\)\b/gi, 'DNA')
-        .replace(/\bB\(T\)\b/gi, 'DNB')
-        .replace(/\bC\(T\)\b/gi, 'DNC')
-        .replace(/\bD\(T\)\b/gi, 'DND')
-        .replace(/Grade\s+A\+/gi, 'Grade DNA')
-        .replace(/Grade\s+A/gi, 'Grade DNA')
-        .replace(/Grade\s+B\+/gi, 'Grade DNB')
-        .replace(/Grade\s+B/gi, 'Grade DNB')
-        .replace(/Grade\s+C\+/gi, 'Grade DNC')
-        .replace(/Grade\s+C/gi, 'Grade DNC')
-        .replace(/Grade\s+D\+/gi, 'Grade DND')
-        .replace(/Grade\s+D/gi, 'Grade DND');
-
-      const isPremium = /fold|ultra|pro max/i.test(g.primaryModel);
-      const isBudget = /a1|a2|a0/i.test(g.primaryModel);
-      const perUnit = isPremium ? unitRate * 1.6 : isBudget ? unitRate * 0.6 : unitRate;
-      const calculatedCurrentBidUsd = Math.max(150, Math.round(g.totalQty * perUnit));
-      const calculatedStartingBidUsd = Math.round(calculatedCurrentBidUsd * 0.75);
-      const calculatedRetailBrl = Math.round(calculatedCurrentBidUsd * usdRate * 1.55);
+        .replace(/Grade\s+A\+\(T\)|Grade\s+A\(T\)|Grade\s+A\+|Grade\s+A(?=$|[\s,\-])/gi, 'Grade DNA')
+        .replace(/Grade\s+B\+\(T\)|Grade\s+B\(T\)|Grade\s+B\+|Grade\s+B(?=$|[\s,\-])/gi, 'Grade DNB')
+        .replace(/Grade\s+C\+\(T\)|Grade\s+C\(T\)|Grade\s+C\+|Grade\s+C(?=$|[\s,\-])/gi, 'Grade DNC')
+        .replace(/Grade\s+D\+\(T\)|Grade\s+D\(T\)|Grade\s+D\+|Grade\s+D(?=$|[\s,\-])/gi, 'Grade DND')
+        .replace(/\bA\+\(T\)|\bA\(T\)/gi, 'DNA')
+        .replace(/\bB\+\(T\)|\bB\(T\)/gi, 'DNB')
+        .replace(/\bC\+\(T\)|\bC\(T\)/gi, 'DNC')
+        .replace(/\bD\+\(T\)|\bD\(T\)/gi, 'DND');
 
       return {
         lotNumber: g.lotNumber,
@@ -424,9 +393,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         uniqueCapacities: Array.from(g.capacities),
         uniqueColors: Array.from(g.colors),
         uniqueSources: Array.from(g.sources),
-        calculatedCurrentBidUsd,
-        calculatedStartingBidUsd,
-        calculatedRetailBrl,
+        // VERIZON exclusivo: sem preço predefinido — cliente escolhe o valor da oferta
+        calculatedCurrentBidUsd: 0,
+        calculatedStartingBidUsd: 0,
+        calculatedRetailBrl: 0,
         manifest: g.items
       };
     });
@@ -444,9 +414,12 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         throw new Error('Não foi possível ler o arquivo local anexado.');
       }
       const text = await res.text();
-      const wb = XLSX.read(text, { type: 'string' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rawRows: any[] = XLSX.utils.sheet_to_json(ws);
+      let rawRows = parseCsvText(text);
+      if (!rawRows || rawRows.length === 0) {
+        const wb = XLSX.read(text, { type: 'string' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rawRows = XLSX.utils.sheet_to_json(ws);
+      }
 
       if (!rawRows || rawRows.length === 0) {
         showNotice('Arquivo VERIZON está vazio.', 'error');
@@ -456,13 +429,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const grouped = processVerizonRows(rawRows);
       setUploadedFileName('Planilha_Oficial_VERIZON.csv (Anexo)');
       setPresetFormat('VERIZON');
+      setVerizonImportMode('grouped');
       setRawHeaders(Object.keys(rawRows[0] || {}));
       setParsedPreviewRows(rawRows);
 
       let totalUnits = 0;
       grouped.forEach(g => { totalUnits += g.totalQty; });
 
-      showNotice(`Catálogo Oficial VERIZON carregado: ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos detectados!`, 'success');
+      showNotice(`Catálogo Oficial VERIZON carregado: ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos detectados (Sem Preço Fixo / Qtd Fixa)!`, 'success');
     } catch (err: any) {
       showNotice(`Falha ao carregar CSV VERIZON: ${err?.message || err}`, 'error');
     } finally {
@@ -625,21 +599,80 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return isNaN(num) ? 0 : num;
   };
 
+  const parseCsvLineWithQuotes = (line: string, delimiter: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const splitCsvRecords = (cleanText: string): string[] => {
+    const records: string[] = [];
+    let current = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < cleanText.length; i++) {
+      const ch = cleanText[i];
+      if (ch === '"') {
+        if (inQuotes && cleanText[i + 1] === '"') {
+          current += '""';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+          current += ch;
+        }
+      } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+        if (ch === '\r' && cleanText[i + 1] === '\n') i++;
+        if (current.trim()) records.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    if (current.trim()) records.push(current.trim());
+    return records;
+  };
+
   const parseCsvText = (text: string): any[] => {
     const cleanText = text.replace(/^\uFEFF/, '');
-    const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const lines = splitCsvRecords(cleanText);
     if (lines.length === 0) return [];
 
     let headerIndex = -1;
-    let delimiter = ';';
+    let delimiter = ',';
     for (let i = 0; i < Math.min(10, lines.length); i++) {
-      const line = lines[i];
+      let line = lines[i];
+      // Unwrap whole-line outer quotes if present
+      if (line.startsWith('"') && line.endsWith('"')) {
+        const maybeUnwrapped = parseCsvLineWithQuotes(line, ',');
+        if (maybeUnwrapped.length === 1 && (maybeUnwrapped[0].includes(',') || maybeUnwrapped[0].includes(';'))) {
+          line = maybeUnwrapped[0];
+        }
+      }
       const semiCount = (line.match(/;/g) || []).length;
       const commaCount = (line.match(/,/g) || []).length;
       const tabCount = (line.match(/\t/g) || []).length;
-      const delim = semiCount >= commaCount && semiCount >= tabCount ? ';' : tabCount > commaCount ? '\t' : ',';
-      
-      const parts = line.split(delim).map(p => p.trim().toLowerCase());
+      const delim = semiCount > commaCount && semiCount >= tabCount ? ';' : tabCount > commaCount ? '\t' : ',';
+
+      const parts = parseCsvLineWithQuotes(line, delim).map(p => p.toLowerCase());
       if (parts.some(p => p.includes('item') || p.includes('lot') || p.includes('model') || p.includes('category') || p.includes('warehouse'))) {
         headerIndex = i;
         delimiter = delim;
@@ -651,13 +684,23 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       headerIndex = 0;
     }
 
-    const rawHeaders = lines[headerIndex].split(delimiter).map(h => h.replace(/^["']|["']$/g, '').trim());
+    const parseRowSmart = (rawLine: string, delim: string): string[] => {
+      let cols = parseCsvLineWithQuotes(rawLine, delim);
+      // Handle B-Stock exported rows wrapped in outer quotes with doubled inner quotes:
+      // e.g. "ATT_RL1_20261117_088,""Apple Cell Phones - iPhone 15 Pro Max, 256GB..."",12,Apple,..."
+      if (cols.length === 1 && cols[0].includes(delim)) {
+        cols = parseCsvLineWithQuotes(cols[0], delim);
+      }
+      return cols;
+    };
+
+    const rawHeaders = parseRowSmart(lines[headerIndex], delimiter).map(h => h.replace(/^["']|["']$/g, '').trim());
     const rows: any[] = [];
 
     for (let i = headerIndex + 1; i < lines.length; i++) {
       const rawLine = lines[i];
       if (!rawLine.trim()) continue;
-      const cols = rawLine.split(delimiter).map(c => c.replace(/^["']|["']$/g, '').trim());
+      const cols = parseRowSmart(rawLine, delimiter);
       if (cols.length === 0 || cols.every(c => !c)) continue;
       const obj: any = {};
       rawHeaders.forEach((h, idx) => {
@@ -1875,14 +1918,21 @@ $285.00
           setRawHeaders(headers);
           setParsedPreviewRows(rows);
 
-          const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
-                               /stock/i.test(file.name) ||
+          const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
+                               (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
                                (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
 
-          const isVerizon = headers.some(h => /lot #|item description|part #|inventory source|model/i.test(h)) ||
+          const isVerizon = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
                             /verizon|usafast/i.test(file.name);
 
-          if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
+          if (isVerizon) {
+            setPresetFormat('VERIZON');
+            setVerizonImportMode('grouped');
+            const grouped = processVerizonRows(rows);
+            let totalUnits = 0;
+            grouped.forEach(g => { totalUnits += g.totalQty; });
+            showNotice(`Arquivo VERIZON detectado! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
+          } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE' && !isVerizon) {
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
             showNotice(`Arquivo XML ${presetFormat} processado! ${audit.approvedCount.toLocaleString()} lotes/aparelhos UNLOCKED aprovados.`, 'success');
@@ -1895,8 +1945,9 @@ $285.00
             setPresetFormat('STOCK_APPLE');
             const { audit } = processStockAppleRows(rows);
             showNotice(`Arquivo XML Estoque Apple processado! ${audit.approvedCount.toLocaleString()} aparelhos aprovados (iPhones, iPads e Watches UNLOCKED) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (isVerizon || presetFormat === 'VERIZON') {
+          } else if (presetFormat === 'VERIZON') {
             setPresetFormat('VERIZON');
+            setVerizonImportMode('grouped');
             const grouped = processVerizonRows(rows);
             let totalUnits = 0;
             grouped.forEach(g => { totalUnits += g.totalQty; });
@@ -1928,10 +1979,10 @@ $285.00
           setParsedPreviewRows(rows);
 
           const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
-                               /stock/i.test(file.name) ||
+                               (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
                                (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
 
-          const isVerizon = headers.some(h => /lot #|item description|part #|inventory source/i.test(h)) ||
+          const isVerizon = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
                             /verizon/i.test(file.name);
 
           if (/wesell/i.test(file.name)) {
@@ -1954,6 +2005,13 @@ $285.00
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
             showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+          } else if (isVerizon) {
+            setPresetFormat('VERIZON');
+            setVerizonImportMode('grouped');
+            const grouped = processVerizonRows(rows);
+            let totalUnits = 0;
+            grouped.forEach(g => { totalUnits += g.totalQty; });
+            showNotice(`Planilha VERIZON detectada! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
           } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
@@ -1967,8 +2025,9 @@ $285.00
             setPresetFormat('STOCK_APPLE');
             const { audit } = processStockAppleRows(rows);
             showNotice(`Planilha Estoque Apple detectada! ${audit.approvedCount.toLocaleString()} itens aprovados (iPhones, iPads e Watches UNLOCKED) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (isVerizon || presetFormat === 'VERIZON') {
+          } else if (presetFormat === 'VERIZON') {
             setPresetFormat('VERIZON');
+            setVerizonImportMode('grouped');
             const grouped = processVerizonRows(rows);
             let totalUnits = 0;
             grouped.forEach(g => { totalUnits += g.totalQty; });
@@ -2042,10 +2101,10 @@ $285.00
         setParsedPreviewRows(rawJson);
 
         const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
-                             /stock/i.test(file.name) ||
+                             (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
                              (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
 
-        const isVerizonFormat = headers.some(h => /lot #|item description|part #|inventory source|package type/i.test(h)) ||
+        const isVerizonFormat = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
                                 /verizon/i.test(file.name);
 
         if (/wesell/i.test(file.name)) {
@@ -2068,6 +2127,13 @@ $285.00
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
           showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+        } else if (isVerizonFormat) {
+          setPresetFormat('VERIZON');
+          setVerizonImportMode('grouped');
+          const grouped = processVerizonRows(rawJson);
+          let totalUnits = 0;
+          grouped.forEach(g => { totalUnits += g.totalQty; });
+          showNotice(`Planilha VERIZON detectada! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
         } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
@@ -2081,8 +2147,9 @@ $285.00
           setPresetFormat('STOCK_APPLE');
           const { audit } = processStockAppleRows(rawJson);
           showNotice(`Planilha Estoque Apple detectada! ${audit.approvedCount.toLocaleString()} itens aprovados (iPhones, iPads e Watches UNLOCKED) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (isVerizonFormat || presetFormat === 'VERIZON') {
+        } else if (presetFormat === 'VERIZON') {
           setPresetFormat('VERIZON');
+          setVerizonImportMode('grouped');
           const grouped = processVerizonRows(rawJson);
           let totalUnits = 0;
           grouped.forEach(g => { totalUnits += g.totalQty; });
@@ -2196,9 +2263,19 @@ $285.00
         const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
                              (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
 
-        const isVerizon = headers.some(h => /lot #|item description|part #|inventory source|model/i.test(h));
+        const isVerizon = headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h));
 
-        if (presetFormat === 'ASSURANT' || /A02-ASSURANT|assurant/i.test(pasteText)) {
+        if (/A02-ASSURANT|assurant/i.test(pasteText)) {
+          setPresetFormat('ASSURANT');
+          setStockAppleGroupMode('individual');
+          const { audit } = processStockAppleRows(rows, true);
+          showNotice(`XML ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
+        } else if (isVerizon) {
+          setPresetFormat('VERIZON');
+          setVerizonImportMode('grouped');
+          const grouped = processVerizonRows(rows);
+          showNotice(`XML Padrão VERIZON processado! ${grouped.length} lotes agrupados (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
+        } else if (presetFormat === 'ASSURANT') {
           setPresetFormat('ASSURANT');
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rows, true);
@@ -2207,8 +2284,9 @@ $285.00
           setPresetFormat('STOCK_APPLE');
           const { audit } = processStockAppleRows(rows);
           showNotice(`XML Estoque Apple processado! ${audit.approvedCount.toLocaleString()} itens aprovados.`, 'success');
-        } else if (isVerizon || (presetFormat as string) === 'VERIZON') {
+        } else if ((presetFormat as string) === 'VERIZON') {
           setPresetFormat('VERIZON');
+          setVerizonImportMode('grouped');
           const grouped = processVerizonRows(rows);
           showNotice(`XML Padrão VERIZON processado! ${grouped.length} lotes agrupados.`);
         } else {
@@ -2243,9 +2321,19 @@ $285.00
       const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
                            (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
 
-      const isVerizon = headers.some(h => /lot #|item description|part #|inventory source/i.test(h));
+      const isVerizon = headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h));
 
-      if (presetFormat === 'ASSURANT' || /A02-ASSURANT|assurant/i.test(pasteText)) {
+      if (/A02-ASSURANT|assurant/i.test(pasteText)) {
+        setPresetFormat('ASSURANT');
+        setStockAppleGroupMode('individual');
+        const { audit } = processStockAppleRows(rows, true);
+        showNotice(`ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
+      } else if (isVerizon) {
+        setPresetFormat('VERIZON');
+        setVerizonImportMode('grouped');
+        const grouped = processVerizonRows(rows);
+        showNotice(`Padrão VERIZON detectado! ${grouped.length} lotes agrupados (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
+      } else if (presetFormat === 'ASSURANT') {
         setPresetFormat('ASSURANT');
         setStockAppleGroupMode('individual');
         const { audit } = processStockAppleRows(rows, true);
@@ -2254,8 +2342,9 @@ $285.00
         setPresetFormat('STOCK_APPLE');
         const { audit } = processStockAppleRows(rows);
         showNotice(`Estoque Apple processado! ${audit.approvedCount.toLocaleString()} itens aprovados.`, 'success');
-      } else if (isVerizon || (presetFormat as string) === 'VERIZON') {
+      } else if ((presetFormat as string) === 'VERIZON') {
         setPresetFormat('VERIZON');
+        setVerizonImportMode('grouped');
         const grouped = processVerizonRows(rows);
         showNotice(`Padrão VERIZON detectado! ${grouped.length} lotes agrupados.`);
       } else {
@@ -2282,14 +2371,6 @@ $285.00
     }
   };
 
-  // Recalculate Verizon bids when unit rate slider is adjusted
-  const handleRecalculateVerizonRate = (newRate: number) => {
-    setVerizonUnitRate(newRate);
-    if (parsedPreviewRows.length > 0 && presetFormat === 'VERIZON') {
-      processVerizonRows(parsedPreviewRows, newRate);
-    }
-  };
-
   // Publish VERIZON lots (Individual line-by-line or Grouped by Lot #)
   const handleApplyVerizonImport = () => {
     if (verizonGroupedLots.length === 0 && parsedPreviewRows.length === 0) {
@@ -2306,22 +2387,16 @@ $285.00
           const oem = String(r['OEM'] || r['oem'] || 'Apple').trim();
           const primaryModel = String(r['Model'] || r['model'] || 'Smartphone').trim();
           const cap = String(r['Capacity'] || r['capacity'] || '128GB').trim();
-          const color = String(r['Color'] || r['color'] || 'Black').trim();
+          const itemDescription = String(r['Item Description'] || r['itemDescription'] || '').trim();
+          const color = parseBstockColorFromDesc(itemDescription, String(r['Color'] || r['color'] || ''));
           const gradeRaw = String(r['Grade'] || r['grade'] || 'C(T)').trim();
           const mappedGrade = mapVerizonGrade(gradeRaw);
-          const q = parseInt(String(r['Qty'] || r['qty'] || 1), 10) || 1;
+          const q = Math.max(1, parseInt(String(r['Qty'] || r['qty'] || 1), 10) || 1);
 
           const isSamsung = /samsung|galaxy|fold|flip/i.test(primaryModel) || /samsung/i.test(oem);
           const imageUrl = isSamsung
             ? '/images/samsung_galaxy_lot_1793851025604.jpg'
             : getDeviceImageUrl(oem, primaryModel, 'iPhone');
-
-          const isPremium = /fold|ultra|pro max/i.test(primaryModel);
-          const isBudget = /a1|a2|a0/i.test(primaryModel);
-          const perUnit = isPremium ? verizonUnitRate * 1.6 : isBudget ? verizonUnitRate * 0.6 : verizonUnitRate;
-          const currentBidUsd = Math.max(80, Math.round(q * perUnit));
-          const startingBidUsd = Math.round(currentBidUsd * 0.75);
-          const estimatedBrazilRetailBrl = Math.round(currentBidUsd * usdRate * 1.55);
 
           const rawTitle = `${oem} ${primaryModel} ${cap} ${color} - Grade ${mappedGrade}`;
           const cleanTitle = stripLotPrefix(cleanLotTitle(rawTitle));
@@ -2335,17 +2410,18 @@ $285.00
             quantity: q,
             grade: mappedGrade,
             primaryStorage: cap,
-            colorHighlights: [color],
+            colorHighlights: color && color !== 'Misto / Padrão' ? [color] : [],
             batteryHealthRange: '84% - 100% (Testado Verizon)',
             carrierStatus: 'Verizon Clean / Desbloqueado Global',
             imeiStatus: 'Clean ESN / 100% Verificado',
             auctionHouse: 'Verizon Wholesale Liquidation',
             location: 'Dallas, TX / Miami Hub',
-            startingBidUsd,
-            currentBidUsd,
-            reservePriceMet: true,
-            estimatedBrazilRetailBrl,
-            totalBidsCount: Math.floor(Math.random() * 12) + 1,
+            // Exclusivo Verizon: sem preço fixo (cliente escolhe o valor), quantidade fixa
+            startingBidUsd: 0,
+            currentBidUsd: 0,
+            reservePriceMet: false,
+            estimatedBrazilRetailBrl: 0,
+            totalBidsCount: 0,
             endTime: parseAuctionEndTime(r['End Date'] || r['endDate'], r['End Time'] || r['endTime']),
             imageUrl,
             galleryImages: [
@@ -2353,7 +2429,7 @@ $285.00
               '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
               '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
             ],
-            description: `Aparelho oficial do leilão VERIZON: ${primaryModel} ${cap} ${color}. Classificação técnica ${gradeRaw} (Mapeada: Grade ${mappedGrade}). IMEI Clean ESN auditado.`,
+            description: `Lote oficial VERIZON (Quantidade Fixa: ${q} un. | Sem Preço Fixo - Cliente escolhe o valor): ${primaryModel} ${cap} ${color}. Classificação técnica ${gradeRaw} (Grade ${mappedGrade}). IMEI Clean ESN auditado.`,
             diagnosticReport: {
               faceId: true,
               trueTone: true,
@@ -2376,19 +2452,12 @@ $285.00
                 screenCondition: `Conforme Grade Verizon ${mappedGrade}`,
                 housingCondition: `Conforme Grade Verizon ${mappedGrade}`,
                 partNumber: String(r['Part #'] || r['partNumber'] || '').trim(),
-                inventorySource: 'Verizon Direct Return',
-                itemDescription: String(r['Item Description'] || r['itemDescription'] || '').trim(),
+                inventorySource: String(r['Inventory Source'] || r['inventorySource'] || 'Verizon Direct Return').trim(),
+                itemDescription,
                 qty: q
               }
             ],
-            bidsHistory: [
-              {
-                id: `bid-vz-ind-${idx}`,
-                bidderName: 'Licitante EUA Inicial',
-                amountUsd: currentBidUsd,
-                timestamp: 'Início do Leilão'
-              }
-            ],
+            bidsHistory: [],
             originalListingUrl: String(r['URL'] || r['url'] || '').trim(),
             listingUrl: String(r['URL'] || r['url'] || '').trim(),
             sourceType: 'VERIZON' as AuctionLot['sourceType']
@@ -2410,33 +2479,40 @@ $285.00
           ];
 
           const primaryStorage = g.uniqueCapacities.length > 0
-            ? g.uniqueCapacities.slice(0, 2).join(' / ')
+            ? (g.uniqueCapacities.length > 3
+                ? `${g.uniqueCapacities.slice(0, 3).join(' / ')} +${g.uniqueCapacities.length - 3}`
+                : g.uniqueCapacities.join(' / '))
             : '128GB';
+
+          const modelFamily = g.uniqueModels.length > 1
+            ? `Mix: ${g.uniqueModels.slice(0, 2).join(' + ')}${g.uniqueModels.length > 2 ? ` (+${g.uniqueModels.length - 2})` : ''}`
+            : g.primaryModel;
 
           return {
             id: `vz-lot-${Date.now()}-${idx}`,
             lotNumber: g.lotNumber,
             title: g.title,
-            modelFamily: g.primaryModel,
+            modelFamily,
             oemBrand: g.oem,
             quantity: g.totalQty,
             grade: g.mappedGrade,
             primaryStorage,
-            colorHighlights: g.uniqueColors.slice(0, 3),
+            colorHighlights: g.uniqueColors,
             batteryHealthRange: '84% - 100% (Testado Verizon)',
             carrierStatus: 'Verizon Clean / Desbloqueado Global',
             imeiStatus: 'Clean ESN / 100% Verificado',
             auctionHouse: 'Verizon Wholesale Liquidation',
             location: 'Dallas, TX / Miami Hub',
-            startingBidUsd: g.calculatedStartingBidUsd,
-            currentBidUsd: g.calculatedCurrentBidUsd,
-            reservePriceMet: true,
-            estimatedBrazilRetailBrl: g.calculatedRetailBrl,
-            totalBidsCount: Math.floor(Math.random() * 14) + 2,
+            // Exclusivo Verizon: sem preço fixo (cliente escolhe o valor), quantidade fixa
+            startingBidUsd: 0,
+            currentBidUsd: 0,
+            reservePriceMet: false,
+            estimatedBrazilRetailBrl: 0,
+            totalBidsCount: 0,
             endTime: g.parsedEndTime,
             imageUrl,
             galleryImages,
-            description: `Lote oficial do padrão VERIZON contendo ${g.totalQty} aparelho(s). Fontes de estoque: ${g.uniqueSources.join(', ') || 'Carrier Returns'}. Classificação técnica ${g.gradeRaw}.`,
+            description: `Lote oficial VERIZON (Quantidade Fixa: ${g.totalQty} un. | Sem Preço Fixo - Cliente escolhe o valor). ${g.uniqueModels.length > 1 ? `Mix de ${g.uniqueModels.length} modelos` : g.primaryModel} · Capacidades: ${g.uniqueCapacities.join(', ') || '128GB'} · Cores: ${g.uniqueColors.join(', ') || 'Variadas'}. Grade ${g.mappedGrade} (${g.gradeRaw}).`,
             diagnosticReport: {
               faceId: true,
               trueTone: true,
@@ -2446,14 +2522,7 @@ $285.00
               mdmFree: true
             },
             manifest: g.manifest,
-            bidsHistory: [
-              {
-                id: `bid-vz-${idx}`,
-                bidderName: 'Licitante EUA Inicial',
-                amountUsd: g.calculatedCurrentBidUsd,
-                timestamp: 'Início do Leilão'
-              }
-            ],
+            bidsHistory: [],
             originalListingUrl: g.url,
             listingUrl: g.url,
             sourceType: 'VERIZON' as AuctionLot['sourceType']
@@ -2470,7 +2539,7 @@ $285.00
         localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(finalLots));
       } catch (e) {}
 
-      showNotice(`🎉 ${newLots.length} Lotes Oficiais VERIZON (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados com sucesso no catálogo e painel do cliente!`, 'success');
+      showNotice(`🎉 ${newLots.length} Lotes Oficiais VERIZON (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados com sucesso (Grades DNA/DNB/DNC/DND, Sem Preço Fixo e Qtd Fixa)!`, 'success');
       setAdminTab('lots');
     } catch (err: any) {
       showNotice(`Falha ao publicar lotes VERIZON: ${err?.message}`, 'error');
@@ -4270,30 +4339,38 @@ $285.00
                 </div>
               </div>
 
-              {/* Price Multiplier & Settings Bar */}
+              {/* Verizon Policy & Consolidation Mode Bar */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-950 rounded-xl border border-slate-800">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
-                    <span>Custo Base Estimado por Aparelho (USD):</span>
-                    <span className="text-amber-400 font-mono font-black">${verizonUnitRate} USD</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="30"
-                    max="200"
-                    step="5"
-                    value={verizonUnitRate}
-                    onChange={e => handleRecalculateVerizonRate(parseInt(e.target.value, 10) || 85)}
-                    className="w-full accent-amber-400 cursor-pointer"
-                  />
-                  <span className="text-[10px] text-slate-500 block">
-                    Ajuste dinâmico do lance wholesale por unidade nos lotes (multiplica pela quantidade de aparelhos).
-                  </span>
+                <div className="space-y-1.5 p-3 rounded-lg bg-red-950/25 border border-red-500/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-red-300">Regra Exclusiva VERIZON</span>
+                    <span className="px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black uppercase">
+                      SEM PREÇO FIXO
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Os lotes Verizon são publicados <strong className="text-white">sem preço predefinido</strong> (o cliente informa o valor desejado em USD) e com <strong className="text-amber-300">quantidade fixa</strong> (lote fechado). Grades convertidas para <strong className="text-emerald-300">DNA, DNB, DNC e DND</strong>.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-300 block">Modo de Consolidação de Lotes:</label>
                   <div className="flex flex-col gap-1.5 text-xs">
+                    <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                      verizonImportMode === 'grouped'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
+                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}>
+                      <input
+                        type="radio"
+                        name="vzMode"
+                        checked={verizonImportMode === 'grouped'}
+                        onChange={() => setVerizonImportMode('grouped')}
+                        className="accent-emerald-400"
+                      />
+                      <span>Consolidar por Lot # ({verizonGroupedLots.length} lotes fechados + Mix)</span>
+                    </label>
+
                     <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                       verizonImportMode === 'individual'
                         ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
@@ -4307,21 +4384,6 @@ $285.00
                         className="accent-emerald-400"
                       />
                       <span>Lotes Individuais por Linha ({(parsedPreviewRows.length || verizonGroupedLots.reduce((acc, l) => acc + l.totalQty, 0)).toLocaleString()} modelos)</span>
-                    </label>
-
-                    <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
-                      verizonImportMode === 'grouped'
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
-                    }`}>
-                      <input
-                        type="radio"
-                        name="vzMode"
-                        checked={verizonImportMode === 'grouped'}
-                        onChange={() => setVerizonImportMode('grouped')}
-                        className="accent-emerald-400"
-                      />
-                      <span>Consolidar por Lot # ({verizonGroupedLots.length} lotes)</span>
                     </label>
                   </div>
                 </div>
@@ -4343,13 +4405,14 @@ $285.00
               {/* Grouped Lots Accordion Preview Table */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">Prévia dos Lotes Agrupados:</span>
-                  <span>Clique em &quot;Ver Manifesto&quot; para auditar cada aparelho</span>
+                  <span className="font-semibold text-slate-300">Prévia dos Lotes Agrupados (Mix de Modelos, GBs e Cores):</span>
+                  <span>Clique em &quot;Manifesto&quot; para expandir os detalhes</span>
                 </div>
 
                 <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 divide-y divide-slate-800/80 max-h-[500px] overflow-y-auto">
                   {verizonGroupedLots.map((lot, idx) => {
                     const isExpanded = verizonExpandedLot === lot.lotNumber;
+                    const hasMix = lot.uniqueModels.length > 1 || lot.uniqueCapacities.length > 1 || lot.uniqueColors.length > 1;
                     return (
                       <div key={lot.lotNumber} className="transition-colors hover:bg-slate-900/40">
                         {/* Summary Row */}
@@ -4363,28 +4426,49 @@ $285.00
                                 {lot.title}
                               </h4>
                               <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-400">
-                                <span className="text-slate-300 font-medium">{lot.primaryModel}</span>
+                                <span className="text-slate-300 font-medium">
+                                  {lot.uniqueModels.length > 1 ? `Mix (${lot.uniqueModels.length} modelos)` : lot.primaryModel}
+                                </span>
                                 <span>·</span>
                                 <span className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 font-mono font-bold">
-                                  {lot.totalQty} unidades
+                                  {lot.totalQty} un. (Qtd Fixa)
                                 </span>
                                 <span>·</span>
-                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
                                   {lot.mappedGrade} ({lot.gradeRaw})
                                 </span>
-                                <span>·</span>
-                                <span>Fontes: {lot.uniqueSources.slice(0, 2).join(', ') || 'Carrier'}</span>
+                                {lot.uniqueCapacities.length > 0 && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-cyan-300 font-mono">
+                                      {lot.uniqueCapacities.join(' / ')}
+                                    </span>
+                                  </>
+                                )}
+                                {lot.uniqueColors.length > 0 && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-slate-300">
+                                      Cores: {lot.uniqueColors.slice(0, 4).join(', ')}{lot.uniqueColors.length > 4 ? ` (+${lot.uniqueColors.length - 4})` : ''}
+                                    </span>
+                                  </>
+                                )}
+                                {hasMix && (
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold text-[10px]">
+                                    Lote Mesclado
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <span className="text-xs font-mono font-black text-emerald-400 block">
-                                ${lot.calculatedCurrentBidUsd.toLocaleString()} USD
+                              <span className="text-xs font-bold text-amber-300 block">
+                                Sem Preço Fixo
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono block">
-                                R$ {lot.calculatedRetailBrl.toLocaleString('pt-BR')} (Revenda BR)
+                              <span className="text-[10px] text-slate-400 block">
+                                Cliente escolhe o valor
                               </span>
                             </div>
 
@@ -4400,61 +4484,65 @@ $285.00
                         </div>
 
                         {/* Expanded Manifest Accordion */}
-                        {isExpanded && (
-                          <div className="p-4 bg-slate-900/80 border-t border-slate-800 space-y-3">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="font-bold text-white flex items-center gap-1.5">
-                                <Smartphone className="w-3.5 h-3.5 text-amber-400" />
-                                Itens e Especificações de Peças do Lote {lot.lotNumber}
-                              </span>
-                              {lot.url && (
-                                <a
-                                  href={lot.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
-                                >
-                                  <span>Ver anúncio oficial do lote ↗</span>
-                                </a>
-                              )}
-                            </div>
+                        <div className={`grid transition-all duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                          <div className="overflow-hidden">
+                            <div className="p-4 bg-slate-900/80 border-t border-slate-800 space-y-3">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-white flex items-center gap-1.5">
+                                  <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                                  Itens e Especificações de Peças do Lote {lot.lotNumber}
+                                </span>
+                                {lot.url && (
+                                  <a
+                                    href={lot.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                                  >
+                                    <span>Ver anúncio oficial do lote ↗</span>
+                                  </a>
+                                )}
+                              </div>
 
-                            <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-800">
-                              <table className="w-full text-left text-[11px] border-collapse bg-slate-950">
-                                <thead>
-                                  <tr className="border-b border-slate-800 text-slate-400 bg-slate-900/90">
-                                    <th className="py-1.5 px-2.5">Qtd</th>
-                                    <th className="py-1.5 px-2.5">Modelo</th>
-                                    <th className="py-1.5 px-2.5">Memória</th>
-                                    <th className="py-1.5 px-2.5">Part #</th>
-                                    <th className="py-1.5 px-2.5">Descrição da Peça</th>
-                                    <th className="py-1.5 px-2.5">Origem</th>
-                                    <th className="py-1.5 px-2.5">Grade</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                                  {lot.manifest.map((item, mIdx) => (
-                                    <tr key={mIdx} className="hover:bg-slate-900/50">
-                                      <td className="py-1.5 px-2.5 font-mono text-amber-400 font-bold">{item.qty || 1}x</td>
-                                      <td className="py-1.5 px-2.5 font-medium text-white">{item.model}</td>
-                                      <td className="py-1.5 px-2.5 font-mono">{item.storage}</td>
-                                      <td className="py-1.5 px-2.5 font-mono text-slate-400">{item.partNumber || '-'}</td>
-                                      <td className="py-1.5 px-2.5 text-slate-300 truncate max-w-[200px]" title={item.itemDescription}>
-                                        {item.itemDescription || '-'}
-                                      </td>
-                                      <td className="py-1.5 px-2.5">
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">
-                                          {item.inventorySource || 'Return'}
-                                        </span>
-                                      </td>
-                                      <td className="py-1.5 px-2.5">{item.grade}</td>
+                              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-800">
+                                <table className="w-full text-left text-[11px] border-collapse bg-slate-950">
+                                  <thead>
+                                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-900/90">
+                                      <th className="py-1.5 px-2.5">Qtd</th>
+                                      <th className="py-1.5 px-2.5">Modelo</th>
+                                      <th className="py-1.5 px-2.5">Memória</th>
+                                      <th className="py-1.5 px-2.5">Cor</th>
+                                      <th className="py-1.5 px-2.5">Part #</th>
+                                      <th className="py-1.5 px-2.5">Descrição da Peça</th>
+                                      <th className="py-1.5 px-2.5">Origem</th>
+                                      <th className="py-1.5 px-2.5">Grade</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                    {lot.manifest.map((item, mIdx) => (
+                                      <tr key={mIdx} className="hover:bg-slate-900/50">
+                                        <td className="py-1.5 px-2.5 font-mono text-amber-400 font-bold">{item.qty || 1}x</td>
+                                        <td className="py-1.5 px-2.5 font-medium text-white">{item.model}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-cyan-300">{item.storage}</td>
+                                        <td className="py-1.5 px-2.5 text-slate-200">{item.color || '-'}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-slate-400">{item.partNumber || '-'}</td>
+                                        <td className="py-1.5 px-2.5 text-slate-300 truncate max-w-[200px]" title={item.itemDescription}>
+                                          {item.itemDescription || '-'}
+                                        </td>
+                                        <td className="py-1.5 px-2.5">
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">
+                                            {item.inventorySource || 'Return'}
+                                          </span>
+                                        </td>
+                                        <td className="py-1.5 px-2.5 font-bold text-emerald-300">{item.grade}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
@@ -4787,6 +4875,10 @@ $285.00
                               onChange={e => setEditPriceUsd(Number(e.target.value))}
                               className="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-emerald-400"
                             />
+                          ) : isVerizonLot(lot) && lot.currentBidUsd === 0 ? (
+                            <span className="text-[11px] font-bold text-amber-300">
+                              Sem Preço (Cliente Escolhe)
+                            </span>
                           ) : (
                             <span className="font-mono font-bold text-emerald-400">
                               ${lot.currentBidUsd.toLocaleString()} USD
@@ -4794,7 +4886,9 @@ $285.00
                           )}
                         </td>
                         <td className="py-3 px-3 font-mono text-slate-300">
-                          R$ {lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}
+                          {isVerizonLot(lot) && lot.estimatedBrazilRetailBrl === 0
+                            ? <span className="text-slate-500">Valor Livre</span>
+                            : `R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}`}
                         </td>
                         <td className="py-3 px-3 text-slate-400 truncate max-w-[120px]">
                           {lot.location}

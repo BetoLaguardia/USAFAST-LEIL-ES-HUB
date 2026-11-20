@@ -125,11 +125,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Miami, FL (Armazém 01)',
-    startingBidUsd: 5800,
-    currentBidUsd: 7450,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 79900,
-    totalBidsCount: 28,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 4 + 1000 * 60 * 23).toISOString(),
     imageUrl: '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
     galleryImages: [
@@ -158,12 +158,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       { id: 'dev-09', model: 'iPhone 16 Pro Max', storage: '256GB', color: 'Natural Titanium', grade: 'DNA', batteryHealth: 99, imeiMasked: '359482******678', carrierStatus: 'Factory Unlocked', icloudStatus: 'Clean / FMI OFF', screenCondition: 'Perfeita / Sem marcas', housingCondition: 'Impecável' },
       { id: 'dev-10', model: 'iPhone 16 Pro Max', storage: '256GB', color: 'Black Titanium', grade: 'DNA', batteryHealth: 100, imeiMasked: '359482******250', carrierStatus: 'Factory Unlocked', icloudStatus: 'Clean / FMI OFF', screenCondition: 'Perfeita / Sem marcas', housingCondition: 'Impecável' }
     ],
-    bidsHistory: [
-      { id: 'b-1', bidderName: 'Arrematante SP-948', amountUsd: 7450, timestamp: 'Há 4 minutos' },
-      { id: 'b-2', bidderName: 'TechImports Curitiba', amountUsd: 7300, timestamp: 'Há 18 minutos', isAutomatic: true },
-      { id: 'b-3', bidderName: 'Global Trader RJ', amountUsd: 7150, timestamp: 'Há 45 minutos' },
-      { id: 'b-4', bidderName: 'Arrematante SP-948', amountUsd: 7000, timestamp: 'Há 1 hora' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {
@@ -180,11 +175,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Dallas, TX (Hub Central)',
-    startingBidUsd: 2200,
-    currentBidUsd: 2850,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 26500,
-    totalBidsCount: 19,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 1 + 1000 * 60 * 42).toISOString(),
     imageUrl: '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
     galleryImages: [
@@ -207,11 +202,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       { id: 'dev-14', model: 'iPhone 15 Pro', storage: '128GB', color: 'Black Titanium', grade: 'DNB', batteryHealth: 89, imeiMasked: '358712******910', carrierStatus: 'Factory Unlocked', icloudStatus: 'Clean / FMI OFF', screenCondition: 'Excelente', housingCondition: 'Leve micro-ponto borda' },
       { id: 'dev-15', model: 'iPhone 15 Pro', storage: '128GB', color: 'White Titanium', grade: 'DNB', batteryHealth: 92, imeiMasked: '358712******128', carrierStatus: 'Factory Unlocked', icloudStatus: 'Clean / FMI OFF', screenCondition: 'Excelente', housingCondition: 'Excelente' }
     ],
-    bidsHistory: [
-      { id: 'b-21', bidderName: 'EletroCell BH', amountUsd: 2850, timestamp: 'Há 12 minutos' },
-      { id: 'b-22', bidderName: 'ImportaFast Campinas', amountUsd: 2750, timestamp: 'Há 35 minutos' },
-      { id: 'b-23', bidderName: 'Licitante 440', amountUsd: 2600, timestamp: 'Há 1 hora' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {
@@ -271,11 +262,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Miami, FL (Port of Miami Logistics)',
-    startingBidUsd: 8500,
-    currentBidUsd: 10800,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 106250,
-    totalBidsCount: 41,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 7 + 1000 * 60 * 15).toISOString(),
     imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
     galleryImages: [
@@ -304,11 +295,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       screenCondition: 'Sem trincos / Leves micro-riscos',
       housingCondition: 'Sinais normais de uso nas bordas'
     })),
-    bidsHistory: [
-      { id: 'b-41', bidderName: 'MegaTech Lojista SP', amountUsd: 10800, timestamp: 'Há 18 minutos' },
-      { id: 'b-42', bidderName: 'Distribuidora Sul Tech', amountUsd: 10600, timestamp: 'Há 40 minutos' },
-      { id: 'b-43', bidderName: 'Celulares & Cia Brasil', amountUsd: 10300, timestamp: 'Há 1 hora' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {
@@ -325,11 +312,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Columbus, OH (Logistics North)',
-    startingBidUsd: 5200,
-    currentBidUsd: 6150,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 54400,
-    totalBidsCount: 22,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 2 + 1000 * 60 * 50).toISOString(),
     imageUrl: '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
     galleryImages: [
@@ -358,10 +345,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       screenCondition: 'Impecável sem riscos',
       housingCondition: 'Perfeita / Impecável'
     })),
-    bidsHistory: [
-      { id: 'b-51', bidderName: 'SmartStore Fortaleza', amountUsd: 6150, timestamp: 'Há 7 minutos' },
-      { id: 'b-52', bidderName: 'Licitante 102', amountUsd: 6000, timestamp: 'Há 32 minutos' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {
@@ -378,11 +362,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Atlanta, GA (Federal Surplus Hub)',
-    startingBidUsd: 4800,
-    currentBidUsd: 5900,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 58500,
-    totalBidsCount: 29,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 5 + 1000 * 60 * 10).toISOString(),
     imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
     galleryImages: [
@@ -410,10 +394,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       screenCondition: 'Excelente / Poucos sinais',
       housingCondition: 'Muito bom / Pequeno desgaste'
     })),
-    bidsHistory: [
-      { id: 'b-61', bidderName: 'Brasília Tech Outlet', amountUsd: 5900, timestamp: 'Há 22 minutos' },
-      { id: 'b-62', bidderName: 'Rede iShop Brasil', amountUsd: 5750, timestamp: 'Há 50 minutos' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {
@@ -430,11 +411,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Miami, FL (Armazém 01)',
-    startingBidUsd: 1950,
-    currentBidUsd: 2350,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 23700,
-    totalBidsCount: 16,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 3 + 1000 * 60 * 5).toISOString(),
     imageUrl: '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
     galleryImages: [
@@ -454,10 +435,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       { id: 'dev-16p-2', model: 'iPhone 16 Pro', storage: '256GB', color: 'Natural Titanium', grade: 'DNA', batteryHealth: 100, imeiMasked: '359102******339', carrierStatus: 'Factory Unlocked', icloudStatus: 'Clean / FMI OFF', screenCondition: 'Perfeita / Sem marcas', housingCondition: 'Impecável' },
       { id: 'dev-16p-3', model: 'iPhone 16 Pro', storage: '256GB', color: 'Natural Titanium', grade: 'DNA', batteryHealth: 100, imeiMasked: '359102******912', carrierStatus: 'Factory Unlocked', icloudStatus: 'Clean / FMI OFF', screenCondition: 'Perfeita / Sem marcas', housingCondition: 'Impecável' }
     ],
-    bidsHistory: [
-      { id: 'b-71', bidderName: 'Alex Imports Florianópolis', amountUsd: 2350, timestamp: 'Há 9 minutos' },
-      { id: 'b-72', bidderName: 'Lances Auto BR', amountUsd: 2280, timestamp: 'Há 30 minutos' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {
@@ -474,11 +452,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     imeiStatus: 'Clean ESN / 100% Verificado',
     auctionHouse: 'Verizon Wholesale Liquidation',
     location: 'Ontario / Los Angeles, CA',
-    startingBidUsd: 3600,
-    currentBidUsd: 4400,
-    reservePriceMet: true,
-    estimatedBrazilRetailBrl: 51600,
-    totalBidsCount: 25,
+    startingBidUsd: 0,
+    currentBidUsd: 0,
+    reservePriceMet: false,
+    estimatedBrazilRetailBrl: 0,
+    totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 6 + 1000 * 60 * 40).toISOString(),
     imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
     galleryImages: [
@@ -506,10 +484,7 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
       screenCondition: 'Arranhões visíveis / Sem trincos',
       housingCondition: 'Marcas de atrito / Desgaste visível'
     })),
-    bidsHistory: [
-      { id: 'b-81', bidderName: 'Fix & Sell Campinas', amountUsd: 4400, timestamp: 'Há 15 minutos' },
-      { id: 'b-82', bidderName: 'Import Sul Telecom', amountUsd: 4250, timestamp: 'Há 55 minutos' }
-    ],
+    bidsHistory: [],
     sourceType: 'VERIZON'
   },
   {

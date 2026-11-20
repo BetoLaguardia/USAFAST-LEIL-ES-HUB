@@ -21,13 +21,16 @@ import {
   TrendingUp,
   FileText,
   List,
-  LayoutGrid
+  LayoutGrid,
+  Lock
 } from 'lucide-react';
 import { AuctionLot, GradeType, SystemUser } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
+import { isVerizonLot, getLotMixSummary } from '../utils/verizonUtils';
+import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from '../components/LotMixExpandable';
 
 interface ClientePageProps {
   currentUser: SystemUser;
@@ -115,6 +118,12 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   const [sniperEnabled, setSniperEnabled] = useState(true);
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [expandedMixLotIds, setExpandedMixLotIds] = useState<Record<string, boolean>>({});
+
+  const toggleMixExpand = (lotId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedMixLotIds(prev => ({ ...prev, [lotId]: !prev[lotId] }));
+  };
 
   const showSuccess = (msg: string) => {
     setSuccessNotice(msg);
@@ -131,7 +140,8 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   const handleOpenBidModal = (lot: AuctionLot) => {
     setQuickBidLot(lot);
     setQuickBidUnits(lot.quantity);
-    setQuickBidAmount(lot.currentBidUsd + 25);
+    const isVz = isVerizonLot(lot);
+    setQuickBidAmount(isVz ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 0) : lot.currentBidUsd + 25);
   };
 
   const handleConfirmBid = () => {
@@ -140,7 +150,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
       showSuccess('Informe um valor de lance maior que $0 USD.');
       return;
     }
-    const isVerizon = quickBidLot.sourceType === 'VERIZON' || /verizon/i.test(quickBidLot.auctionHouse);
+    const isVerizon = isVerizonLot(quickBidLot);
     const finalUnits = isVerizon ? quickBidLot.quantity : Math.max(1, Math.min(quickBidLot.quantity, quickBidUnits));
     onPlaceBid(quickBidLot.id, quickBidAmount);
     showSuccess(`🎉 Oferta de $${quickBidAmount.toLocaleString()} USD (${finalUnits} un.) computada com sucesso no lote ${quickBidLot.lotNumber}!`);
@@ -162,12 +172,19 @@ export const ClientePage: React.FC<ClientePageProps> = ({
       const matchStorage = lot.primaryStorage.toLowerCase().includes(q);
       const matchOem = (lot.oemBrand || '').toLowerCase().includes(q);
       const matchSource = (lot.sourceType || '').toLowerCase().includes(q);
-      if (!matchTitle && !matchLot && !matchModel && !matchStorage && !matchOem && !matchSource) return false;
+      const matchManifest = (lot.manifest || []).some(
+        m =>
+          (m.model || '').toLowerCase().includes(q) ||
+          (m.storage || '').toLowerCase().includes(q) ||
+          (m.color || '').toLowerCase().includes(q)
+      );
+      if (!matchTitle && !matchLot && !matchModel && !matchStorage && !matchOem && !matchSource && !matchManifest) return false;
     }
     if (selectedModelFilter === 'verizon') {
-      if (lot.sourceType !== 'VERIZON' && !/verizon/i.test(lot.auctionHouse) && !/verizon/i.test(lot.carrierStatus)) return false;
-    } else if (selectedModelFilter !== 'all' && lot.modelFamily !== selectedModelFilter) {
-      return false;
+      if (!isVerizonLot(lot)) return false;
+    } else if (selectedModelFilter !== 'all') {
+      const hasInManifest = (lot.manifest || []).some(m => m.model === selectedModelFilter);
+      if (lot.modelFamily !== selectedModelFilter && !hasInManifest) return false;
     }
     if (selectedGradeFilter !== 'all' && lot.grade !== selectedGradeFilter) return false;
     if (selectedCategoryFilter !== 'all') {
@@ -177,9 +194,15 @@ export const ClientePage: React.FC<ClientePageProps> = ({
       if (selectedCategoryFilter === 'MacBooks' && !/macbook|laptop|notebook/i.test(text)) return false;
       if (selectedCategoryFilter === 'Phones' && (/ipad|tablet|galaxy tab|watch|wearable|macbook|laptop|notebook/i.test(text))) return false;
     }
-    if (selectedCapacityFilter !== 'all' && !lot.primaryStorage.toLowerCase().includes(selectedCapacityFilter.toLowerCase())) return false;
+    if (selectedCapacityFilter !== 'all') {
+      const capQ = selectedCapacityFilter.toLowerCase();
+      const matchCap =
+        lot.primaryStorage.toLowerCase().includes(capQ) ||
+        (lot.manifest || []).some(m => (m.storage || '').toLowerCase().includes(capQ));
+      if (!matchCap) return false;
+    }
     if (selectedAuctionHouseFilter !== 'all' && lot.auctionHouse !== selectedAuctionHouseFilter) return false;
-    if (selectedAuctionSystemFilter === 'VERIZON' && lot.sourceType !== 'VERIZON' && !/verizon/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'VERIZON' && !isVerizonLot(lot)) return false;
     if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
@@ -520,9 +543,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     {/* Mobile Card View (< md) */}
                     <div className="md:hidden divide-y divide-slate-800/80">
                       {paginatedClientLots.map(lot => {
+                        const isVerizon = isVerizonLot(lot);
+                        const isMixExpanded = !!expandedMixLotIds[lot.id];
                         const unitPriceUsd = Math.round(lot.currentBidUsd / (lot.quantity || 1));
                         const unitPriceBrl = unitPriceUsd * usdRate;
-                        const currentBrl = lot.currentBidUsd * usdRate;
                   return (
                     <div key={lot.id} className="p-4 space-y-3">
                       <div className="flex items-start gap-3">
@@ -541,8 +565,14 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                             <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px] font-semibold">
                               {lot.grade}
                             </span>
-                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
-                              {lot.quantity} un.
+                            {isVerizon && (
+                              <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-black text-[9px] uppercase">
+                                VERIZON
+                              </span>
+                            )}
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                              {isVerizon && <Lock className="w-2.5 h-2.5 text-red-400" />}
+                              <span>{lot.quantity} un.{isVerizon ? ' fixas' : ''}</span>
                             </span>
                           </div>
                           <h4
@@ -552,29 +582,52 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                             {stripLotPrefix(lot.title)}
                           </h4>
                           <span className="text-[10px] text-slate-400 block mt-0.5">{lot.auctionHouse}</span>
+                          <LotMixBadgesAndTrigger
+                            lot={lot}
+                            isExpanded={isMixExpanded}
+                            onToggle={(e) => toggleMixExpand(lot.id, e)}
+                            compact
+                          />
                         </div>
                       </div>
+                      <LotMixExpandablePanel
+                        lot={lot}
+                        isExpanded={isMixExpanded}
+                        onSelectLot={onSelectLot}
+                      />
                       <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block">Lance Atual:</span>
-                          <span className="font-mono font-bold text-amber-400 text-sm">
-                            ${unitPriceUsd.toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono ml-1.5">
-                            (≈ R$ {unitPriceBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
-                          </span>
-                          {lot.quantity > 1 && (
-                            <span className="text-[10px] text-amber-300/80 font-mono block">
-                              Total Lote: ${lot.currentBidUsd.toLocaleString()} USD
+                        {isVerizon && lot.currentBidUsd === 0 ? (
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">Preço Verizon:</span>
+                            <span className="font-bold text-emerald-400 text-sm block">Sem Preço Fixo</span>
+                            <span className="text-[10px] text-amber-300 font-semibold block">
+                              Cliente escolhe o valor · Qtd Fixa
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="text-[10px] text-slate-400 block">
+                              {isVerizon ? 'Última Oferta (Valor Livre):' : 'Lance Atual:'}
+                            </span>
+                            <span className="font-mono font-bold text-amber-400 text-sm">
+                              ${unitPriceUsd.toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono ml-1.5">
+                              (≈ R$ {unitPriceBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
+                            </span>
+                            {lot.quantity > 1 && (
+                              <span className="text-[10px] text-amber-300/80 font-mono block">
+                                Total Lote: ${lot.currentBidUsd.toLocaleString()} USD
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleOpenBidModal(lot)}
                           className="px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-colors"
                         >
-                          Dar Oferta
+                          {isVerizon ? 'Escolher Valor' : 'Dar Oferta'}
                         </button>
                       </div>
                     </div>
@@ -600,152 +653,206 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <tbody className="divide-y divide-slate-800/60 font-sans">
                     {paginatedClientLots.map(lot => {
                       const gradeInfo = GRADE_EXPLANATIONS[lot.grade];
-                      const currentBrl = lot.currentBidUsd * usdRate;
-                      const isVerizon = lot.sourceType === 'VERIZON' || lot.grade.includes('DNA') || lot.grade.includes('DNB') || lot.grade.includes('DNC');
+                      const isVerizon = isVerizonLot(lot);
+                      const isMixExpanded = !!expandedMixLotIds[lot.id];
+                      const mixSummary = getLotMixSummary(lot);
 
                       return (
-                        <tr key={lot.id} className="hover:bg-slate-800/40 transition-colors">
-                          {/* Photo Thumbnail */}
-                          <td className="p-3.5">
-                            <div 
-                              onClick={() => onSelectLot(lot)}
-                              className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden border border-slate-800 cursor-pointer relative group shrink-0"
-                              title="Clique para ver fotos e laudo do lote"
-                            >
-                              <img 
-                                src={lot.imageUrl} 
-                                alt={lot.title} 
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent" />
-                            </div>
-                          </td>
-
-                          {/* Model & Lot Title */}
-                          <td className="p-3.5">
-                            <div className="space-y-0.5">
-                              <span 
-                                className="font-bold text-white text-sm block hover:text-amber-400 cursor-pointer transition-colors"
+                        <React.Fragment key={lot.id}>
+                          <tr className="hover:bg-slate-800/40 transition-colors">
+                            {/* Photo Thumbnail */}
+                            <td className="p-3.5">
+                              <div 
                                 onClick={() => onSelectLot(lot)}
+                                className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden border border-slate-800 cursor-pointer relative group shrink-0"
+                                title="Clique para ver fotos e laudo do lote"
                               >
-                                {lot.modelFamily}
-                              </span>
-                              <span className="text-[11px] text-slate-300 font-medium line-clamp-1">
-                                {stripLotPrefix(lot.title)}
-                              </span>
-                              <div className="flex items-center gap-2 pt-0.5">
-                                <span className="font-mono text-[10px] text-amber-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
-                                  {lot.lotNumber}
+                                <img 
+                                  src={lot.imageUrl} 
+                                  alt={lot.title} 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent" />
+                              </div>
+                            </td>
+
+                            {/* Model & Lot Title */}
+                            <td className="p-3.5">
+                              <div className="space-y-0.5">
+                                <span 
+                                  className="font-bold text-white text-sm block hover:text-amber-400 cursor-pointer transition-colors"
+                                  onClick={() => onSelectLot(lot)}
+                                >
+                                  {lot.modelFamily}
                                 </span>
-                                <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                                  {lot.auctionHouse}
+                                <span className="text-[11px] text-slate-300 font-medium line-clamp-1">
+                                  {stripLotPrefix(lot.title)}
+                                </span>
+                                <div className="flex items-center gap-2 pt-0.5">
+                                  <span className="font-mono text-[10px] text-amber-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                                    {lot.lotNumber}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                    {lot.auctionHouse}
+                                  </span>
+                                </div>
+                                <LotMixBadgesAndTrigger
+                                  lot={lot}
+                                  isExpanded={isMixExpanded}
+                                  onToggle={(e) => toggleMixExpand(lot.id, e)}
+                                  compact
+                                />
+                              </div>
+                            </td>
+
+                            {/* Grade Badge */}
+                            <td className="p-3.5">
+                              <div className="space-y-1">
+                                <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
+                                  {lot.grade}
+                                </span>
+                                {isVerizon && (
+                                  <span className="px-1.5 py-0.5 rounded bg-red-600/90 text-white font-black text-[9px] block w-max uppercase tracking-wider">
+                                    VERIZON
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Quantity & Storage */}
+                            <td className="p-3.5">
+                              <div className="font-mono">
+                                <span className="text-white font-bold flex items-center gap-1">
+                                  {isVerizon && <Lock className="w-3 h-3 text-red-400 shrink-0" />}
+                                  <span>{lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}</span>
+                                </span>
+                                {isVerizon && (
+                                  <span className="text-[10px] text-red-300 font-semibold block">Qtd Fixa (Fechado)</span>
+                                )}
+                                <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
+                              </div>
+                            </td>
+
+                            {/* Diagnostics & Clean ESN */}
+                            <td className="p-3.5">
+                              <div className="text-[11px] space-y-0.5">
+                                <span className="text-emerald-400 font-mono font-semibold flex items-center gap-1">
+                                  <Battery className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  {lot.batteryHealthRange}
+                                </span>
+                                <span className="text-slate-400 flex items-center gap-1">
+                                  <ShieldCheck className="w-3 h-3 text-amber-400 shrink-0" />
+                                  Clean ESN
                                 </span>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Grade Badge */}
-                          <td className="p-3.5">
-                            <div className="space-y-1">
-                              <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
-                                {lot.grade}
-                              </span>
-                              {isVerizon && (
-                                <span className="px-1.5 py-0.5 rounded bg-red-600/90 text-white font-black text-[9px] block w-max uppercase tracking-wider">
-                                  VERIZON
-                                </span>
+                            {/* Current Bid */}
+                            <td className="p-3.5">
+                              {isVerizon && lot.currentBidUsd === 0 ? (
+                                <div>
+                                  <span className="text-sm font-black text-emerald-400 block">
+                                    Sem Preço Fixo
+                                  </span>
+                                  <span className="text-[10px] text-amber-300 font-semibold block">
+                                    Cliente escolhe o valor
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 block">
+                                    {lot.totalBidsCount} oferta(s)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="font-mono">
+                                  <span className="text-base font-black text-amber-400 block">
+                                    ${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block">
+                                    ≈ R$ {Math.round((lot.currentBidUsd / (lot.quantity || 1)) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                                  </span>
+                                  {lot.quantity > 1 && (
+                                    <span className="text-[10px] text-amber-300/80 font-mono block">
+                                      Total Lote: ${lot.currentBidUsd.toLocaleString()} USD
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-slate-500 font-sans block">
+                                    {isVerizon ? 'Valor Livre · ' : ''}{lot.totalBidsCount} lances
+                                  </span>
+                                </div>
                               )}
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Quantity & Storage */}
-                          <td className="p-3.5">
-                            <div className="font-mono">
-                              <span className="text-white font-bold block">{lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}</span>
-                              <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
-                            </div>
-                          </td>
-
-                          {/* Diagnostics & Clean ESN */}
-                          <td className="p-3.5">
-                            <div className="text-[11px] space-y-0.5">
-                              <span className="text-emerald-400 font-mono font-semibold flex items-center gap-1">
-                                <Battery className="w-3 h-3 text-emerald-400 shrink-0" />
-                                {lot.batteryHealthRange}
-                              </span>
-                              <span className="text-slate-400 flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3 text-amber-400 shrink-0" />
-                                Clean ESN
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Current Bid */}
-                          <td className="p-3.5">
-                            <div className="font-mono">
-                              <span className="text-base font-black text-amber-400 block">
-                                ${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
-                              </span>
-                              <span className="text-[10px] text-slate-400 block">
-                                ≈ R$ {Math.round((lot.currentBidUsd / (lot.quantity || 1)) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
-                              </span>
-                              {lot.quantity > 1 && (
-                                <span className="text-[10px] text-amber-300/80 font-mono block">
-                                  Total Lote: ${lot.currentBidUsd.toLocaleString()} USD
-                                </span>
+                            {/* Quick Bids */}
+                            <td className="p-3.5">
+                              {isVerizon && lot.currentBidUsd === 0 ? (
+                                <div className="flex justify-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenBidModal(lot)}
+                                    className="px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 rounded-lg text-[11px] font-bold transition-colors"
+                                  >
+                                    Informar Valor ($)
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-1 font-mono">
+                                  {[25, 50, 100, 250].map(inc => (
+                                    <button
+                                      key={inc}
+                                      type="button"
+                                      onClick={() => {
+                                        const val = lot.currentBidUsd + inc;
+                                        onPlaceBid(lot.id, val);
+                                        showSuccess(`🎉 Oferta de $${val.toLocaleString()} USD computada no modelo ${lot.modelFamily} (${lot.lotNumber})!`);
+                                      }}
+                                      className="py-1 px-1.5 bg-slate-800 hover:bg-amber-400 hover:text-slate-950 active:scale-95 text-amber-300 border border-slate-700/80 rounded text-[10px] font-bold transition-all"
+                                      title={`Ofertar +$${inc} USD agora`}
+                                    >
+                                      +${inc}
+                                    </button>
+                                  ))}
+                                </div>
                               )}
-                              <span className="text-[10px] text-slate-500 font-sans block">
-                                {lot.totalBidsCount} lances
-                              </span>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Quick Bids */}
-                          <td className="p-3.5">
-                            <div className="flex items-center justify-center gap-1 font-mono">
-                              {[25, 50, 100, 250].map(inc => (
+                            {/* Primary Action: Dar Oferta */}
+                            <td className="p-3.5 text-right">
+                              <div className="flex items-center justify-end gap-2">
                                 <button
-                                  key={inc}
                                   type="button"
-                                  onClick={() => {
-                                    const val = lot.currentBidUsd + inc;
-                                    onPlaceBid(lot.id, val);
-                                    showSuccess(`🎉 Oferta de $${val.toLocaleString()} USD computada no modelo ${lot.modelFamily} (${lot.lotNumber})!`);
-                                  }}
-                                  className="py-1 px-1.5 bg-slate-800 hover:bg-amber-400 hover:text-slate-950 active:scale-95 text-amber-300 border border-slate-700/80 rounded text-[10px] font-bold transition-all"
-                                  title={`Ofertar +$${inc} USD agora`}
+                                  onClick={() => handleOpenBidModal(lot)}
+                                  className="px-3.5 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-400/20 active:scale-95 flex items-center gap-1.5 shrink-0"
                                 >
-                                  +${inc}
+                                  <Gavel className="w-3.5 h-3.5" />
+                                  <span>{isVerizon ? 'Escolher Valor' : 'Dar Oferta'}</span>
                                 </button>
-                              ))}
-                            </div>
-                          </td>
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectLot(lot)}
+                                  className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition-colors"
+                                  title="Ver detalhes do lote"
+                                >
+                                  <ArrowUpRight className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
 
-                          {/* Primary Action: Dar Oferta */}
-                          <td className="p-3.5 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenBidModal(lot)}
-                                className="px-3.5 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all shadow-md shadow-amber-400/20 active:scale-95 flex items-center gap-1.5 shrink-0"
-                              >
-                                <Gavel className="w-3.5 h-3.5" />
-                                <span>Dar Oferta</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onSelectLot(lot)}
-                                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition-colors"
-                                title="Ver detalhes do lote"
-                              >
-                                <ArrowUpRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                          {/* Expandable Mix Details Row */}
+                          {mixSummary.hasExpandableDetails && (
+                            <tr className={isMixExpanded ? 'bg-slate-950/50' : '!border-t-0'}>
+                              <td colSpan={8} className={isMixExpanded ? 'px-4 pb-4 pt-0' : 'p-0 border-0'}>
+                                <LotMixExpandablePanel
+                                  lot={lot}
+                                  isExpanded={isMixExpanded}
+                                  onSelectLot={onSelectLot}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -759,7 +866,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {paginatedClientLots.map(lot => {
                 const gradeInfo = GRADE_EXPLANATIONS[lot.grade];
+                const isVerizon = isVerizonLot(lot);
+                const isMixExpanded = !!expandedMixLotIds[lot.id];
                 const currentBrl = lot.currentBidUsd * usdRate;
+                const hasRetailEstimate = (lot.estimatedBrazilRetailBrl || 0) > 0;
                 const grossProfitBrl = lot.estimatedBrazilRetailBrl - currentBrl;
 
                 return (
@@ -783,7 +893,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                         <span className={`px-2.5 py-1 rounded text-xs font-bold border backdrop-blur-md ${gradeInfo?.badgeColor || ''}`}>
                           {lot.grade}
                         </span>
-                        {(lot.sourceType === 'VERIZON' || /verizon/i.test(lot.auctionHouse) || /verizon/i.test(lot.carrierStatus)) && (
+                        {isVerizon && (
                           <span className="px-2 py-0.5 rounded bg-red-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
                             VERIZON
                           </span>
@@ -791,8 +901,9 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                       </div>
 
                       <div className="absolute top-3 right-3">
-                        <span className="px-2.5 py-1 rounded bg-slate-950/80 backdrop-blur-md border border-slate-800 text-slate-200 text-[11px] font-mono">
-                          {lot.quantity} {lot.quantity === 1 ? 'Aparelho' : 'Aparelhos'}
+                        <span className="px-2.5 py-1 rounded bg-slate-950/80 backdrop-blur-md border border-slate-800 text-slate-200 text-[11px] font-mono flex items-center gap-1">
+                          {isVerizon && <Lock className="w-3 h-3 text-red-400" />}
+                          <span>{lot.quantity} {lot.quantity === 1 ? 'Aparelho' : 'Aparelhos'}{isVerizon ? ' · Qtd Fixa' : ''}</span>
                         </span>
                       </div>
 
@@ -833,56 +944,109 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                             <span className="truncate text-emerald-400">{lot.carrierStatus}</span>
                           </div>
                         </div>
+
+                        <LotMixBadgesAndTrigger
+                          lot={lot}
+                          isExpanded={isMixExpanded}
+                          onToggle={(e) => toggleMixExpand(lot.id, e)}
+                          compact
+                        />
+                        <LotMixExpandablePanel
+                          lot={lot}
+                          isExpanded={isMixExpanded}
+                          onSelectLot={onSelectLot}
+                        />
                       </div>
 
                       {/* Price & Direct Bidding Controls */}
                       <div className="pt-2 border-t border-slate-800/80 space-y-3">
-                        <div className="flex items-end justify-between">
-                          <div>
-                            <span className="text-[11px] text-slate-400 block">Lance Atual:</span>
-                            <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono tracking-tight block">
-                              ${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()} USD <span className="text-xs font-normal text-slate-400">/ un.</span>
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono block">
-                              ≈ R$ {Math.round((lot.currentBidUsd / (lot.quantity || 1)) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
-                            </span>
-                            {lot.quantity > 1 && (
-                              <span className="text-[10px] text-amber-300/80 font-mono block">
-                                Total Lote ({lot.quantity} un.): ${lot.currentBidUsd.toLocaleString()} USD
+                        {isVerizon && lot.currentBidUsd === 0 ? (
+                          <div className="flex items-end justify-between gap-2">
+                            <div>
+                              <span className="text-[11px] text-slate-400 block">Preço Verizon:</span>
+                              <span className="text-lg sm:text-xl font-black text-emerald-400 tracking-tight block">
+                                Sem Preço Fixo
                               </span>
-                            )}
+                              <span className="text-[11px] text-amber-300 font-semibold block">
+                                Cliente escolhe o valor da oferta
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-300 inline-block mb-1">
+                                Qtd Fixa: {lot.quantity} un.
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">
+                                {lot.totalBidsCount} oferta(s)
+                              </span>
+                            </div>
                           </div>
+                        ) : (
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <span className="text-[11px] text-slate-400 block">
+                                {isVerizon ? 'Última Oferta (Valor Livre):' : 'Lance Atual:'}
+                              </span>
+                              <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono tracking-tight block">
+                                ${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()} USD <span className="text-xs font-normal text-slate-400">/ un.</span>
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono block">
+                                ≈ R$ {Math.round((lot.currentBidUsd / (lot.quantity || 1)) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                              </span>
+                              {lot.quantity > 1 && (
+                                <span className="text-[10px] text-amber-300/80 font-mono block">
+                                  Total Lote ({lot.quantity} un.): ${lot.currentBidUsd.toLocaleString()} USD
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 block">Lucro Bruto Est.:</span>
-                            <span className="text-xs font-bold text-emerald-400 font-mono block">
-                              + R$ {grossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              {lot.totalBidsCount} lances dados
-                            </span>
+                            <div className="text-right">
+                              {isVerizon ? (
+                                <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-300 inline-block mb-1">
+                                  Qtd Fixa: {lot.quantity} un.
+                                </span>
+                              ) : hasRetailEstimate ? (
+                                <>
+                                  <span className="text-[10px] text-slate-400 block">Lucro Bruto Est.:</span>
+                                  <span className="text-xs font-bold text-emerald-400 font-mono block">
+                                    + R$ {grossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                                  </span>
+                                </>
+                              ) : null}
+                              <span className="text-[10px] text-slate-400 block">
+                                {lot.totalBidsCount} lances dados
+                              </span>
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="space-y-2 pt-1 border-t border-slate-800/80">
-                          <span className="text-[10px] text-slate-400 font-semibold block">Computar Oferta Rápida:</span>
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {[25, 50, 100, 250].map(inc => (
-                              <button
-                                key={inc}
-                                type="button"
-                                onClick={() => {
-                                  const val = lot.currentBidUsd + inc;
-                                  onPlaceBid(lot.id, val);
-                                  showSuccess(`🎉 Oferta de $${val.toLocaleString()} USD computada no lote ${lot.lotNumber}!`);
-                                }}
-                                className="py-1 px-1 bg-slate-800/90 hover:bg-amber-400 hover:text-slate-950 active:scale-95 text-amber-300 border border-slate-700/80 rounded-lg text-[10px] font-mono font-bold transition-all text-center"
-                                title={`Computar oferta imediata de +$${inc} USD`}
-                              >
-                                +${inc}
-                              </button>
-                            ))}
-                          </div>
+                          {isVerizon && lot.currentBidUsd === 0 ? (
+                            <div className="px-2.5 py-1.5 rounded-lg bg-red-950/30 border border-red-500/30 text-[10px] text-red-200 flex items-center justify-between">
+                              <span>Lote fechado ({lot.quantity} un. fixas)</span>
+                              <span className="font-bold text-emerald-300">Valor Livre (USD)</span>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="text-[10px] text-slate-400 font-semibold block">Computar Oferta Rápida:</span>
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {[25, 50, 100, 250].map(inc => (
+                                  <button
+                                    key={inc}
+                                    type="button"
+                                    onClick={() => {
+                                      const val = lot.currentBidUsd + inc;
+                                      onPlaceBid(lot.id, val);
+                                      showSuccess(`🎉 Oferta de $${val.toLocaleString()} USD computada no lote ${lot.lotNumber}!`);
+                                    }}
+                                    className="py-1 px-1 bg-slate-800/90 hover:bg-amber-400 hover:text-slate-950 active:scale-95 text-amber-300 border border-slate-700/80 rounded-lg text-[10px] font-mono font-bold transition-all text-center"
+                                    title={`Computar oferta imediata de +$${inc} USD`}
+                                  >
+                                    +${inc}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
 
                           <div className="grid grid-cols-2 gap-2 pt-1">
                             <button
@@ -898,7 +1062,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                               className="py-2.5 px-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-amber-400/20 active:scale-95"
                             >
                               <Gavel className="w-3.5 h-3.5" />
-                              <span>Computar Oferta</span>
+                              <span>{isVerizon ? 'Escolher Valor' : 'Computar Oferta'}</span>
                             </button>
                           </div>
                         </div>
@@ -1415,59 +1579,80 @@ export const ClientePage: React.FC<ClientePageProps> = ({
       )}
 
       {/* QUICK BID MODAL INSIDE CLIENT PANEL */}
-      {quickBidLot && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs font-mono font-bold text-amber-400">{quickBidLot.lotNumber}</span>
-                <h3 className="text-base font-bold text-white">{quickBidLot.title}</h3>
-                <span className="text-xs text-slate-400">{quickBidLot.quantity} aparelho(s) · {quickBidLot.grade}</span>
-              </div>
-              <button
-                onClick={() => setQuickBidLot(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Lance Atual no Leilão:</span>
-                <span className="font-mono font-bold text-white">${quickBidLot.currentBidUsd.toLocaleString()} USD</span>
+      {quickBidLot && (() => {
+        const isVzQuick = isVerizonLot(quickBidLot);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs font-mono font-bold text-amber-400">{quickBidLot.lotNumber}</span>
+                  <h3 className="text-base font-bold text-white">{quickBidLot.title}</h3>
+                  <span className="text-xs text-slate-400">{quickBidLot.quantity} aparelho(s) · {quickBidLot.grade}</span>
+                </div>
+                <button
+                  onClick={() => setQuickBidLot(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
               </div>
 
-              {isAssurantLot(quickBidLot) ? (
-                <div className="flex justify-between items-center text-blue-300 font-medium">
-                  <span>Média lance aprovado arremate anterior:</span>
-                  <span className="font-mono font-bold">${getAssurantPreviousApprovedBid(quickBidLot).toLocaleString()} USD</span>
+              <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2 text-xs">
+                {isVzQuick ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Preço / Modelo Verizon:</span>
+                      {quickBidLot.currentBidUsd === 0 ? (
+                        <span className="font-bold text-emerald-400">Sem Preço Fixo (Cliente Escolhe)</span>
+                      ) : (
+                        <span className="font-mono font-bold text-white">${quickBidLot.currentBidUsd.toLocaleString()} USD</span>
+                      )}
+                    </div>
+                    <div className="flex justify-between items-center text-red-300 font-medium">
+                      <span>Quantidade Fixa (Lote Fechado):</span>
+                      <span className="font-mono font-bold text-white">{quickBidLot.quantity} unidade(s)</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Lance Atual no Leilão:</span>
+                      <span className="font-mono font-bold text-white">${quickBidLot.currentBidUsd.toLocaleString()} USD</span>
+                    </div>
+
+                    {isAssurantLot(quickBidLot) ? (
+                      <div className="flex justify-between items-center text-blue-300 font-medium">
+                        <span>Média lance aprovado arremate anterior:</span>
+                        <span className="font-mono font-bold">${getAssurantPreviousApprovedBid(quickBidLot).toLocaleString()} USD</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between">
+                        <span className="text-slate-400">Lance Mínimo Requerido:</span>
+                        <span className="font-mono font-bold text-amber-400">${(quickBidLot.currentBidUsd + 25).toLocaleString()} USD</span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
+                  <span>Conversão PTAX da sua oferta:</span>
+                  <span className="font-mono text-slate-300">
+                    R$ {((quickBidAmount || 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Seletor de Unidades (exceto Verizon, que exige lote fechado) */}
+              {isVzQuick ? (
+                <div className="p-3 bg-red-950/30 border border-red-500/30 rounded-xl text-xs text-red-200 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-red-400" />
+                    <span>Quantidade Fixa (Verizon - Lote Fechado):</span>
+                  </span>
+                  <span className="font-mono font-bold text-white">{quickBidLot.quantity} unidade(s)</span>
                 </div>
               ) : (
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Lance Mínimo Requerido:</span>
-                  <span className="font-mono font-bold text-amber-400">${(quickBidLot.currentBidUsd + 25).toLocaleString()} USD</span>
-                </div>
-              )}
-
-              <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
-                <span>Conversão PTAX:</span>
-                <span className="font-mono text-slate-300">R$ {((quickBidLot.currentBidUsd + 25) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</span>
-              </div>
-            </div>
-
-            {/* Seletor de Unidades (exceto Verizon, que exige lote fechado) */}
-            {(() => {
-              const isVerizonLot = quickBidLot.sourceType === 'VERIZON' || /verizon/i.test(quickBidLot.auctionHouse);
-              if (isVerizonLot) {
-                return (
-                  <div className="p-3 bg-red-950/30 border border-red-500/30 rounded-xl text-xs text-red-200 flex items-center justify-between">
-                    <span>Quantidade do Lote (Verizon - Lote Fechado):</span>
-                    <span className="font-mono font-bold text-white">{quickBidLot.quantity} unidade(s)</span>
-                  </div>
-                );
-              }
-              return (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-300">
@@ -1507,84 +1692,92 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     </button>
                   </div>
                 </div>
-              );
-            })()}
+              )}
 
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1">
-                Seu Lance em Dólar (USD):
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-slate-500 font-mono font-bold">$</span>
-                <input
-                  type="number"
-                  min={1}
-                  step="25"
-                  value={quickBidAmount}
-                  onChange={e => setQuickBidAmount(Number(e.target.value))}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
-                />
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                  {isVzQuick ? 'Escolha o Valor da Sua Oferta em Dólar (USD):' : 'Seu Lance em Dólar (USD):'}
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-500 font-mono font-bold">$</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={isVzQuick ? 'any' : '25'}
+                    value={quickBidAmount || ''}
+                    placeholder={isVzQuick ? 'Digite o valor em USD (ex: 1500)' : undefined}
+                    onChange={e => setQuickBidAmount(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                {/* Presets */}
+                <div className="flex items-center gap-2 pt-2">
+                  {isVzQuick && quickBidLot.currentBidUsd === 0 ? (
+                    <>
+                      <span className="text-[11px] text-slate-400">Valores exemplo:</span>
+                      {[500, 1000, 2500].map(preset => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setQuickBidAmount(preset)}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
+                        >
+                          ${preset.toLocaleString()}
+                        </button>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-[11px] text-slate-400">Adicionar:</span>
+                      {[25, 50, 100].map(inc => (
+                        <button
+                          key={inc}
+                          type="button"
+                          onClick={() => setQuickBidAmount(quickBidLot.currentBidUsd + inc)}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
+                        >
+                          +${inc}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
 
-              {/* Presets */}
-              <div className="flex items-center gap-2 pt-2">
-                <span className="text-[11px] text-slate-400">Adicionar:</span>
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sniperEnabled}
+                    onChange={e => setSniperEnabled(e.target.checked)}
+                    className="rounded bg-slate-800 border-slate-700 text-amber-400 focus:ring-amber-400"
+                  />
+                  <span>Ativar Sniper (Lance nos últimos 4s)</span>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setQuickBidAmount(quickBidLot.currentBidUsd + 25)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
+                  onClick={() => setQuickBidLot(null)}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl text-xs transition-colors"
                 >
-                  +$25
+                  Cancelar
                 </button>
                 <button
                   type="button"
-                  onClick={() => setQuickBidAmount(quickBidLot.currentBidUsd + 50)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
+                  onClick={handleConfirmBid}
+                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-md shadow-amber-500/10"
                 >
-                  +$50
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickBidAmount(quickBidLot.currentBidUsd + 100)}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
-                >
-                  +$100
+                  <Gavel className="w-4 h-4" />
+                  <span>{isVzQuick ? 'Enviar Oferta Livre' : 'Confirmar Lance'}</span>
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sniperEnabled}
-                  onChange={e => setSniperEnabled(e.target.checked)}
-                  className="rounded bg-slate-800 border-slate-700 text-amber-400 focus:ring-amber-400"
-                />
-                <span>Ativar Sniper (Lance nos últimos 4s)</span>
-              </label>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setQuickBidLot(null)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-xl text-xs transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmBid}
-                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-md shadow-amber-500/10"
-              >
-                <Gavel className="w-4 h-4" />
-                <span>Confirmar Lance</span>
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

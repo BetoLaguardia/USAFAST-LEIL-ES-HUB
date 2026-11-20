@@ -11,11 +11,12 @@ import {
   Play, 
   Pause,
   ExternalLink,
-  Smartphone,
-  CheckCircle2
+  Lock
 } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { stripLotPrefix } from '../utils/deviceImages';
+import { isVerizonLot } from '../utils/verizonUtils';
+import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
 interface ModelCarouselProps {
   auctions: AuctionLot[];
@@ -53,9 +54,14 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [mixExpanded, setMixExpanded] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const total = carouselLots.length;
+
+  useEffect(() => {
+    setMixExpanded(false);
+  }, [currentIndex]);
 
   // Auto-play alternation every 4 seconds when not hovered and active
   useEffect(() => {
@@ -86,9 +92,10 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
 
   const safeIndex = currentIndex % total;
   const currentLot = carouselLots[safeIndex];
-  const isVerizon = currentLot.sourceType === 'VERIZON' || /verizon/i.test(currentLot.auctionHouse);
+  const isVerizon = isVerizonLot(currentLot);
   const auctionHouseName = isVerizon ? 'Leilão Oficial VERIZON' : 'Leilão Oficial ASSURANT';
   const cleanTitle = stripLotPrefix(currentLot.title);
+  const displayGrade = isVerizon ? currentLot.grade : `Grade ${currentLot.grade}`;
 
   // Price calculations
   const priceUsd = currentLot.currentBidUsd;
@@ -205,10 +212,11 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
               {/* Bottom Image Badge: Grade & Quantity */}
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs pointer-events-none">
                 <span className="px-3 py-1 rounded-lg bg-slate-900/90 backdrop-blur-md border border-slate-700 font-bold text-amber-400 shadow-md">
-                  Grade {currentLot.grade}
+                  {displayGrade}
                 </span>
-                <span className="px-3 py-1 rounded-lg bg-slate-900/90 backdrop-blur-md border border-slate-700 font-semibold text-slate-200 shadow-md">
-                  {currentLot.quantity} {currentLot.quantity > 1 ? 'Aparelhos' : 'Aparelho'}
+                <span className="px-3 py-1 rounded-lg bg-slate-900/90 backdrop-blur-md border border-slate-700 font-semibold text-slate-200 shadow-md flex items-center gap-1">
+                  {isVerizon && <Lock className="w-3 h-3 text-red-400" />}
+                  <span>{currentLot.quantity} {currentLot.quantity > 1 ? 'Aparelhos' : 'Aparelho'}{isVerizon ? ' · Qtd Fixa' : ''}</span>
                 </span>
               </div>
             </div>
@@ -280,26 +288,56 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
               {currentLot.description || 'Lote verificado de atacado americano com manifesto auditado de IMEI e testes de hardware aprovados.'}
             </p>
 
+            {/* Expandable Mix Models / GBs / Colors */}
+            <div>
+              <LotMixBadgesAndTrigger
+                lot={currentLot}
+                isExpanded={mixExpanded}
+                onToggle={() => setMixExpanded(prev => !prev)}
+              />
+              <LotMixExpandablePanel
+                lot={currentLot}
+                isExpanded={mixExpanded}
+                onSelectLot={onSelectLot}
+              />
+            </div>
+
             {/* Price Box & Action Buttons */}
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-800">
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                  {currentLot.quantity > 1 ? `Lance Unitário (${currentLot.quantity} unidades no lote)` : 'Lance Atual no Leilão'}
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight font-mono">
-                    {currentLot.quantity > 1 ? `${displayUnitPrice} / un.` : displayPrice}
+              {isVerizon && priceUsd === 0 ? (
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    Modelo de Lance Verizon ({currentLot.quantity} un. fixas)
                   </span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {currentLot.quantity > 1 ? `(Lote: ${displayPrice})` : `(${secondaryPrice})`}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
+                      Sem Preço Fixo
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-amber-300 font-semibold block">
+                    Cliente escolhe o valor da oferta · Quantidade Fixa (Lote Fechado)
                   </span>
                 </div>
-                {currentLot.estimatedBrazilRetailBrl && (
-                  <span className="text-[11px] text-emerald-400 font-medium block">
-                    Venda estimada no Brasil: ~R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}
+              ) : (
+                <div>
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                    {currentLot.quantity > 1 ? `Lance Unitário (${currentLot.quantity} unidades${isVerizon ? ' fixas' : ''})` : 'Lance Atual no Leilão'}
                   </span>
-                )}
-              </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight font-mono">
+                      {currentLot.quantity > 1 ? `${displayUnitPrice} / un.` : displayPrice}
+                    </span>
+                    <span className="text-xs text-slate-400 font-mono">
+                      {currentLot.quantity > 1 ? `(Lote: ${displayPrice})` : `(${secondaryPrice})`}
+                    </span>
+                  </div>
+                  {currentLot.estimatedBrazilRetailBrl > 0 && (
+                    <span className="text-[11px] text-emerald-400 font-medium block">
+                      Venda estimada no Brasil: ~R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}
+                    </span>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
@@ -317,7 +355,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                   className="px-5 py-3 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-slate-950 font-black text-sm rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 active:scale-95"
                 >
                   <Gavel className="w-4 h-4 text-slate-950" />
-                  <span>Dar Lance / Detalhes</span>
+                  <span>{isVerizon ? 'Escolher Valor / Detalhes' : 'Dar Lance / Detalhes'}</span>
                 </button>
               </div>
             </div>

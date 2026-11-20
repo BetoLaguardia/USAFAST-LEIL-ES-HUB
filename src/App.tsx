@@ -19,6 +19,8 @@ import { supabase } from './services/supabaseClient';
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
+import { isVerizonLot, getLotMixSummary } from './utils/verizonUtils';
+import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { 
   Search, 
   Filter, 
@@ -97,6 +99,12 @@ export default function App() {
     } catch (e) {}
     return 'pt';
   });
+
+  const [expandedMixLotIds, setExpandedMixLotIds] = useState<Record<string, boolean>>({});
+  const toggleMixExpand = (lotId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setExpandedMixLotIds(prev => ({ ...prev, [lotId]: !prev[lotId] }));
+  };
 
   const handleSelectLanguage = (lang: Language) => {
     setLanguage(lang);
@@ -725,14 +733,23 @@ export default function App() {
         const matchesOem = (lot.oemBrand || '').toLowerCase().includes(query);
         const matchesHouse = (lot.auctionHouse || '').toLowerCase().includes(query);
         const matchesSource = (lot.sourceType || '').toLowerCase().includes(query);
-        if (!matchesTitle && !matchesLotNum && !matchesModel && !matchesLoc && !matchesStorage && !matchesOem && !matchesHouse && !matchesSource) {
+        const matchesManifest = (lot.manifest || []).some(
+          m =>
+            (m.model || '').toLowerCase().includes(query) ||
+            (m.storage || '').toLowerCase().includes(query) ||
+            (m.color || '').toLowerCase().includes(query)
+        );
+        if (!matchesTitle && !matchesLotNum && !matchesModel && !matchesLoc && !matchesStorage && !matchesOem && !matchesHouse && !matchesSource && !matchesManifest) {
           return false;
         }
       }
 
       // Filter by Model
-      if (filterModel !== 'all' && lot.modelFamily !== filterModel) {
-        return false;
+      if (filterModel !== 'all') {
+        const hasInManifest = (lot.manifest || []).some(m => m.model === filterModel);
+        if (lot.modelFamily !== filterModel && !hasInManifest) {
+          return false;
+        }
       }
 
       // Filter by Grade
@@ -742,15 +759,18 @@ export default function App() {
 
       // Filter by Capacity
       if (filterCapacity !== 'all') {
-        if (!lot.primaryStorage.toUpperCase().includes(filterCapacity.toUpperCase())) {
+        const capUpper = filterCapacity.toUpperCase();
+        const matchesCap =
+          lot.primaryStorage.toUpperCase().includes(capUpper) ||
+          (lot.manifest || []).some(m => (m.storage || '').toUpperCase().includes(capUpper));
+        if (!matchesCap) {
           return false;
         }
       }
 
       // Filter by Auction House / Source
       if (filterAuctionHouse === 'VERIZON') {
-        const isVerizon = lot.sourceType === 'VERIZON' || /verizon/i.test(lot.auctionHouse) || /verizon/i.test(lot.carrierStatus);
-        if (!isVerizon) return false;
+        if (!isVerizonLot(lot)) return false;
       } else if (filterAuctionHouse === 'ASSURANT') {
         const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
         if (!isAssurant) return false;
@@ -1376,10 +1396,11 @@ export default function App() {
                     <div className="md:hidden divide-y divide-slate-800/80">
                       {paginatedAuctions.map(lot => {
                         const isSelected = selectedLotIds.includes(lot.id);
+                        const isMixExpanded = !!expandedMixLotIds[lot.id];
                         const cleanTitle = stripLotPrefix(lot.title);
                         const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS['Grade A'];
                         const currentBrl = lot.currentBidUsd * usdRate;
-                        const isVerizon = lot.sourceType === 'VERIZON' || /verizon/i.test(lot.auctionHouse);
+                        const isVerizon = isVerizonLot(lot);
                         const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
 
                         return (
@@ -1411,8 +1432,9 @@ export default function App() {
                                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
                                     {lot.grade}
                                   </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold">
-                                    {lot.quantity} un.
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                                    {isVerizon && <Lock className="w-2.5 h-2.5 text-red-400" />}
+                                    <span>{lot.quantity} un.{isVerizon ? ' fixas' : ''}</span>
                                   </span>
                                   {isVerizon && (
                                     <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-black text-[9px] uppercase tracking-wider">
@@ -1432,19 +1454,43 @@ export default function App() {
                                   {cleanTitle}
                                 </h4>
                                 <span className="text-[10px] text-slate-400 block mt-0.5">{lot.auctionHouse}</span>
+                                <LotMixBadgesAndTrigger
+                                  lot={lot}
+                                  isExpanded={isMixExpanded}
+                                  onToggle={(e) => toggleMixExpand(lot.id, e)}
+                                  compact
+                                />
                               </div>
                             </div>
 
+                            <LotMixExpandablePanel
+                              lot={lot}
+                              isExpanded={isMixExpanded}
+                              onSelectLot={l => setSelectedLotForDetail(l)}
+                            />
+
                             <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                              <div>
-                                <span className="text-[10px] text-slate-400 block">Lance Atual:</span>
-                                <span className="font-mono font-bold text-amber-400 text-sm">
-                                  ${lot.currentBidUsd.toLocaleString()} USD
-                                </span>
-                                <span className="text-[10px] text-slate-400 font-mono ml-1.5">
-                                  (R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
-                                </span>
-                              </div>
+                              {isVerizon && lot.currentBidUsd === 0 ? (
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block">Preço Verizon:</span>
+                                  <span className="font-bold text-emerald-400 text-sm block">Sem Preço Fixo</span>
+                                  <span className="text-[10px] text-amber-300 font-semibold block">
+                                    Cliente escolhe o valor · Qtd Fixa
+                                  </span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className="text-[10px] text-slate-400 block">
+                                    {isVerizon ? 'Última Oferta (Valor Livre):' : 'Lance Atual:'}
+                                  </span>
+                                  <span className="font-mono font-bold text-amber-400 text-sm">
+                                    ${lot.currentBidUsd.toLocaleString()} USD
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 font-mono ml-1.5">
+                                    (R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5">
                                 <button
                                   type="button"
@@ -1458,7 +1504,7 @@ export default function App() {
                                   onClick={() => setSelectedLotForDetail(lot)}
                                   className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-colors"
                                 >
-                                  Dar Lance
+                                  {isVerizon ? 'Escolher Valor' : 'Dar Lance'}
                                 </button>
                               </div>
                             </div>
@@ -1499,149 +1545,188 @@ export default function App() {
                         <tbody className="divide-y divide-slate-800/60 font-sans">
                           {paginatedAuctions.map(lot => {
                             const isSelected = selectedLotIds.includes(lot.id);
+                            const isMixExpanded = !!expandedMixLotIds[lot.id];
+                            const mixSummary = getLotMixSummary(lot);
                             const cleanTitle = stripLotPrefix(lot.title);
                             const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS['Grade A'];
                             const currentBrl = lot.currentBidUsd * usdRate;
-                            const isVerizon = lot.sourceType === 'VERIZON' || /verizon/i.test(lot.auctionHouse);
+                            const isVerizon = isVerizonLot(lot);
                             const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
 
                             return (
-                              <tr key={lot.id} className={`hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
-                                <td className="p-3.5 text-center">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleSelectLot(lot.id)}
-                                    className="text-slate-400 hover:text-amber-400"
-                                  >
-                                    {isSelected ? (
-                                      <CheckSquare className="w-4 h-4 text-amber-400" />
+                              <React.Fragment key={lot.id}>
+                                <tr className={`hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                                  <td className="p-3.5 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleSelectLot(lot.id)}
+                                      className="text-slate-400 hover:text-amber-400"
+                                    >
+                                      {isSelected ? (
+                                        <CheckSquare className="w-4 h-4 text-amber-400" />
+                                      ) : (
+                                        <Square className="w-4 h-4 text-slate-600" />
+                                      )}
+                                    </button>
+                                  </td>
+
+                                  {/* Photo Thumbnail */}
+                                  <td className="p-3.5">
+                                    <div
+                                      onClick={() => setSelectedLotForDetail(lot)}
+                                      className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden border border-slate-800 cursor-pointer relative group shrink-0"
+                                    >
+                                      <img
+                                        src={lot.imageUrl}
+                                        alt={cleanTitle}
+                                        onError={(e) => {
+                                          (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                                        }}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                      />
+                                    </div>
+                                  </td>
+
+                                  {/* Model & Lot Title */}
+                                  <td className="p-3.5">
+                                    <div className="space-y-0.5">
+                                      <span
+                                        className="font-bold text-white text-sm block hover:text-amber-400 cursor-pointer transition-colors"
+                                        onClick={() => setSelectedLotForDetail(lot)}
+                                      >
+                                        {lot.modelFamily}
+                                      </span>
+                                      <span className="text-[11px] text-slate-300 font-medium line-clamp-1">
+                                        {cleanTitle}
+                                      </span>
+                                      <div className="flex items-center gap-2 pt-0.5">
+                                        <span className="font-mono text-[10px] text-amber-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                                          {lot.lotNumber}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                          {lot.location}
+                                        </span>
+                                      </div>
+                                      <LotMixBadgesAndTrigger
+                                        lot={lot}
+                                        isExpanded={isMixExpanded}
+                                        onToggle={(e) => toggleMixExpand(lot.id, e)}
+                                        compact
+                                      />
+                                    </div>
+                                  </td>
+
+                                  {/* Auction Origin */}
+                                  <td className="p-3.5">
+                                    {isVerizon ? (
+                                      <span className="px-2 py-1 rounded bg-red-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
+                                        VERIZON
+                                      </span>
+                                    ) : isAssurant ? (
+                                      <span className="px-2 py-1 rounded bg-blue-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
+                                        ASSURANT
+                                      </span>
                                     ) : (
-                                      <Square className="w-4 h-4 text-slate-600" />
+                                      <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 font-bold text-[10px] inline-block">
+                                        {lot.auctionHouse}
+                                      </span>
                                     )}
-                                  </button>
-                                </td>
+                                  </td>
 
-                                {/* Photo Thumbnail */}
-                                <td className="p-3.5">
-                                  <div
-                                    onClick={() => setSelectedLotForDetail(lot)}
-                                    className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden border border-slate-800 cursor-pointer relative group shrink-0"
-                                  >
-                                    <img
-                                      src={lot.imageUrl}
-                                      alt={cleanTitle}
-                                      onError={(e) => {
-                                        (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
-                                      }}
-                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                                    />
-                                  </div>
-                                </td>
+                                  {/* Grade */}
+                                  <td className="p-3.5">
+                                    <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
+                                      {lot.grade}
+                                    </span>
+                                  </td>
 
-                                {/* Model & Lot Title */}
-                                <td className="p-3.5">
-                                  <div className="space-y-0.5">
-                                    <span
-                                      className="font-bold text-white text-sm block hover:text-amber-400 cursor-pointer transition-colors"
-                                      onClick={() => setSelectedLotForDetail(lot)}
-                                    >
-                                      {lot.modelFamily}
-                                    </span>
-                                    <span className="text-[11px] text-slate-300 font-medium line-clamp-1">
-                                      {cleanTitle}
-                                    </span>
-                                    <div className="flex items-center gap-2 pt-0.5">
-                                      <span className="font-mono text-[10px] text-amber-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
-                                        {lot.lotNumber}
+                                  {/* Qtd & Storage */}
+                                  <td className="p-3.5">
+                                    <div className="font-mono">
+                                      <span className="text-white font-bold flex items-center gap-1">
+                                        {isVerizon && <Lock className="w-3 h-3 text-red-400 shrink-0" />}
+                                        <span>{lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}</span>
                                       </span>
-                                      <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                                        {lot.location}
+                                      {isVerizon && (
+                                        <span className="text-[10px] text-red-300 font-semibold block">Qtd Fixa (Fechado)</span>
+                                      )}
+                                      <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
+                                    </div>
+                                  </td>
+
+                                  {/* Status */}
+                                  <td className="p-3.5">
+                                    <div className="space-y-0.5 text-[11px]">
+                                      <div className="flex items-center gap-1 text-emerald-400 font-medium">
+                                        <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                        <span>Clean ESN / FMI OFF</span>
+                                      </div>
+                                      <span className="text-slate-400 font-mono text-[10px] block">
+                                        Bat: {lot.batteryHealthRange}
                                       </span>
                                     </div>
-                                  </div>
-                                </td>
+                                  </td>
 
-                                {/* Auction Origin */}
-                                <td className="p-3.5">
-                                  {isVerizon ? (
-                                    <span className="px-2 py-1 rounded bg-red-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
-                                      VERIZON
-                                    </span>
-                                  ) : isAssurant ? (
-                                    <span className="px-2 py-1 rounded bg-blue-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
-                                      ASSURANT
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 font-bold text-[10px] inline-block">
-                                      {lot.auctionHouse}
-                                    </span>
-                                  )}
-                                </td>
+                                  {/* Current Bid */}
+                                  <td className="p-3.5">
+                                    {isVerizon && lot.currentBidUsd === 0 ? (
+                                      <div>
+                                        <span className="font-bold text-emerald-400 text-sm block">
+                                          Sem Preço Fixo
+                                        </span>
+                                        <span className="text-[10px] text-amber-300 font-semibold block">
+                                          Cliente escolhe o valor
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <span className="font-mono font-bold text-amber-400 text-sm block">
+                                          ${lot.currentBidUsd.toLocaleString()} USD
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-mono">
+                                          R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                                        </span>
+                                        <span className="text-[10px] text-slate-500 block">
+                                          (${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()}/un){isVerizon ? ' · Livre' : ''}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </td>
 
-                                {/* Grade */}
-                                <td className="p-3.5">
-                                  <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
-                                    {lot.grade}
-                                  </span>
-                                </td>
-
-                                {/* Qtd & Storage */}
-                                <td className="p-3.5">
-                                  <div className="font-mono">
-                                    <span className="text-white font-bold block">{lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}</span>
-                                    <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
-                                  </div>
-                                </td>
-
-                                {/* Status */}
-                                <td className="p-3.5">
-                                  <div className="space-y-0.5 text-[11px]">
-                                    <div className="flex items-center gap-1 text-emerald-400 font-medium">
-                                      <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                      <span>Clean ESN / FMI OFF</span>
+                                  {/* Actions */}
+                                  <td className="p-3.5 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenCalculatorForLot(lot)}
+                                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                        title="Calcular Lucro deste lote"
+                                      >
+                                        <Calculator className="w-3.5 h-3.5 text-emerald-400" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedLotForDetail(lot)}
+                                        className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-xs transition-colors"
+                                      >
+                                        {isVerizon ? 'Escolher Valor' : 'Dar Lance'}
+                                      </button>
                                     </div>
-                                    <span className="text-slate-400 font-mono text-[10px] block">
-                                      Bat: {lot.batteryHealthRange}
-                                    </span>
-                                  </div>
-                                </td>
+                                  </td>
+                                </tr>
 
-                                {/* Current Bid */}
-                                <td className="p-3.5">
-                                  <div>
-                                    <span className="font-mono font-bold text-amber-400 text-sm block">
-                                      ${lot.currentBidUsd.toLocaleString()} USD
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 font-mono">
-                                      R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                                    </span>
-                                    <span className="text-[10px] text-slate-500 block">
-                                      (${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()}/un)
-                                    </span>
-                                  </div>
-                                </td>
-
-                                {/* Actions */}
-                                <td className="p-3.5 text-right">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenCalculatorForLot(lot)}
-                                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
-                                      title="Calcular Lucro deste lote"
-                                    >
-                                      <Calculator className="w-3.5 h-3.5 text-emerald-400" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedLotForDetail(lot)}
-                                      className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-xs transition-colors"
-                                    >
-                                      Dar Lance
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
+                                {mixSummary.hasExpandableDetails && (
+                                  <tr className={isMixExpanded ? 'bg-slate-950/50' : '!border-t-0'}>
+                                    <td colSpan={9} className={isMixExpanded ? 'px-4 pb-4 pt-0' : 'p-0 border-0'}>
+                                      <LotMixExpandablePanel
+                                        lot={lot}
+                                        isExpanded={isMixExpanded}
+                                        onSelectLot={l => setSelectedLotForDetail(l)}
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             );
                           })}
                         </tbody>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock } from 'lucide-react';
 import { AuctionLot, SystemUser } from '../types/auction';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
+import { isVerizonLot } from '../utils/verizonUtils';
 
 interface AuctionSystemModalProps {
   isOpen: boolean;
@@ -52,7 +53,10 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
   if (!isOpen) return null;
 
   const currentSelectedLot = auctions.find(a => a.id === selectedLotId) || auctions[0];
-  const minRequiredBid = currentSelectedLot ? currentSelectedLot.currentBidUsd + 25 : 100;
+  const isVerizonSelected = isVerizonLot(currentSelectedLot);
+  const minRequiredBid = currentSelectedLot
+    ? (isVerizonSelected ? 1 : currentSelectedLot.currentBidUsd + 25)
+    : 100;
 
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,24 +234,39 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                       onChange={e => {
                         setSelectedLotId(e.target.value);
                         const lot = auctions.find(a => a.id === e.target.value);
-                        if (lot) setCustomBidAmount(lot.currentBidUsd + 25);
+                        if (lot) {
+                          setCustomBidAmount(isVerizonLot(lot) ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 500) : lot.currentBidUsd + 25);
+                        }
                       }}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
                     >
-                      {auctions.map(lot => (
-                        <option key={lot.id} value={lot.id}>
-                          {lot.lotNumber} - {lot.title.slice(0, 48)}... (${lot.currentBidUsd} USD)
-                        </option>
-                      ))}
+                      {auctions.map(lot => {
+                        const vz = isVerizonLot(lot);
+                        const priceTag = vz && lot.currentBidUsd === 0 ? 'Sem Preço Fixo' : `$${lot.currentBidUsd} USD`;
+                        return (
+                          <option key={lot.id} value={lot.id}>
+                            {lot.lotNumber} - {lot.title.slice(0, 48)}... ({priceTag})
+                          </option>
+                        );
+                      })}
                     </select>
 
                     {currentSelectedLot && (
                       <div className="mt-3 p-3 bg-slate-950/80 rounded-lg text-xs space-y-1.5 border border-slate-800">
                         <div className="flex justify-between">
-                          <span className="text-slate-400">Lance Atual no Leilão:</span>
-                          <span className="font-mono font-bold text-white">${currentSelectedLot.currentBidUsd.toLocaleString()} USD</span>
+                          <span className="text-slate-400">{isVerizonSelected ? 'Modelo de Preço (Verizon):' : 'Lance Atual no Leilão:'}</span>
+                          {isVerizonSelected && currentSelectedLot.currentBidUsd === 0 ? (
+                            <span className="font-bold text-emerald-400">Sem Preço Fixo (Cliente Escolhe)</span>
+                          ) : (
+                            <span className="font-mono font-bold text-white">${currentSelectedLot.currentBidUsd.toLocaleString()} USD</span>
+                          )}
                         </div>
-                        {isAssurantLot(currentSelectedLot) ? (
+                        {isVerizonSelected ? (
+                          <div className="flex justify-between items-center font-medium">
+                            <span className="text-red-300">Quantidade (Lote Fechado):</span>
+                            <span className="font-mono font-bold text-white">{currentSelectedLot.quantity} unidade(s) fixas</span>
+                          </div>
+                        ) : isAssurantLot(currentSelectedLot) ? (
                           <div className="flex justify-between items-center font-medium">
                             <span className="text-blue-300">Média lance aprovado arremate anterior:</span>
                             <span className="font-mono font-bold text-blue-300">${getAssurantPreviousApprovedBid(currentSelectedLot).toLocaleString()} USD</span>
@@ -269,21 +288,21 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                   <div className="flex flex-col justify-between">
                     <div>
                       <label className="text-xs font-medium text-slate-300 block mb-1">
-                        Seu Lance em Dólar (USD):
+                        {isVerizonSelected ? 'Informe o Valor da Sua Oferta (USD):' : 'Seu Lance em Dólar (USD):'}
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-2.5 text-slate-500 font-mono font-bold">$</span>
                         <input
                           type="number"
                           min={minRequiredBid}
-                          step="25"
-                          value={customBidAmount || minRequiredBid}
+                          step={isVerizonSelected ? 'any' : '25'}
+                          value={customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)}
                           onChange={e => setCustomBidAmount(Number(e.target.value))}
                           className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
                         />
                       </div>
                       <span className="text-[11px] text-slate-400 block mt-1">
-                        Valor aproximado em Reais: R$ {(((customBidAmount || minRequiredBid) * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                        Valor aproximado em Reais: R$ {(((customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)) * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
                       </span>
                     </div>
 

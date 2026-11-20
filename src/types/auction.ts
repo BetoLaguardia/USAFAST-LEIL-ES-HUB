@@ -15,6 +15,7 @@ export interface DeviceItem {
   partNumber?: string;
   inventorySource?: string;
   itemDescription?: string;
+  qty?: number;
 }
 
 export interface BidHistoryItem {
