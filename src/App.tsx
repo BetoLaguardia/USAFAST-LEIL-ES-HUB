@@ -16,6 +16,12 @@ import { INITIAL_AUCTIONS, DEFAULT_PTAX_USD_BRL, GRADE_EXPLANATIONS } from './da
 import { AuctionLot, GradeType, SystemUser, AdminOffer } from './types/auction';
 import { apiService } from './services/apiService';
 import { supabase } from './services/supabaseClient';
+import {
+  clearLegacyAuthStorage,
+  EMPTY_SYSTEM_USER,
+  restoreSupabaseSession,
+  signOutFromSupabase,
+} from './services/authService';
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
@@ -159,62 +165,57 @@ export default function App() {
     } catch (e) {}
   };
 
-  // User & Bidding State with Persistent LocalStorage
-  const [currentUser, setCurrentUser] = useState<SystemUser>(() => {
-    try {
-      const savedUser = localStorage.getItem('us_iphone_client_user');
-      if (savedUser) return JSON.parse(savedUser);
-    } catch (e) {}
-    return {
-      name: 'Carlos Mendes',
-      email: 'carlos.mendes@importtech.com.br',
-      cpfCnpj: '18.492.301/0001-44',
-      phone: '+55 (11) 98844-1290',
-      biddingLimitUsd: 25000,
-      verifiedStatus: true,
-      registeredDate: '01/02/2026'
-    };
-  });
+  // User & Bidding State (hydrated from Supabase Auth session)
+  const [currentUser, setCurrentUser] = useState<SystemUser>(EMPTY_SYSTEM_USER);
 
   const handleUpdateCurrentUser = (user: SystemUser) => {
     setCurrentUser(user);
-    try {
-      localStorage.setItem('us_iphone_client_user', JSON.stringify(user));
-    } catch (e) {}
   };
 
-  // Authentication Gates State (Admin and Client)
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('us_admin_auth') === 'true';
-    } catch (e) {
-      return false;
-    }
-  });
+  // Authentication Gates State (Admin and Client via Supabase Auth)
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [isClientAuthenticated, setIsClientAuthenticated] = useState<boolean>(false);
 
-  const [isClientAuthenticated, setIsClientAuthenticated] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('us_client_auth') === 'true';
-    } catch (e) {
-      return false;
-    }
-  });
+  useEffect(() => {
+    clearLegacyAuthStorage();
+    let active = true;
 
-  const handleAdminLogout = () => {
+    restoreSupabaseSession().then((res) => {
+      if (!active) return;
+      setIsAdminAuthenticated(res.isAdmin);
+      setIsClientAuthenticated(res.isClient);
+      setCurrentUser(res.user);
+    });
+
+    const subscription = supabase?.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setIsAdminAuthenticated(false);
+        setIsClientAuthenticated(false);
+        setCurrentUser(EMPTY_SYSTEM_USER);
+      }
+    }).data.subscription;
+
+    return () => {
+      active = false;
+      subscription?.unsubscribe();
+    };
+  }, []);
+
+  const handleAdminLogout = async () => {
+    await signOutFromSupabase();
     setIsAdminAuthenticated(false);
-    try {
-      localStorage.removeItem('us_admin_auth');
-    } catch (e) {}
+    setIsClientAuthenticated(false);
+    setCurrentUser(EMPTY_SYSTEM_USER);
+    setCurrentPage('home');
     showToast('Sessão administrativa encerrada.');
   };
 
-  const handleClientLogout = () => {
+  const handleClientLogout = async () => {
+    await signOutFromSupabase();
     setIsClientAuthenticated(false);
     setIsAdminAuthenticated(false);
-    try {
-      localStorage.removeItem('us_client_auth');
-      localStorage.removeItem('us_admin_auth');
-    } catch (e) {}
+    setCurrentUser(EMPTY_SYSTEM_USER);
+    setCurrentPage('home');
     showToast('Sessão do arrematante encerrada.');
   };
 
@@ -229,15 +230,7 @@ export default function App() {
       const savedBids = localStorage.getItem('us_iphone_user_bids');
       if (savedBids) return JSON.parse(savedBids);
     } catch (e) {}
-    return [
-      {
-        lotId: 'lot-us-16pm-01',
-        lotTitle: 'Lote Master 10x iPhone 16 Pro Max 256GB',
-        amountUsd: 7450,
-        timestamp: 'Hoje, 14:32',
-        status: 'vencendo'
-      }
-    ];
+    return [];
   });
 
   // Modals State
@@ -374,33 +367,47 @@ export default function App() {
     return false;
   };
 
-  // Helper to persist auctions (localStorage + backend /api/auctions for cross-device sync)
+  const saveAuctionsLocalCache = (lots: AuctionLot[]): boolean => {
+    try {
+      if (lots.length === 0) {
+        localStorage.setItem(CLEARED_FLAG_KEY, 'true');
+        localStorage.removeItem('us_iphone_auctions_v1');
+        return true;
+      }
+      localStorage.removeItem(CLEARED_FLAG_KEY);
+      const serialized = JSON.stringify(lots);
+      // Keep localStorage under ~2MB so auth tokens, bids, and offers never hit quota limits
+      if (serialized.length > 2_000_000) {
+        localStorage.removeItem('us_iphone_auctions_v1');
+        return false;
+      }
+      localStorage.setItem('us_iphone_auctions_v1', serialized);
+      return true;
+    } catch {
+      try {
+        localStorage.removeItem('us_iphone_auctions_v1');
+      } catch {}
+      return false;
+    }
+  };
+
+  // Helper to persist auctions (safe localStorage cache + backend /api/auctions for cross-device sync)
   const handleUpdateAuctions = (newAuctions: AuctionLot[]) => {
     hasLocalUpdateRef.current = true;
-    console.log(`[App.tsx] handleUpdateAuctions called with ${newAuctions.length} lots`);
     setAuctions(newAuctions);
-    try {
-      if (newAuctions.length === 0) {
-        localStorage.setItem(CLEARED_FLAG_KEY, 'true');
-        localStorage.setItem('us_iphone_auctions_v1', '[]');
-      } else {
-        localStorage.removeItem(CLEARED_FLAG_KEY);
-        localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(newAuctions));
-      }
-      console.log(`[App.tsx] Saved ${newAuctions.length} lots to localStorage key 'us_iphone_auctions_v1'`);
-    } catch (e: any) {
-      console.error('[App.tsx] Failed to save to localStorage:', e);
-    }
+    const cachedLocally = saveAuctionsLocalCache(newAuctions);
 
-    try {
-      localStorage.setItem(UNSYNCED_FLAG_KEY, 'true');
-    } catch (e) {}
+    if (cachedLocally) {
+      try {
+        localStorage.setItem(UNSYNCED_FLAG_KEY, 'true');
+      } catch {}
+    }
 
     postAuctionsToBackend(newAuctions).then(synced => {
       if (synced) {
         try {
           localStorage.removeItem(UNSYNCED_FLAG_KEY);
-        } catch (e) {}
+        } catch {}
       }
     });
   };
@@ -494,15 +501,7 @@ export default function App() {
       } else if (backendLoadedOk) {
         console.log(`[App.tsx] Loaded ${backendLots.length} lots from backend /api/auctions`);
         setAuctions(backendLots);
-        try {
-          if (backendLots.length === 0) {
-            localStorage.setItem(CLEARED_FLAG_KEY, 'true');
-            localStorage.setItem('us_iphone_auctions_v1', '[]');
-          } else {
-            localStorage.removeItem(CLEARED_FLAG_KEY);
-            localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(backendLots));
-          }
-        } catch (e) {}
+        saveAuctionsLocalCache(backendLots);
       }
     };
 
@@ -1063,13 +1062,8 @@ export default function App() {
               currentUser={currentUser}
               onLoginSuccess={(user) => {
                 setIsClientAuthenticated(true);
-                setIsAdminAuthenticated(false);
+                setIsAdminAuthenticated(user.role === 'admin');
                 setCurrentUser(user);
-                try {
-                  localStorage.removeItem('us_admin_auth');
-                  localStorage.setItem('us_client_auth', 'true');
-                  localStorage.setItem('us_iphone_client_user', JSON.stringify(user));
-                } catch (e) {}
                 showToast(`Bem-vindo, ${user.name}! Acesso ao portal liberado.`);
               }}
               onCancel={() => setCurrentPage('home')}
@@ -1892,18 +1886,13 @@ export default function App() {
         {/* VIEW 5: PAINEL DO CLIENTE (PORTAL DO ARREMATANTE) */}
         {/* ========================================================= */}
         {currentPage === 'cliente' && (
-          !isClientAuthenticated ? (
+          !isClientAuthenticated && !isAdminAuthenticated ? (
             <ClientLoginGate
               currentUser={currentUser}
               onLoginSuccess={(user) => {
                 setIsClientAuthenticated(true);
-                setIsAdminAuthenticated(false);
+                setIsAdminAuthenticated(user.role === 'admin');
                 setCurrentUser(user);
-                try {
-                  localStorage.removeItem('us_admin_auth');
-                  localStorage.setItem('us_client_auth', 'true');
-                  localStorage.setItem('us_iphone_client_user', JSON.stringify(user));
-                } catch (e) {}
                 showToast(`Bem-vindo, ${user.name}! Acesso ao portal liberado.`);
               }}
               onCancel={() => setCurrentPage('home')}
@@ -1929,11 +1918,10 @@ export default function App() {
         {currentPage === 'admin' && (
           !isAdminAuthenticated ? (
             <AdminLoginGate
-              onLoginSuccess={() => {
+              onLoginSuccess={(adminUser) => {
                 setIsAdminAuthenticated(true);
-                try {
-                  localStorage.setItem('us_admin_auth', 'true');
-                } catch (e) {}
+                setIsClientAuthenticated(true);
+                setCurrentUser(adminUser);
                 showToast('Login de administrador realizado com sucesso!');
               }}
               onCancel={() => setCurrentPage('home')}

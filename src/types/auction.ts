@@ -66,6 +66,7 @@ export interface AuctionLot {
 }
 
 export interface SystemUser {
+  id?: string;
   name: string;
   email: string;
   cpfCnpj: string;
@@ -75,7 +76,6 @@ export interface SystemUser {
   biddingLimitUsd: number;
   verifiedStatus: boolean;
   registeredDate: string;
-  password?: string;
   role?: 'client' | 'admin';
   approvalStatus?: 'APPROVED' | 'PENDING' | 'REJECTED';
 }

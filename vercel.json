@@ -8,6 +8,9 @@
       "maxDuration": 30,
       "includeFiles": "auctions_store.json"
     },
+    "api/auth.ts": {
+      "maxDuration": 15
+    },
     "api/health.ts": {
       "maxDuration": 10
     }

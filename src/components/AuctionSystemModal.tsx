@@ -3,6 +3,7 @@ import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, Arrow
 import { AuctionLot, SystemUser } from '../types/auction';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
+import { registerClientWithSupabase } from '../services/authService';
 
 interface AuctionSystemModalProps {
   isOpen: boolean;
@@ -35,11 +36,14 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
     email: currentUser.email || '',
     cpfCnpj: currentUser.cpfCnpj || '',
     phone: currentUser.phone || '',
+    password: '',
     companyType: 'lojista',
     monthlyVolume: '10-30',
     warehousePref: 'miami'
   });
   const [registeredSuccess, setRegisteredSuccess] = useState(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // Quick bid selector
   const [selectedLotId, setSelectedLotId] = useState<string>(auctions[0]?.id || '');
@@ -58,29 +62,33 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
     ? (isVerizonSelected ? 1 : currentSelectedLot.currentBidUsd + 25)
     : 100;
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email) return;
+    setRegisterError(null);
+    if (!formData.name || !formData.email || !formData.cpfCnpj || !formData.phone) {
+      setRegisterError('Preencha todos os campos obrigatórios.');
+      return;
+    }
+    if (formData.password.length < 6) {
+      setRegisterError('A senha deve conter pelo menos 6 caracteres.');
+      return;
+    }
 
-    const newUser: SystemUser = {
-      name: formData.name,
-      email: formData.email,
-      cpfCnpj: formData.cpfCnpj || '00.000.000/0001-99',
-      phone: formData.phone || '+55 (11) 99876-5432',
-      whatsapp: formData.phone || '+55 (11) 99876-5432',
-      biddingLimitUsd: 25000,
-      verifiedStatus: false,
-      approvalStatus: 'PENDING',
-      registeredDate: new Date().toLocaleDateString('pt-BR'),
-      role: 'client'
-    };
+    setIsRegistering(true);
+    const res = await registerClientWithSupabase({
+      name: formData.name.trim(),
+      email: formData.email.trim(),
+      cpfCnpj: formData.cpfCnpj.trim(),
+      phone: formData.phone.trim(),
+      whatsappNotificationEnabled: true,
+      password: formData.password,
+    });
+    setIsRegistering(false);
 
-    try {
-      const saved = localStorage.getItem('us_registered_clients');
-      const list: SystemUser[] = saved ? JSON.parse(saved) : [];
-      list.push(newUser);
-      localStorage.setItem('us_registered_clients', JSON.stringify(list));
-    } catch (err) {}
+    if (!res.ok) {
+      setRegisterError(res.error || 'Não foi possível concluir o cadastro.');
+      return;
+    }
 
     setRegisteredSuccess(true);
   };
@@ -395,6 +403,11 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                 </div>
               ) : (
                 <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                  {registerError && (
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs">
+                      {registerError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs text-slate-300 block mb-1">Nome Completo / Razão Social *</label>
@@ -403,7 +416,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         required
                         value={formData.name}
                         onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="Ex: Carlos Eduardo / Tech Imports Ltda"
+                        placeholder="Nome completo ou razão social"
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>
@@ -414,7 +427,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         required
                         value={formData.email}
                         onChange={e => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="seuemail@exemplo.com.br"
+                        placeholder="Digite seu e-mail"
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>
@@ -425,7 +438,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         required
                         value={formData.cpfCnpj}
                         onChange={e => setFormData({ ...formData, cpfCnpj: e.target.value })}
-                        placeholder="000.000.000-00 ou CNPJ"
+                        placeholder="Digite seu CPF ou CNPJ"
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>
@@ -436,7 +449,18 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         required
                         value={formData.phone}
                         onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+55 (11) 99999-9999"
+                        placeholder="Digite seu telefone com DDD"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-300 block mb-1">Senha de Acesso *</label>
+                      <input
+                        type="password"
+                        required
+                        value={formData.password}
+                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                        placeholder="Mínimo 6 caracteres"
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
                       />
                     </div>
@@ -468,14 +492,15 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
 
                   <div className="pt-2 flex items-center justify-between">
                     <span className="text-[11px] text-slate-400">
-                      ✓ Sem taxa de anuidade · Habilitação imediata
+                      ✓ Sem taxa de anuidade
                     </span>
                     <button
                       type="submit"
-                      className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs transition-colors shadow-lg shadow-emerald-500/10 flex items-center gap-2"
+                      disabled={isRegistering}
+                      className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs transition-colors shadow-lg shadow-emerald-500/10 flex items-center gap-2 disabled:opacity-50"
                     >
                       <UserCheck className="w-4 h-4" />
-                      <span>Concluir Cadastro & Liberar Lances</span>
+                      <span>{isRegistering ? 'Enviando...' : 'Concluir Cadastro'}</span>
                     </button>
                   </div>
                 </form>

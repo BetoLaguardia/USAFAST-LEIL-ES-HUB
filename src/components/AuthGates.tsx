@@ -1,43 +1,32 @@
 import React, { useState } from 'react';
-import { 
-  Lock, 
-  UserCheck, 
-  ShieldCheck, 
-  Eye, 
-  EyeOff, 
-  ArrowRight, 
-  KeyRound, 
-  User, 
-  Mail, 
-  Phone, 
-  FileText, 
-  CheckCircle2, 
-  AlertCircle, 
-  Sparkles,
+import {
+  Lock,
+  UserCheck,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  KeyRound,
+  User,
+  Mail,
+  Phone,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
   ArrowLeft,
   Clock
 } from 'lucide-react';
 import { SystemUser } from '../types/auction';
-
-// ----------------------------------------------------
-// DEFAULT CREDENTIALS
-// ----------------------------------------------------
-export const DEFAULT_ADMIN_CREDENTIALS = {
-  email: 'admin@leiloesusa.com',
-  username: 'admin',
-  password: 'admin123'
-};
-
-export const DEFAULT_CLIENT_CREDENTIALS = {
-  email: 'carlos.mendes@importtech.com.br',
-  password: 'cliente123'
-};
+import {
+  registerClientWithSupabase,
+  signInAdminWithSupabase,
+  signInClientWithSupabase
+} from '../services/authService';
 
 // ----------------------------------------------------
 // ADMIN LOGIN GATE COMPONENT
 // ----------------------------------------------------
 interface AdminLoginGateProps {
-  onLoginSuccess: () => void;
+  onLoginSuccess: (user: SystemUser) => void;
   onCancel: () => void;
 }
 
@@ -45,54 +34,24 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
   onLoginSuccess,
   onCancel
 }) => {
-  const [emailOrUser, setEmailOrUser] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Check custom password if set
-  const getExpectedPassword = () => {
-    try {
-      const custom = localStorage.getItem('us_admin_custom_password');
-      if (custom) return custom;
-    } catch (e) {}
-    return DEFAULT_ADMIN_CREDENTIALS.password;
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const cleanUser = emailOrUser.trim().toLowerCase();
-    const cleanPass = password.trim();
-    const expectedPass = getExpectedPassword();
-
-    // Verify credentials
-    const isUserValid = cleanUser === DEFAULT_ADMIN_CREDENTIALS.email || cleanUser === DEFAULT_ADMIN_CREDENTIALS.username;
-    const isPassValid = cleanPass === expectedPass;
-
-    setTimeout(() => {
-      if (isUserValid && isPassValid) {
-        if (rememberMe) {
-          try {
-            localStorage.setItem('us_admin_auth', 'true');
-          } catch (e) {}
-        }
-        onLoginSuccess();
-      } else {
-        setErrorMessage('Credenciais inválidas. Verifique o usuário e senha informados.');
-        setIsSubmitting(false);
-      }
-    }, 400);
-  };
-
-  const handleFillDemo = () => {
-    setEmailOrUser(DEFAULT_ADMIN_CREDENTIALS.email);
-    setPassword(getExpectedPassword());
-    setErrorMessage(null);
+    const result = await signInAdminWithSupabase(email, password);
+    if (result.ok && result.user) {
+      onLoginSuccess(result.user);
+    } else {
+      setErrorMessage(result.error || 'Credenciais inválidas. Verifique o e-mail e a senha informados.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -115,20 +74,10 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
                 Painel Administrativo
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Importação de planilhas (Padrão VERIZON), controle de ofertas e gestão de leilões.
+                Importação de planilhas, controle de ofertas e gestão de leilões.
               </p>
             </div>
           </div>
-
-          {/* Quick Demo Fill Pill */}
-          <button
-            type="button"
-            onClick={handleFillDemo}
-            className="w-full p-2.5 rounded-xl bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/30 text-amber-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2 group"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
-            <span>Preencher Acesso Admin (Demo: admin123)</span>
-          </button>
 
           {/* Error Message */}
           {errorMessage && (
@@ -142,16 +91,17 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-slate-300 text-xs font-semibold block mb-1.5">
-                E-mail ou Usuário do Administrador:
+                E-mail do Administrador:
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                 <input
-                  type="text"
+                  type="email"
                   required
-                  value={emailOrUser}
-                  onChange={e => setEmailOrUser(e.target.value)}
-                  placeholder="admin@leiloesusa.com ou admin"
+                  autoComplete="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="Digite seu e-mail"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                 />
               </div>
@@ -166,9 +116,10 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Digite sua senha"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-10 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                 />
                 <button
@@ -180,21 +131,6 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={e => setRememberMe(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-700 text-amber-500 focus:ring-0 bg-slate-950"
-                />
-                <span>Lembrar neste navegador</span>
-              </label>
-              <span className="text-[11px] text-slate-500 font-mono">
-                Padrão: admin123
-              </span>
             </div>
 
             <button
@@ -240,13 +176,11 @@ interface ClientLoginGateProps {
 }
 
 export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
-  currentUser,
   onLoginSuccess,
   onCancel
 }) => {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPendingSuccessModal, setShowPendingSuccessModal] = useState(false);
@@ -267,69 +201,30 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
   const [regWhatsappNotify, setRegWhatsappNotify] = useState(true);
 
   // Handle Client Login
-  const handleClientLogin = (e: React.FormEvent) => {
+  const handleClientLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const cleanInput = loginEmailOrDoc.trim().toLowerCase();
-    const cleanPass = loginPassword.trim();
-
-    // Check stored custom registered clients
-    let storedClients: SystemUser[] = [];
-    try {
-      const saved = localStorage.getItem('us_registered_clients');
-      if (saved) storedClients = JSON.parse(saved);
-    } catch (e) {}
-
-    // Match with current user or default client or registered list
-    const foundUser = storedClients.find(c => 
-      c.email.toLowerCase() === cleanInput || 
-      c.cpfCnpj.replace(/\D/g, '') === cleanInput.replace(/\D/g, '')
-    ) || (
-      (cleanInput === DEFAULT_CLIENT_CREDENTIALS.email || cleanInput === currentUser.email.toLowerCase() || cleanInput.includes('carlos'))
-        ? currentUser
-        : null
-    );
-
-    setTimeout(() => {
-      // Validate password
-      const userExpectedPassword = (foundUser as any)?.password || DEFAULT_CLIENT_CREDENTIALS.password;
-      if (foundUser && (cleanPass === userExpectedPassword || cleanPass === 'cliente123' || cleanPass === '123456')) {
-        // Check approval status
-        if (foundUser.approvalStatus === 'PENDING' || (!foundUser.verifiedStatus && foundUser.approvalStatus !== 'APPROVED' && foundUser.email !== DEFAULT_CLIENT_CREDENTIALS.email)) {
-          setErrorMessage('⏳ Seu cadastro foi recebido e está em análise pela nossa equipe de credenciamento. O acesso ao sistema de leilões será liberado assim que o Administrador aprovar.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (foundUser.approvalStatus === 'REJECTED') {
-          setErrorMessage('🚫 Seu cadastro foi suspenso ou recusado pela administração.');
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (rememberMe) {
-          try {
-            localStorage.setItem('us_client_auth', 'true');
-          } catch (e) {}
-        }
-        onLoginSuccess(foundUser);
-      } else {
-        setErrorMessage('E-mail/CPF ou senha incorretos. Utilize a conta de teste ou realize seu cadastro.');
-        setIsSubmitting(false);
-      }
-    }, 400);
+    const result = await signInClientWithSupabase(loginEmailOrDoc, loginPassword);
+    if (result.ok && result.user) {
+      onLoginSuccess(result.user);
+    } else {
+      setErrorMessage(
+        result.error || 'E-mail/CPF ou senha incorretos. Verifique seus dados ou realize seu cadastro.'
+      );
+      setIsSubmitting(false);
+    }
   };
 
   // Handle Client Registration
-  const handleClientRegister = (e: React.FormEvent) => {
+  const handleClientRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    if (regPassword.length < 4) {
-      setErrorMessage('A senha deve conter pelo menos 4 dígitos.');
+    if (regPassword.length < 6) {
+      setErrorMessage('A senha deve conter pelo menos 6 caracteres.');
       setIsSubmitting(false);
       return;
     }
@@ -346,39 +241,24 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
       return;
     }
 
-    const newUser: SystemUser = {
+    const result = await registerClientWithSupabase({
       name: regName.trim(),
       email: regEmail.trim(),
       phone: regPhone.trim(),
-      whatsapp: regPhone.trim(),
-      whatsappNotificationEnabled: regWhatsappNotify,
       cpfCnpj: regDoc.trim(),
-      biddingLimitUsd: 25000,
-      verifiedStatus: false,
-      approvalStatus: 'PENDING',
-      registeredDate: new Date().toLocaleDateString('pt-BR'),
-      password: regPassword,
-      role: 'client'
-    };
+      whatsappNotificationEnabled: regWhatsappNotify,
+      password: regPassword
+    });
 
-    setTimeout(() => {
-      try {
-        const saved = localStorage.getItem('us_registered_clients');
-        const list: SystemUser[] = saved ? JSON.parse(saved) : [];
-        list.push(newUser);
-        localStorage.setItem('us_registered_clients', JSON.stringify(list));
-      } catch (e) {}
+    setIsSubmitting(false);
 
-      setIsSubmitting(false);
-      setPendingUserRegisteredName(newUser.name);
-      setShowPendingSuccessModal(true);
-    }, 400);
-  };
+    if (!result.ok) {
+      setErrorMessage(result.error || 'Não foi possível concluir o cadastro.');
+      return;
+    }
 
-  const handleFillDemoClient = () => {
-    setLoginEmailOrDoc(DEFAULT_CLIENT_CREDENTIALS.email);
-    setLoginPassword(DEFAULT_CLIENT_CREDENTIALS.password);
-    setErrorMessage(null);
+    setPendingUserRegisteredName(regName.trim());
+    setShowPendingSuccessModal(true);
   };
 
   if (showPendingSuccessModal) {
@@ -416,7 +296,8 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
             onClick={() => {
               setShowPendingSuccessModal(false);
               setTab('login');
-              setLoginEmailOrDoc(regEmail);
+              setLoginEmailOrDoc('');
+              setLoginPassword('');
             }}
             className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-400/20"
           >
@@ -478,18 +359,6 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
             </button>
           </div>
 
-          {/* Quick Demo Fill (Only on Login tab) */}
-          {tab === 'login' && (
-            <button
-              type="button"
-              onClick={handleFillDemoClient}
-              className="w-full p-2.5 rounded-xl bg-emerald-400/10 hover:bg-emerald-400/20 border border-emerald-400/30 text-emerald-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2 group"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400 group-hover:rotate-12 transition-transform" />
-              <span>Preencher Comprador Demo (cliente123)</span>
-            </button>
-          )}
-
           {/* Error Notice */}
           {errorMessage && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
@@ -512,9 +381,10 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                   <input
                     type="text"
                     required
+                    autoComplete="username"
                     value={loginEmailOrDoc}
                     onChange={e => setLoginEmailOrDoc(e.target.value)}
-                    placeholder="carlos.mendes@importtech.com.br"
+                    placeholder="Digite seu e-mail ou CPF/CNPJ"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                 </div>
@@ -529,9 +399,10 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="current-password"
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="Digite sua senha"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-10 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                   <button
@@ -545,16 +416,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={e => setRememberMe(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-700 text-amber-500 focus:ring-0 bg-slate-950"
-                  />
-                  <span>Permanecer conectado</span>
-                </label>
+              <div className="flex items-center justify-end text-xs text-slate-400 pt-1">
                 <button
                   type="button"
                   onClick={() => setTab('register')}
@@ -597,7 +459,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     required
                     value={regName}
                     onChange={e => setRegName(e.target.value)}
-                    placeholder="Ex: Rodrigo Silva (Tech Store Import)"
+                    placeholder="Nome completo ou razão social"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                 </div>
@@ -615,7 +477,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       required
                       value={regEmail}
                       onChange={e => setRegEmail(e.target.value)}
-                      placeholder="rodrigo@techstore.com"
+                      placeholder="Digite seu e-mail"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
@@ -632,7 +494,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       required
                       value={regDoc}
                       onChange={e => setRegDoc(e.target.value)}
-                      placeholder="00.000.000/0001-00"
+                      placeholder="Digite seu CPF ou CNPJ"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
@@ -650,7 +512,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     required
                     value={regPhone}
                     onChange={e => setRegPhone(e.target.value)}
-                    placeholder="+55 (11) 99999-8888"
+                    placeholder="Digite seu WhatsApp com DDD"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                 </div>
@@ -675,7 +537,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     required
                     value={regPassword}
                     onChange={e => setRegPassword(e.target.value)}
-                    placeholder="Mínimo 4 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                 </div>
@@ -704,7 +566,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-0 bg-slate-950 mt-0.5"
                   />
                   <span>
-                    Concordo com a política de arrematação oficial e laudo de conferência de 30 pontos. Limite inicial de $25.000 USD liberado imediatamente.
+                    Concordo com a política de arrematação oficial e laudo de conferência de 30 pontos.
                   </span>
                 </label>
               </div>

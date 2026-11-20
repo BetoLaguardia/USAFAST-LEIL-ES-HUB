@@ -8,6 +8,13 @@ import {
   sanitizeAuctions,
   saveAuctionsToStore,
 } from './server/auctionsStore.ts';
+import {
+  getAuthenticatedProfile,
+  listClientsForAdmin,
+  registerClientInSupabase,
+  resolveClientIdentifier,
+  updateClientApprovalStatus,
+} from './server/authService.ts';
 
 dotenv.config();
 
@@ -65,6 +72,47 @@ async function startServer() {
       console.error('[API POST /api/auctions] Erro ao salvar:', e);
       return res.status(500).json({ ok: false, error: e?.message || 'Falha ao salvar' });
     }
+  });
+
+  app.get('/api/auth', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    const authHeader = req.headers.authorization;
+    const action = String(req.query.action || 'me');
+    if (action === 'clients') {
+      const result = await listClientsForAdmin(authHeader);
+      return res.status(result.status).json(result);
+    }
+    const result = await getAuthenticatedProfile(authHeader);
+    return res.status(result.status).json(result);
+  });
+
+  app.post('/api/auth', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    const authHeader = req.headers.authorization;
+    const body = req.body || {};
+    const action = String(body.action || '');
+
+    if (action === 'resolve-identifier') {
+      const result = await resolveClientIdentifier(body.identifier);
+      return res.status(result.status).json(result);
+    }
+
+    if (action === 'register-client') {
+      const result = await registerClientInSupabase(body);
+      return res.status(result.status).json(result);
+    }
+
+    if (action === 'update-client-status') {
+      const result = await updateClientApprovalStatus(authHeader, body);
+      return res.status(result.status).json(result);
+    }
+
+    if (action === 'me') {
+      const result = await getAuthenticatedProfile(authHeader);
+      return res.status(result.status).json(result);
+    }
+
+    return res.status(400).json({ ok: false, error: 'Ação inválida.' });
   });
 
   if (process.env.NODE_ENV !== 'production') {

@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { AuctionLot, GradeType, SystemUser, AdminOffer } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
+import { fetchAdminClients, updateAdminClientStatus } from '../services/authService';
 
 interface AdminPageProps {
   auctions: AuctionLot[];
@@ -1705,12 +1706,6 @@ $285.00
 
       console.log(`[XLSX/Stock Import] Publishing ${newLots.length} new lots. Total lots after merge: ${finalLots.length}. replaceExistingLots=${replaceExistingLots}`);
       onUpdateAuctions(finalLots);
-      try {
-        localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(finalLots));
-        console.log(`[XLSX/Stock Import] Saved ${finalLots.length} lots to localStorage.`);
-      } catch (e: any) {
-        console.error('[XLSX/Stock Import] localStorage save error:', e);
-      }
 
       showNotice(`🎉 ${newLots.length} Lotes ${meta.label} (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados com sucesso no catálogo e painel do cliente!`, 'success');
       setAdminTab('lots');
@@ -2527,9 +2522,6 @@ $285.00
         : [...newLots, ...auctions];
 
       onUpdateAuctions(finalLots);
-      try {
-        localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(finalLots));
-      } catch (e) {}
 
       showNotice(`🎉 ${newLots.length} Lotes Oficiais VERIZON (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados com sucesso (Grades DNA/DNB/DNC/DND, Sem Preço Fixo e Qtd Fixa)!`, 'success');
       setAdminTab('lots');
@@ -2644,9 +2636,6 @@ $285.00
 
       const finalLots = replaceExistingLots ? newLots : [...newLots, ...auctions];
       onUpdateAuctions(finalLots);
-      try {
-        localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(finalLots));
-      } catch (e) {}
 
       showNotice(`${newLots.length} lotes importados e publicados no catálogo com sucesso!`);
       setParsedPreviewRows([]);
@@ -2768,45 +2757,7 @@ $285.00
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch (e) {}
-    return [
-      {
-        id: 'off-101',
-        lotId: auctions[0]?.id || 'lot-1',
-        lotNumber: auctions[0]?.lotNumber || 'US-89104',
-        lotTitle: auctions[0]?.title || 'Lote Master 10x iPhone 16 Pro Max',
-        clientName: 'Carlos Mendes (Tech Imports)',
-        clientEmail: 'carlos.mendes@importtech.com.br',
-        amountUsd: 7450,
-        amountBrl: 7450 * usdRate,
-        timestamp: 'Hoje, 14:32',
-        status: 'Vencendo',
-        isAutoSniper: true
-      },
-      {
-        id: 'off-102',
-        lotId: auctions[1]?.id || 'lot-2',
-        lotNumber: auctions[1]?.lotNumber || 'US-77402',
-        lotTitle: 'Lote 5x iPhone 15 Pro 128GB Grade A',
-        clientName: 'Pedro Apple Reseller SP',
-        clientEmail: 'pedro@applereseller.com.br',
-        amountUsd: 2850,
-        amountBrl: 2850 * usdRate,
-        timestamp: 'Hoje, 13:50',
-        status: 'Homologada / Arrematada'
-      },
-      {
-        id: 'off-103',
-        lotId: auctions[2]?.id || 'lot-3',
-        lotNumber: auctions[2]?.lotNumber || 'US-90311',
-        lotTitle: '1x iPhone 16 Pro Max 512GB Desert Titanium',
-        clientName: 'Vitor Importações Sul',
-        clientEmail: 'vitor.imports@gmail.com',
-        amountUsd: 890,
-        amountBrl: 890 * usdRate,
-        timestamp: 'Hoje, 12:15',
-        status: 'Vencendo'
-      }
-    ];
+    return [];
   });
 
   const [counterOfferEditingId, setCounterOfferEditingId] = useState<string | null>(null);
@@ -2927,91 +2878,68 @@ $285.00
   };
 
   // ----------------------------------------------------
-  // CLIENTES / PAINEL DE ARREMATANTES
+  // CLIENTES / PAINEL DE ARREMATANTES (SUPABASE)
   // ----------------------------------------------------
-  const [clientsList, setClientsList] = useState<SystemUser[]>(() => {
-    try {
-      const saved = localStorage.getItem('us_registered_clients');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return [
-      { ...currentUser, approvalStatus: 'APPROVED', verifiedStatus: true },
-      {
-        name: 'Carlos Eduardo Mendes (ImportTech)',
-        email: 'carlos.mendes@importtech.com.br',
-        cpfCnpj: '12.345.678/0001-90',
-        phone: '+55 (11) 99876-5432',
-        biddingLimitUsd: 25000,
-        verifiedStatus: true,
-        approvalStatus: 'APPROVED',
-        registeredDate: '01/02/2026'
-      },
-      {
-        name: 'EletroCell Lojistas Associados',
-        email: 'compras@eletrocell.com.br',
-        cpfCnpj: '24.119.802/0001-90',
-        phone: '+55 (31) 98765-4321',
-        biddingLimitUsd: 50000,
-        verifiedStatus: true,
-        approvalStatus: 'APPROVED',
-        registeredDate: '15/01/2026'
-      },
-      {
-        name: 'Rodrigo Barbosa Silva',
-        email: 'rodrigo.silva@gmail.com',
-        cpfCnpj: '348.910.228-11',
-        phone: '+55 (21) 97722-3344',
-        biddingLimitUsd: 10000,
-        verifiedStatus: false,
-        approvalStatus: 'PENDING',
-        registeredDate: '03/02/2026'
-      }
-    ];
-  });
+  const [clientsList, setClientsList] = useState<SystemUser[]>([]);
 
-  const saveClientsToStorage = (newList: SystemUser[]) => {
-    setClientsList(newList);
-    try {
-      localStorage.setItem('us_registered_clients', JSON.stringify(newList));
-    } catch (e) {}
+  const loadClientsFromSupabase = async () => {
+    const res = await fetchAdminClients();
+    if (res.ok) {
+      setClientsList(res.clients);
+    }
   };
 
-  const handleApproveClient = (emailOrIndex: string | number) => {
-    const updated = clientsList.map((c, i) => {
-      if (i === emailOrIndex || c.email === emailOrIndex) {
-        return {
-          ...c,
-          approvalStatus: 'APPROVED' as const,
-          verifiedStatus: true,
-          biddingLimitUsd: c.biddingLimitUsd > 0 ? c.biddingLimitUsd : 25000
-        };
-      }
-      return c;
-    });
-    saveClientsToStorage(updated);
+  React.useEffect(() => {
+    loadClientsFromSupabase();
+  }, []);
+
+  const handleApproveClient = async (emailOrIndex: string | number) => {
+    const target = typeof emailOrIndex === 'number'
+      ? clientsList[emailOrIndex]
+      : clientsList.find(c => c.email === emailOrIndex);
+    if (!target) return;
+
+    const res = await updateAdminClientStatus(target.id, target.email, 'APPROVED');
+    if (!res.ok) {
+      showNotice(res.error || 'Erro ao aprovar cadastro no banco de dados.', 'error');
+      return;
+    }
+
+    setClientsList(prev =>
+      prev.map(c =>
+        (target.id && c.id === target.id) || c.email === target.email
+          ? { ...c, ...(res.client || {}), approvalStatus: 'APPROVED', verifiedStatus: true }
+          : c
+      )
+    );
     showNotice(`✅ Cadastro de cliente aprovado com sucesso! Acesso liberado.`, 'success');
   };
 
-  const handleRejectClient = (emailOrIndex: string | number) => {
-    const updated = clientsList.map((c, i) => {
-      if (i === emailOrIndex || c.email === emailOrIndex) {
-        return {
-          ...c,
-          approvalStatus: 'REJECTED' as const,
-          verifiedStatus: false
-        };
-      }
-      return c;
-    });
-    saveClientsToStorage(updated);
+  const handleRejectClient = async (emailOrIndex: string | number) => {
+    const target = typeof emailOrIndex === 'number'
+      ? clientsList[emailOrIndex]
+      : clientsList.find(c => c.email === emailOrIndex);
+    if (!target) return;
+
+    const res = await updateAdminClientStatus(target.id, target.email, 'REJECTED');
+    if (!res.ok) {
+      showNotice(res.error || 'Erro ao atualizar cadastro no banco de dados.', 'error');
+      return;
+    }
+
+    setClientsList(prev =>
+      prev.map(c =>
+        (target.id && c.id === target.id) || c.email === target.email
+          ? { ...c, ...(res.client || {}), approvalStatus: 'REJECTED', verifiedStatus: false }
+          : c
+      )
+    );
     showNotice(`🚫 Cadastro de cliente rejeitado/suspenso.`, 'error');
   };
 
   const handleToggleClientVerify = (idx: number) => {
     const target = clientsList[idx];
+    if (!target) return;
     if (target.verifiedStatus) {
       handleRejectClient(idx);
     } else {
