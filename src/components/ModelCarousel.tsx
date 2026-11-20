@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot } from '../utils/verizonUtils';
+import { isVerizonLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
 interface ModelCarouselProps {
@@ -95,7 +95,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   const isVerizon = isVerizonLot(currentLot);
   const auctionHouseName = isVerizon ? 'Leilão Oficial VERIZON' : 'Leilão Oficial ASSURANT';
   const cleanTitle = stripLotPrefix(currentLot.title);
-  const displayGrade = isVerizon ? currentLot.grade : `Grade ${currentLot.grade}`;
+  const displayGrade = isVerizon ? mapVerizonGradeStrict(currentLot.grade) : `Grade ${currentLot.grade}`;
 
   // Price calculations
   const priceUsd = currentLot.currentBidUsd;

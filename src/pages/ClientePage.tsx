@@ -29,7 +29,7 @@ import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, getLotMixSummary } from '../utils/verizonUtils';
+import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from '../components/LotMixExpandable';
 
 interface ClientePageProps {
@@ -74,6 +74,17 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   const [clientSearch, setClientSearch] = useState('');
   const [clientPage, setClientPage] = useState<number>(1);
   const CLIENT_ITEMS_PER_PAGE = 15;
+
+  const isVerizonFilterActive =
+    selectedAuctionSystemFilter === 'VERIZON' ||
+    selectedModelFilter === 'verizon' ||
+    /verizon/i.test(selectedAuctionHouseFilter);
+
+  React.useEffect(() => {
+    if (isVerizonFilterActive && selectedGradeFilter !== 'all' && !VERIZON_GRADES.includes(selectedGradeFilter)) {
+      setSelectedGradeFilter('all');
+    }
+  }, [isVerizonFilterActive, selectedGradeFilter]);
 
   React.useEffect(() => {
     setClientPage(1);
@@ -157,13 +168,20 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     setQuickBidLot(null);
   };
 
+  const normalizedAuctions = React.useMemo(
+    () => auctions.map(normalizeVerizonLot),
+    [auctions]
+  );
+
   // Dynamic list of models, grades and auction houses present in active catalog
-  const availableModels = Array.from(new Set(auctions.map(a => a.modelFamily))).filter(Boolean).sort((a, b) => a.localeCompare(b));
-  const availableGrades = Array.from(new Set(auctions.map(a => a.grade))).filter(Boolean).sort((a, b) => a.localeCompare(b));
-  const availableAuctionHouses = Array.from(new Set(auctions.map(a => a.auctionHouse))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const availableModels = Array.from(new Set(normalizedAuctions.map(a => a.modelFamily))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const availableGrades = isVerizonFilterActive
+    ? [...VERIZON_GRADES]
+    : Array.from(new Set(normalizedAuctions.map(a => a.grade))).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const availableAuctionHouses = Array.from(new Set(normalizedAuctions.map(a => a.auctionHouse))).filter(Boolean).sort((a, b) => a.localeCompare(b));
 
   // Filtered devices for client
-  const clientFilteredLots = auctions.filter(lot => {
+  const clientFilteredLots = normalizedAuctions.filter(lot => {
     if (clientSearch.trim()) {
       const q = clientSearch.toLowerCase();
       const matchTitle = lot.title.toLowerCase().includes(q);

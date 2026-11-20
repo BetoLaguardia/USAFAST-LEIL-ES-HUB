@@ -3,7 +3,7 @@ import { supabase } from '../services/supabaseClient.ts';
 import * as XLSX from 'xlsx';
 import { getDeviceImageUrl, stripLotPrefix } from '../utils/deviceImages';
 import { fetchLivePtaxRate } from '../utils/ptaxService';
-import { isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc } from '../utils/verizonUtils';
+import { isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc, sanitizeVerizonTitle, VERIZON_GRADES } from '../utils/verizonUtils';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -366,16 +366,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       // Transform grade ONLY for Verizon to DNA, DNB, DNC, DND
       const mappedGrade = mapVerizonGrade(g.gradeRaw);
 
-      // Clean title for Verizon to strip Lote, 5x, and map grades to DNA, DNB, DNC, DND
-      const cleanTitle = cleanLotTitle(g.title)
-        .replace(/Grade\s+A\+\(T\)|Grade\s+A\(T\)|Grade\s+A\+|Grade\s+A(?=$|[\s,\-])/gi, 'Grade DNA')
-        .replace(/Grade\s+B\+\(T\)|Grade\s+B\(T\)|Grade\s+B\+|Grade\s+B(?=$|[\s,\-])/gi, 'Grade DNB')
-        .replace(/Grade\s+C\+\(T\)|Grade\s+C\(T\)|Grade\s+C\+|Grade\s+C(?=$|[\s,\-])/gi, 'Grade DNC')
-        .replace(/Grade\s+D\+\(T\)|Grade\s+D\(T\)|Grade\s+D\+|Grade\s+D(?=$|[\s,\-])/gi, 'Grade DND')
-        .replace(/\bA\+\(T\)|\bA\(T\)/gi, 'DNA')
-        .replace(/\bB\+\(T\)|\bB\(T\)/gi, 'DNB')
-        .replace(/\bC\+\(T\)|\bC\(T\)/gi, 'DNC')
-        .replace(/\bD\+\(T\)|\bD\(T\)/gi, 'DND');
+      // Clean title for Verizon to strip Lote, 5x, and map grades strictly to DNA, DNB, DNC, DND
+      const cleanTitle = sanitizeVerizonTitle(cleanLotTitle(g.title));
 
       return {
         lotNumber: g.lotNumber,
@@ -2398,8 +2390,8 @@ $285.00
             ? '/images/samsung_galaxy_lot_1793851025604.jpg'
             : getDeviceImageUrl(oem, primaryModel, 'iPhone');
 
-          const rawTitle = `${oem} ${primaryModel} ${cap} ${color} - Grade ${mappedGrade}`;
-          const cleanTitle = stripLotPrefix(cleanLotTitle(rawTitle));
+          const rawTitle = `${oem} ${primaryModel} ${cap} ${color} - ${mappedGrade}`;
+          const cleanTitle = sanitizeVerizonTitle(stripLotPrefix(cleanLotTitle(rawTitle)));
 
           return {
             id: `vz-ind-${Date.now()}-${idx}`,
@@ -2429,7 +2421,7 @@ $285.00
               '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
               '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
             ],
-            description: `Lote oficial VERIZON (Quantidade Fixa: ${q} un. | Sem Preço Fixo - Cliente escolhe o valor): ${primaryModel} ${cap} ${color}. Classificação técnica ${gradeRaw} (Grade ${mappedGrade}). IMEI Clean ESN auditado.`,
+            description: `Lote oficial VERIZON (Quantidade Fixa: ${q} un. | Sem Preço Fixo - Cliente escolhe o valor): ${primaryModel} ${cap} ${color}. Padrão Verizon ${mappedGrade}. IMEI Clean ESN auditado.`,
             diagnosticReport: {
               faceId: true,
               trueTone: true,
@@ -2512,7 +2504,7 @@ $285.00
             endTime: g.parsedEndTime,
             imageUrl,
             galleryImages,
-            description: `Lote oficial VERIZON (Quantidade Fixa: ${g.totalQty} un. | Sem Preço Fixo - Cliente escolhe o valor). ${g.uniqueModels.length > 1 ? `Mix de ${g.uniqueModels.length} modelos` : g.primaryModel} · Capacidades: ${g.uniqueCapacities.join(', ') || '128GB'} · Cores: ${g.uniqueColors.join(', ') || 'Variadas'}. Grade ${g.mappedGrade} (${g.gradeRaw}).`,
+            description: `Lote oficial VERIZON (Quantidade Fixa: ${g.totalQty} un. | Sem Preço Fixo - Cliente escolhe o valor). ${g.uniqueModels.length > 1 ? `Mix de ${g.uniqueModels.length} modelos` : g.primaryModel} · Capacidades: ${g.uniqueCapacities.join(', ') || '128GB'} · Cores: ${g.uniqueColors.join(', ') || 'Variadas'}. Padrão ${g.mappedGrade}.`,
             diagnosticReport: {
               faceId: true,
               trueTone: true,
@@ -2579,16 +2571,20 @@ $285.00
         else if (/14/i.test(modelFamilyRaw)) modelFamily = 'iPhone 14 Series';
         else modelFamily = modelFamilyRaw || 'Lote Misto';
 
-        const grade = mapGrade(String(row[columnMapping.grade] || 'Grade A'));
+        const auctionHouse = String(row[columnMapping.auctionHouse] || 'USA Wholesale Direct');
+        const isVzRow = /verizon/i.test(auctionHouse);
+        const rawGradeStr = String(row[columnMapping.grade] || (isVzRow ? 'DNC' : 'Grade A'));
+        const grade = isVzRow ? mapVerizonGradeStrict(rawGradeStr) : mapGrade(rawGradeStr);
+        const finalTitle = isVzRow ? sanitizeVerizonTitle(title) : title;
         const quantity = Math.max(1, parseInt(String(row[columnMapping.quantity] || '1'), 10) || 1);
-        const currentBidUsd = Math.max(100, parseFloat(String(row[columnMapping.currentBidUsd] || '500')) || 500);
-        const startingBidUsd = Math.max(50, parseFloat(String(row[columnMapping.startingBidUsd] || String(currentBidUsd * 0.8))) || currentBidUsd * 0.8);
-        const estimatedBrazilRetailBrl = parseFloat(String(row[columnMapping.estimatedRetailBrl] || String(currentBidUsd * usdRate * 1.5))) || (currentBidUsd * usdRate * 1.5);
+        const currentBidUsd = isVzRow ? 0 : Math.max(100, parseFloat(String(row[columnMapping.currentBidUsd] || '500')) || 500);
+        const startingBidUsd = isVzRow ? 0 : Math.max(50, parseFloat(String(row[columnMapping.startingBidUsd] || String(currentBidUsd * 0.8))) || currentBidUsd * 0.8);
+        const estimatedBrazilRetailBrl = isVzRow ? 0 : (parseFloat(String(row[columnMapping.estimatedRetailBrl] || String(currentBidUsd * usdRate * 1.5))) || (currentBidUsd * usdRate * 1.5));
 
         return {
           id: `lot-imported-${Date.now()}-${idx}`,
           lotNumber,
-          title,
+          title: finalTitle,
           modelFamily,
           quantity,
           grade,
@@ -2597,13 +2593,13 @@ $285.00
           batteryHealthRange: String(row[columnMapping.batteryHealth] || '90% - 100%'),
           carrierStatus: 'Factory Unlocked (Global)',
           imeiStatus: 'Clean ESN / 100% Verificado',
-          auctionHouse: String(row[columnMapping.auctionHouse] || 'Verizon Direct US Liquidation'),
+          auctionHouse,
           location: String(row[columnMapping.location] || 'Miami, FL (Armazém 01)'),
           startingBidUsd,
           currentBidUsd,
-          reservePriceMet: true,
+          reservePriceMet: !isVzRow,
           estimatedBrazilRetailBrl,
-          totalBidsCount: Math.floor(Math.random() * 20) + 1,
+          totalBidsCount: isVzRow ? 0 : Math.floor(Math.random() * 20) + 1,
           endTime: new Date(Date.now() + 1000 * 60 * 60 * (Math.floor(Math.random() * 8) + 2)).toISOString(),
           imageUrl: quantity > 1 ? '/images/iphone_lot_wholesale_inspection_1793849011081.jpg' : '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
           galleryImages: [
@@ -2632,15 +2628,17 @@ $285.00
             screenCondition: 'Conforme Grade',
             housingCondition: 'Conforme Grade'
           })),
-          bidsHistory: [
-            {
-              id: `bid-seed-${idx}`,
-              bidderName: 'Licitante EUA Inicial',
-              amountUsd: currentBidUsd,
-              timestamp: 'Início do Leilão'
-            }
-          ],
-          sourceType: 'CUSTOM'
+          bidsHistory: isVzRow
+            ? []
+            : [
+                {
+                  id: `bid-seed-${idx}`,
+                  bidderName: 'Licitante EUA Inicial',
+                  amountUsd: currentBidUsd,
+                  timestamp: 'Início do Leilão'
+                }
+              ],
+          sourceType: isVzRow ? 'VERIZON' : 'CUSTOM'
         };
       });
 
@@ -2663,29 +2661,29 @@ $285.00
     const templateData = [
       {
         'Lote': 'US-99100-MIA',
-        'Titulo': 'Palete 10x iPhone 16 Pro Max 256GB Desbloqueados',
+        'Titulo': 'Palete 10x iPhone 16 Pro Max 256GB DNA Desbloqueados',
         'Modelo': 'iPhone 16 Pro Max',
         'Quantidade': 10,
-        'Grade': 'Grade A+',
+        'Grade': 'DNA',
         'Armazenamento': '256GB',
         'Saude Bateria': '95% - 100%',
-        'Lance Inicial USD': 6000,
-        'Lance Atual USD': 7200,
-        'Revenda Brasil BRL': 79000,
+        'Lance Inicial USD': 0,
+        'Lance Atual USD': 0,
+        'Revenda Brasil BRL': 0,
         'Casa de Leilao': 'Verizon Direct US Liquidation',
         'Localizacao': 'Miami, FL'
       },
       {
         'Lote': 'US-99101-DAL',
-        'Titulo': '5x iPhone 15 Pro 128GB Grade DNB Natural Titanium',
+        'Titulo': '5x iPhone 15 Pro 128GB DNB Natural Titanium',
         'Modelo': 'iPhone 15 Pro',
         'Quantidade': 5,
         'Grade': 'DNB',
         'Armazenamento': '128GB',
         'Saude Bateria': '88% - 94%',
-        'Lance Inicial USD': 2200,
-        'Lance Atual USD': 2800,
-        'Revenda Brasil BRL': 26000,
+        'Lance Inicial USD': 0,
+        'Lance Atual USD': 0,
+        'Revenda Brasil BRL': 0,
         'Casa de Leilao': 'Verizon Direct US Liquidation',
         'Localizacao': 'Dallas, TX'
       },
@@ -2728,16 +2726,21 @@ $285.00
   const handleStartEdit = (lot: AuctionLot) => {
     setEditingLotId(lot.id);
     setEditPriceUsd(lot.currentBidUsd);
-    setEditGrade(lot.grade);
+    setEditGrade(isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade);
   };
 
   const handleSaveEdit = (lotId: string) => {
     const updated = auctions.map(lot => {
       if (lot.id === lotId) {
+        const isVz = isVerizonLot(lot);
+        const finalGrade = isVz ? mapVerizonGradeStrict(editGrade) : editGrade;
         return {
           ...lot,
           currentBidUsd: editPriceUsd,
-          grade: editGrade
+          grade: finalGrade,
+          manifest: isVz && Array.isArray(lot.manifest)
+            ? lot.manifest.map(item => ({ ...item, grade: finalGrade }))
+            : lot.manifest
         };
       }
       return lot;
@@ -4435,7 +4438,7 @@ $285.00
                                 </span>
                                 <span>·</span>
                                 <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
-                                  {lot.mappedGrade} ({lot.gradeRaw})
+                                  {lot.mappedGrade}
                                 </span>
                                 {lot.uniqueCapacities.length > 0 && (
                                   <>
@@ -4848,22 +4851,30 @@ $285.00
                         <td className="py-3 px-3">
                           {isEditing ? (
                             <select
-                              value={editGrade}
+                              value={isVerizonLot(lot) ? mapVerizonGradeStrict(editGrade) : editGrade}
                               onChange={e => setEditGrade(e.target.value as GradeType)}
                               className="bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-xs text-white"
                             >
-                              <option value="Grade A+">Grade A+</option>
-                              <option value="Grade A">Grade A</option>
-                              <option value="Grade B">Grade B</option>
-                              <option value="Grade C">Grade C</option>
-                              <option value="DNA">DNA</option>
-                              <option value="DNB">DNB</option>
-                              <option value="DNC">DNC</option>
-                              <option value="DND">DND</option>
+                              {isVerizonLot(lot) ? (
+                                VERIZON_GRADES.map(g => (
+                                  <option key={g} value={g}>{g}</option>
+                                ))
+                              ) : (
+                                <>
+                                  <option value="Grade A+">Grade A+</option>
+                                  <option value="Grade A">Grade A</option>
+                                  <option value="Grade B">Grade B</option>
+                                  <option value="Grade C">Grade C</option>
+                                  <option value="DNA">DNA</option>
+                                  <option value="DNB">DNB</option>
+                                  <option value="DNC">DNC</option>
+                                  <option value="DND">DND</option>
+                                </>
+                              )}
                             </select>
                           ) : (
                             <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 border border-slate-700">
-                              {lot.grade}
+                              {isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade}
                             </span>
                           )}
                         </td>

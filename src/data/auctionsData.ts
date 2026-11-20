@@ -61,7 +61,7 @@ export const GRADE_EXPLANATIONS: Record<GradeType, {
     targetMarket: 'Perfeito para lojistas que fazem polimento ou recondicionamento estético.'
   },
   'DNA': {
-    label: 'DNA (Verizon Grade A Testado)',
+    label: 'DNA (Verizon Padrão Premium Testado)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
     borderColor: 'border-emerald-500/50',
     textColor: 'text-emerald-300',
@@ -73,7 +73,7 @@ export const GRADE_EXPLANATIONS: Record<GradeType, {
     targetMarket: 'Máxima valorização e segurança para lojistas e importadores.'
   },
   'DNB': {
-    label: 'DNB (Verizon Grade B Testado)',
+    label: 'DNB (Verizon Padrão Muito Bom Testado)',
     badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
     borderColor: 'border-amber-500/50',
     textColor: 'text-amber-300',
@@ -85,7 +85,7 @@ export const GRADE_EXPLANATIONS: Record<GradeType, {
     targetMarket: 'Excelente giro rápido de estoque com preço atrativo.'
   },
   'DNC': {
-    label: 'DNC (Verizon Grade C Testado)',
+    label: 'DNC (Verizon Padrão Funcional Testado)',
     badgeColor: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
     borderColor: 'border-orange-500/50',
     textColor: 'text-orange-300',
@@ -97,7 +97,7 @@ export const GRADE_EXPLANATIONS: Record<GradeType, {
     targetMarket: 'Ideal para recondicionamento e margem agressiva.'
   },
   'DND': {
-    label: 'DND (Verizon Grade D Testado)',
+    label: 'DND (Verizon Padrão Econômico Testado)',
     badgeColor: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
     borderColor: 'border-rose-500/50',
     textColor: 'text-rose-300',

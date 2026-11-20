@@ -1,5 +1,7 @@
 import { AuctionLot, GradeType } from '../types/auction';
 
+export const VERIZON_GRADES: GradeType[] = ['DNA', 'DNB', 'DNC', 'DND'];
+
 export const isVerizonLot = (lot?: Partial<AuctionLot> | null): boolean => {
   if (!lot) return false;
   return (
@@ -25,6 +27,60 @@ export const mapVerizonGradeStrict = (raw: string): GradeType => {
     return 'DNA';
   }
   return 'DNC';
+};
+
+export const sanitizeVerizonTitle = (title: string): string => {
+  if (!title) return '';
+  return title
+    .replace(/Grade\s+A\+\(T\)|Grade\s+A\(T\)|Grade\s+A\+|Grade\s+A(?=$|[\s,\-)/])/gi, 'DNA')
+    .replace(/Grade\s+B\+\(T\)|Grade\s+B\(T\)|Grade\s+B\+|Grade\s+B(?=$|[\s,\-)/])/gi, 'DNB')
+    .replace(/Grade\s+C\+\(T\)|Grade\s+C\(T\)|Grade\s+C\+|Grade\s+C(?=$|[\s,\-)/])/gi, 'DNC')
+    .replace(/Grade\s+D\+\(T\)|Grade\s+D\(T\)|Grade\s+D\+|Grade\s+D(?=$|[\s,\-)/])/gi, 'DND')
+    .replace(/Grade\s+(DNA|DNB|DNC|DND)/gi, '$1')
+    .replace(/\bA\+\(T\)|\bA\(T\)/gi, 'DNA')
+    .replace(/\bB\+\(T\)|\bB\(T\)/gi, 'DNB')
+    .replace(/\bC\+\(T\)|\bC\(T\)/gi, 'DNC')
+    .replace(/\bD\+\(T\)|\bD\(T\)/gi, 'DND')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};
+
+export const sanitizeVerizonDescription = (desc: string): string => {
+  if (!desc) return '';
+  return desc
+    .replace(/Grade\s+A\+\(T\)|Grade\s+A\(T\)|Grade\s+A\+|Grade\s+A(?=$|[\s,\-)./])/gi, 'DNA')
+    .replace(/Grade\s+B\+\(T\)|Grade\s+B\(T\)|Grade\s+B\+|Grade\s+B(?=$|[\s,\-)./])/gi, 'DNB')
+    .replace(/Grade\s+C\+\(T\)|Grade\s+C\(T\)|Grade\s+C\+|Grade\s+C(?=$|[\s,\-)./])/gi, 'DNC')
+    .replace(/Grade\s+D\+\(T\)|Grade\s+D\(T\)|Grade\s+D\+|Grade\s+D(?=$|[\s,\-)./])/gi, 'DND')
+    .replace(/Grade\s+(DNA|DNB|DNC|DND)/gi, '$1')
+    .replace(/\bA\+\(T\)|\bA\(T\)/gi, 'DNA')
+    .replace(/\bB\+\(T\)|\bB\(T\)/gi, 'DNB')
+    .replace(/\bC\+\(T\)|\bC\(T\)/gi, 'DNC')
+    .replace(/\bD\+\(T\)|\bD\(T\)/gi, 'DND')
+    .replace(/\s*\(\s*[ABCD]\+?(?:\(T\))?\s*\)/gi, '')
+    .replace(/Condi[çc][ãa]o\s+A\+/gi, 'Condição DNA')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};
+
+export const normalizeVerizonLot = (lot: AuctionLot): AuctionLot => {
+  if (!isVerizonLot(lot)) return lot;
+  const normalizedGrade = mapVerizonGradeStrict(lot.grade);
+  const normalizedManifest = Array.isArray(lot.manifest)
+    ? lot.manifest.map(item => ({
+        ...item,
+        grade: mapVerizonGradeStrict(item.grade || normalizedGrade)
+      }))
+    : [];
+
+  return {
+    ...lot,
+    sourceType: lot.sourceType || 'VERIZON',
+    grade: normalizedGrade,
+    title: sanitizeVerizonTitle(lot.title),
+    description: sanitizeVerizonDescription(lot.description),
+    manifest: normalizedManifest
+  };
 };
 
 const BSTOCK_COLOR_MAP: Record<string, string> = {
@@ -107,6 +163,7 @@ export interface LotMixSummary {
 
 export const getLotMixSummary = (lot?: Partial<AuctionLot> | null): LotMixSummary => {
   const manifest = Array.isArray(lot?.manifest) ? lot.manifest : [];
+  const verizon = isVerizonLot(lot);
   const map = new Map<string, MixBreakdownEntry>();
   const modelsSet = new Set<string>();
   const storagesSet = new Set<string>();
@@ -124,7 +181,8 @@ export const getLotMixSummary = (lot?: Partial<AuctionLot> | null): LotMixSummar
         : item.itemDescription
           ? parseBstockColorFromDesc(item.itemDescription, rawColor === 'Black' ? '' : rawColor)
           : rawColor || 'Padrão';
-    const grade = String(item.grade || lot?.grade || '-').trim();
+    const rawGrade = String(item.grade || lot?.grade || '-').trim();
+    const grade = verizon ? mapVerizonGradeStrict(rawGrade) : rawGrade;
     const qty = Math.max(1, Number(item.qty) || 1);
 
     if (model) modelsSet.add(model);

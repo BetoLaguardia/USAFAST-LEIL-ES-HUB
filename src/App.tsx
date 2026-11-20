@@ -19,7 +19,7 @@ import { supabase } from './services/supabaseClient';
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
-import { isVerizonLot, getLotMixSummary } from './utils/verizonUtils';
+import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from './utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { 
   Search, 
@@ -72,8 +72,8 @@ export default function App() {
             if (house.includes('apple certified') || title.includes('apple certified')) return false;
             return true;
           });
-          // Sanitize titles to remove 'Lote' prefix
-          parsed = parsed.map((a: any) => ({
+          // Sanitize titles and normalize Verizon grades strictly to DNA/DNB/DNC/DND
+          parsed = parsed.map((a: any) => normalizeVerizonLot({
             ...a,
             title: stripLotPrefix(a.title)
           }));
@@ -411,7 +411,7 @@ export default function App() {
       const banned = /govdeals|copart|liquidation\.com|apple certified/i;
       return (lots || [])
         .filter(l => !banned.test(l.auctionHouse || '') && !banned.test(l.title || '') && !banned.test(l.sourceType || ''))
-        .map(l => ({ ...l, title: stripLotPrefix(l.title) }));
+        .map(l => normalizeVerizonLot({ ...l, title: stripLotPrefix(l.title) }));
     };
 
     const loadInitialAuctions = async () => {
@@ -1115,8 +1115,12 @@ export default function App() {
 
                   <button
                     onClick={() => {
-                      setFilterAuctionHouse(filterAuctionHouse === 'VERIZON' ? 'all' : 'VERIZON');
+                      const nextHouse = filterAuctionHouse === 'VERIZON' ? 'all' : 'VERIZON';
+                      setFilterAuctionHouse(nextHouse);
                       setFilterModel('all');
+                      if (nextHouse === 'VERIZON' && filterGrade !== 'all' && !VERIZON_GRADES.includes(filterGrade as GradeType)) {
+                        setFilterGrade('all');
+                      }
                     }}
                     className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
                       filterAuctionHouse === 'VERIZON'
@@ -1239,7 +1243,10 @@ export default function App() {
                   >
                     {t.allGradesFilter}
                   </button>
-                  {['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND'].map(gradeKey => (
+                  {(filterAuctionHouse === 'VERIZON'
+                    ? VERIZON_GRADES
+                    : ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND']
+                  ).map(gradeKey => (
                     <button
                       key={gradeKey}
                       onClick={() => setFilterGrade(filterGrade === gradeKey ? 'all' : gradeKey)}
@@ -1398,9 +1405,9 @@ export default function App() {
                         const isSelected = selectedLotIds.includes(lot.id);
                         const isMixExpanded = !!expandedMixLotIds[lot.id];
                         const cleanTitle = stripLotPrefix(lot.title);
-                        const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS['Grade A'];
-                        const currentBrl = lot.currentBidUsd * usdRate;
                         const isVerizon = isVerizonLot(lot);
+                        const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[isVerizon ? 'DNC' : 'Grade A'];
+                        const currentBrl = lot.currentBidUsd * usdRate;
                         const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
 
                         return (
@@ -1548,9 +1555,9 @@ export default function App() {
                             const isMixExpanded = !!expandedMixLotIds[lot.id];
                             const mixSummary = getLotMixSummary(lot);
                             const cleanTitle = stripLotPrefix(lot.title);
-                            const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS['Grade A'];
-                            const currentBrl = lot.currentBidUsd * usdRate;
                             const isVerizon = isVerizonLot(lot);
+                            const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[isVerizon ? 'DNC' : 'Grade A'];
+                            const currentBrl = lot.currentBidUsd * usdRate;
                             const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
 
                             return (

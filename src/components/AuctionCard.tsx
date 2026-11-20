@@ -3,7 +3,7 @@ import { Gavel, Clock, MapPin, Battery, Smartphone, ShieldCheck, ArrowUpRight, L
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot } from '../utils/verizonUtils';
+import { isVerizonLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
 interface AuctionCardProps {
@@ -55,11 +55,11 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
   const verizon = isVerizonLot(lot);
   const cleanGrade = verizon
-    ? (lot.grade || 'DNC')
+    ? mapVerizonGradeStrict(lot.grade || 'DNC')
     : ((lot.grade || '').replace(/\(T\)/gi, '').trim() || 'Grade A');
   const cleanTitle = stripLotPrefix(lot.title);
 
-  const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[cleanGrade] || GRADE_EXPLANATIONS['Grade A'];
+  const gradeInfo = GRADE_EXPLANATIONS[cleanGrade] || GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[verizon ? 'DNC' : 'Grade A'];
 
   const formattedCurrentPrice = currency === 'USD'
     ? `$ ${lot.currentBidUsd.toLocaleString()} USD`

@@ -4,7 +4,7 @@ import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, getLotMixSummary, parseBstockColorFromDesc } from '../utils/verizonUtils';
+import { isVerizonLot, mapVerizonGradeStrict, getLotMixSummary, parseBstockColorFromDesc } from '../utils/verizonUtils';
 
 interface AuctionDetailModalProps {
   lot: AuctionLot | null;
@@ -56,10 +56,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
   const parsedBid = Number(bidValue);
   const mix = getLotMixSummary(lot);
 
-  const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || {
+  const displayLotGrade = verizon ? mapVerizonGradeStrict(lot.grade) : lot.grade;
+  const gradeInfo = GRADE_EXPLANATIONS[displayLotGrade] || {
     badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
     textColor: 'text-amber-300',
-    label: lot.grade,
+    label: displayLotGrade,
     description: ''
   };
 
@@ -95,7 +96,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
         `"${item.model}"`,
         item.storage,
         displayColor,
-        item.grade,
+        verizon ? mapVerizonGradeStrict(item.grade || displayLotGrade) : item.grade,
         `${item.batteryHealth}%`,
         item.imeiMasked,
         item.carrierStatus,
@@ -216,7 +217,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 />
                 <div className="absolute top-3 left-3">
                   <span className={`px-2.5 py-1 rounded text-xs font-bold border backdrop-blur-md ${gradeInfo.badgeColor}`}>
-                    {lot.grade}
+                    {displayLotGrade}
                   </span>
                 </div>
                 <div className="absolute bottom-3 left-3 right-3 bg-slate-950/85 backdrop-blur-sm border border-slate-800/80 rounded-lg p-2 flex items-center justify-between text-[11px]">
@@ -651,9 +652,14 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                         <td className="py-2 px-3 font-mono">{dev.storage}</td>
                         <td className="py-2 px-3 text-slate-300">{displayColor}</td>
                         <td className="py-2 px-3">
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_EXPLANATIONS[dev.grade]?.badgeColor || ''}`}>
-                            {dev.grade}
-                          </span>
+                          {(() => {
+                            const devGrade = verizon ? mapVerizonGradeStrict(dev.grade || displayLotGrade) : dev.grade;
+                            return (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_EXPLANATIONS[devGrade]?.badgeColor || ''}`}>
+                                {devGrade}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="py-2 px-3 font-mono text-slate-400">{dev.partNumber || '-'}</td>
                         <td className="py-2 px-3">
