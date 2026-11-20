@@ -57,7 +57,7 @@ export function readLocalStore(): any[] {
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf-8');
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
@@ -74,6 +74,11 @@ export function writeLocalStore(lots: any[]): 'local' | 'tmp' | 'memory' {
 
   try {
     fs.writeFileSync(ROOT_STORE_PATH, serialized, 'utf-8');
+    try {
+      if (fs.existsSync(TMP_STORE_PATH)) {
+        fs.writeFileSync(TMP_STORE_PATH, serialized, 'utf-8');
+      }
+    } catch {}
     return 'local';
   } catch {
     // Em ambientes serverless como Vercel, o diretório raiz é somente leitura; tenta /tmp
@@ -114,6 +119,7 @@ export async function getAuctionsFromStore(options?: {
       const pageSize = 1000;
       let from = 0;
       const allRows: any[] = [];
+      let hadError = false;
 
       while (true) {
         const { data: rows, error } = await supabase
@@ -123,6 +129,7 @@ export async function getAuctionsFromStore(options?: {
           .range(from, from + pageSize - 1);
 
         if (error) {
+          hadError = true;
           console.error('[Supabase Error] Falha ao buscar, usando store local:', error);
           break;
         }
@@ -143,7 +150,7 @@ export async function getAuctionsFromStore(options?: {
         from += pageSize;
       }
 
-      if (allRows.length > 0) {
+      if (!hadError) {
         auctionsData = allRows;
         storage = 'supabase';
       }
@@ -194,14 +201,14 @@ export async function getAuctionsFromStore(options?: {
 
 export async function saveAuctionsToStore(
   auctions: any[],
-  mode: 'replace' | 'append' = 'replace'
+  mode: 'replace' | 'append' | 'clear' = 'replace'
 ): Promise<{
   ok: boolean;
   count: number;
   storage: 'supabase' | 'local' | 'tmp' | 'memory';
   error?: string;
 }> {
-  if (!Array.isArray(auctions) || auctions.length === 0) {
+  if (!Array.isArray(auctions)) {
     return {
       ok: false,
       count: 0,
@@ -210,11 +217,12 @@ export async function saveAuctionsToStore(
     };
   }
 
-  const sanitized = sanitizeAuctions(auctions);
+  const sanitized = mode === 'clear' ? [] : sanitizeAuctions(auctions);
+  const isClearOrEmptyReplace = mode === 'clear' || (mode === 'replace' && sanitized.length === 0);
   const supabase = getSupabaseClient();
 
   if (supabase) {
-    if (mode === 'replace') {
+    if (mode === 'replace' || mode === 'clear') {
       const { error: deleteError } = await supabase
         .from('leiloes_importados')
         .delete()
@@ -229,6 +237,12 @@ export async function saveAuctionsToStore(
           error: deleteError.message,
         };
       }
+    }
+
+    if (isClearOrEmptyReplace) {
+      writeLocalStore([]);
+      console.log('[Database Engine] Todos os leilões importados foram removidos do Supabase e store local.');
+      return { ok: true, count: 0, storage: 'supabase' };
     }
 
     const chunkSize = 200;
@@ -256,7 +270,11 @@ export async function saveAuctionsToStore(
     return { ok: true, count: sanitized.length, storage: 'supabase' };
   }
 
-  const nextLots = mode === 'append' ? [...readLocalStore(), ...sanitized] : sanitized;
+  const nextLots = isClearOrEmptyReplace
+    ? []
+    : mode === 'append'
+    ? [...readLocalStore(), ...sanitized]
+    : sanitized;
   const localStorageMode = writeLocalStore(nextLots);
   console.log(`[Local Store] Salvos ${nextLots.length} lotes (${mode}, ${localStorageMode})`);
   return { ok: true, count: sanitized.length, storage: localStorageMode };

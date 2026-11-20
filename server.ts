@@ -49,13 +49,13 @@ async function startServer() {
     }
   });
 
-  // Endpoint para salvar os leilões importados
+  // Endpoint para salvar ou limpar os leilões importados
   app.post('/api/auctions', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
     try {
       const { auctions, mode } = req.body || {};
-      const saveMode = mode === 'append' ? 'append' : 'replace';
-      const result = await saveAuctionsToStore(auctions, saveMode);
+      const saveMode = mode === 'append' ? 'append' : mode === 'clear' ? 'clear' : 'replace';
+      const result = await saveAuctionsToStore(saveMode === 'clear' ? [] : auctions, saveMode);
       if (!result.ok) {
         const statusCode = result.error === 'Array de leilões inválido' ? 400 : 500;
         return res.status(statusCode).json({ ok: false, error: result.error });

@@ -25,9 +25,17 @@ export function getDeviceImageUrl(make?: string, model?: string, deviceType?: st
     return 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=600&q=80';
   }
 
-  // iPad
-  if (m.includes('ipad') || m.includes('tablet')) {
+  // iPad & Tablets
+  if (m.includes('ipad') || m.includes('tablet') || m.includes('galaxy tab')) {
     return 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=600&q=80';
+  }
+
+  // iPhone 17 / 18 / Air Series
+  if (m.includes('18 pro') || m.includes('17 pro')) {
+    return 'https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-16-pro-max.jpg';
+  }
+  if (m.includes('iphone 17') || m.includes('iphone air')) {
+    return 'https://fdn2.gsmarena.com/vv/bigpic/apple-iphone-16.jpg';
   }
 
   // iPhone 16 Series
@@ -74,7 +82,7 @@ export function getDeviceImageUrl(make?: string, model?: string, deviceType?: st
   }
 
   // Samsung Galaxy
-  if (m.includes('s24')) {
+  if (m.includes('s26') || m.includes('s25') || m.includes('s24')) {
     return 'https://fdn2.gsmarena.com/vv/bigpic/samsung-galaxy-s24-ultra-5g-sm-s928-stylus.jpg';
   }
   if (m.includes('s23')) {
@@ -94,7 +102,7 @@ export function getDeviceImageUrl(make?: string, model?: string, deviceType?: st
   }
 
   // Google Pixel
-  if (m.includes('pixel 9')) {
+  if (m.includes('pixel 10') || m.includes('pixel 9')) {
     return 'https://fdn2.gsmarena.com/vv/bigpic/google-pixel-9-pro-xl.jpg';
   }
   if (m.includes('pixel 8')) {

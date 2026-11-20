@@ -84,6 +84,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [parsedPreviewRows, setParsedPreviewRows] = useState<any[]>([]);
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [isLoadingVerizon, setIsLoadingVerizon] = useState(false);
+  const [isLoadingWeSell, setIsLoadingWeSell] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
   const [verizonUnitRate, setVerizonUnitRate] = useState<number>(85);
   const [verizonExpandedLot, setVerizonExpandedLot] = useState<string | null>(null);
   const [replaceExistingLots, setReplaceExistingLots] = useState(false);
@@ -623,7 +626,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   };
 
   const parseCsvText = (text: string): any[] => {
-    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const cleanText = text.replace(/^\uFEFF/, '');
+    const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) return [];
 
     let headerIndex = -1;
@@ -1151,14 +1155,16 @@ $285.00
         return;
       }
 
-      // 2. DEVICE CLASSIFICATION: iPhone, iPad, Apple Watch ONLY
+      // 2. DEVICE CLASSIFICATION: iPhone, iPad, Apple Watch ONLY (exclude Accessories)
       let deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | null = null;
       const catLower = category.trim().toLowerCase();
       const modelLower = model.trim().toLowerCase();
 
-      if (modelLower.includes('iphone') || catLower === 'phones') {
+      if (catLower === 'accessory' || catLower === 'accessories') {
+        deviceType = null;
+      } else if (modelLower.includes('iphone') || catLower === 'phones') {
         deviceType = 'iPhone';
-      } else if (modelLower.includes('ipad') || catLower === 'tablet') {
+      } else if (modelLower.includes('ipad') || modelLower.includes('galaxy tab') || catLower === 'tablet' || catLower === 'tablets') {
         deviceType = 'iPad';
       } else if (modelLower.includes('watch') || catLower === 'wearables') {
         deviceType = 'Apple Watch';
@@ -1350,9 +1356,10 @@ $285.00
       const calculatedStartingBidUsd = Math.round(totalCurrentBidUsd * (1 - stockAppleDiscountPercent / 100));
       const calculatedRetailBrl = Math.round(totalCurrentBidUsd * usdRate * (1 + stockAppleMarginPercent / 100));
 
-      const imageUrl = getDeviceImageUrl('Apple', g.modelFamily, g.deviceType);
+      const groupMake = g.items[0]?.make || 'Apple';
+      const imageUrl = getDeviceImageUrl(groupMake, g.modelFamily, g.deviceType);
 
-      const title = `Lote ${g.totalQuantity}x Apple ${g.modelFamily} ${g.capacity} - Grade ${g.grade} (Desbloqueado)`;
+      const title = `Lote ${g.totalQuantity}x ${groupMake} ${g.modelFamily} ${g.capacity} - Grade ${g.grade} (Desbloqueado)`;
       const lotNumber = `UF-APL-${String(1000 + idx)}`;
 
       const manifest = g.items.map((it, itemIdx) => ({
@@ -1433,6 +1440,70 @@ $285.00
     }
   };
 
+  const handleLoadOfficialWeSellCsv = async () => {
+    setIsLoadingWeSell(true);
+    try {
+      const res = await fetch('/assets/aistudio/WeSell_Cellular_-_StockList1119_a33ba42d.csv');
+      if (!res.ok) throw new Error('Não foi possível ler a planilha WeSell anexada.');
+      const text = await res.text();
+      const rows = parseCsvText(text);
+      if (rows.length === 0) throw new Error('A planilha WeSell não retornou linhas legíveis.');
+
+      setUploadedFileName('WeSell Cellular - StockList1119.csv');
+      setRawHeaders(Object.keys(rows[0] || {}));
+      setParsedPreviewRows(rows);
+      setPresetFormat('MARKETPLACE_3');
+      setStockAppleGroupMode('individual');
+      const { audit } = processStockAppleRows(rows, true);
+      showNotice(
+        `Planilha WeSell (11/19) carregada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`,
+        'success'
+      );
+    } catch (err: any) {
+      showNotice(`Erro ao carregar planilha WeSell: ${err?.message}`, 'error');
+    } finally {
+      setIsLoadingWeSell(false);
+    }
+  };
+
+  const handleClearAllImportedLots = async () => {
+    setIsClearingAll(true);
+    try {
+      setUploadedFileName(null);
+      setParsedPreviewRows([]);
+      setRawHeaders([]);
+      setPasteText('');
+      setVerizonGroupedLots([]);
+      setVerizonExpandedLot(null);
+      setStockAppleItems([]);
+      setStockAppleGroupedLots([]);
+      setStockAppleAudit({
+        totalRead: 0,
+        approvedCount: 0,
+        approvedIPhones: 0,
+        approvedIPads: 0,
+        approvedWatches: 0,
+        totalApprovedUnits: 0,
+        discardedLockedCount: 0,
+        discardedNonAppleCount: 0
+      });
+      setStockAppleSearch('');
+      setStockApplePage(1);
+      setVerizonPreviewPage(1);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      await Promise.resolve(onUpdateAuctions([]));
+      setConfirmClearAll(false);
+      showNotice('Todos os lotes e dados importados das planilhas foram limpos com sucesso!', 'success');
+    } catch (err: any) {
+      showNotice(`Erro ao limpar importações: ${err?.message || 'Tente novamente'}`, 'error');
+    } finally {
+      setIsClearingAll(false);
+    }
+  };
+
   // Publish Stock Apple Lots to Auction Store
   const handleApplyStockAppleImport = () => {
     const approvedItems = stockAppleItems.filter(i => i.status === 'APPROVED');
@@ -1446,9 +1517,9 @@ $285.00
       const markupPerUnit = isAssurant && addAssurantFiveUsd ? assurantMarkupAmount : 0;
       const formatMeta: Record<string, { prefix: string; house: string; loc: string; label: string }> = {
         ASSURANT: { prefix: 'ASR', house: 'Assurant Liquidation Hub', loc: 'Assurant Hub - Miami / Orlando', label: 'ASSURANT' },
-        MARKETPLACE_1: { prefix: 'MKT1', house: 'Marketplace 1 Hub', loc: 'Miami Hub - Marketplace 1', label: 'Marketplace 1' },
-        MARKETPLACE_2: { prefix: 'MKT2', house: 'Marketplace 2 Hub', loc: 'Miami Hub - Marketplace 2', label: 'Marketplace 2' },
-        MARKETPLACE_3: { prefix: 'MKT3', house: 'Marketplace 3 Hub', loc: 'Miami Hub - Marketplace 3', label: 'Marketplace 3' },
+        MARKETPLACE_1: { prefix: 'MKT1', house: 'Marketplace 1 (Mannapov)', loc: 'Miami Hub - Mannapov', label: 'Marketplace 1 (Mannapov)' },
+        MARKETPLACE_2: { prefix: 'MKT2', house: 'Marketplace 2 (RecirQ)', loc: 'Miami Hub - RecirQ Global', label: 'Marketplace 2 (RecirQ)' },
+        MARKETPLACE_3: { prefix: 'MKT3', house: 'Marketplace 3 (WeSell)', loc: 'New York / Miami Hub - WeSell', label: 'Marketplace 3 (WeSell)' },
         MACBOOKS: { prefix: 'MAC', house: 'Leilão Macbooks Hub', loc: 'Miami Hub - Apple Macbooks', label: 'Leilão Macbooks' },
         STOCK_APPLE: { prefix: 'UF', house: 'USAFAST Stock Hub', loc: 'Miami Hub - Armazém W23', label: 'Estoque Pronta Entrega' }
       };
@@ -1509,7 +1580,9 @@ $285.00
         // Individual item mode
         newLots = approvedItems.map((it, idx) => {
           const unitPriceWithMarkup = it.listPrice + markupPerUnit;
-          const totalCurrentBidUsd = Math.round(unitPriceWithMarkup);
+          const totalCurrentBidUsd = presetFormat === 'ASSURANT'
+            ? Math.round(unitPriceWithMarkup)
+            : Math.round(unitPriceWithMarkup * it.availableQuantity);
           const startingBidUsd = Math.round(totalCurrentBidUsd * (1 - stockAppleDiscountPercent / 100));
           const estimatedBrazilRetailBrl = Math.round(totalCurrentBidUsd * usdRate * (1 + stockAppleMarginPercent / 100));
 
@@ -1517,6 +1590,7 @@ $285.00
           const cleanModel = cleanLotTitle(it.model);
           const rawItemTitle = `${it.make || 'Apple'} ${cleanModel} ${it.capacity} ${it.color} - Grade ${it.grade}`;
           const finalItemTitle = cleanLotTitle(rawItemTitle);
+          const isWifiOnly = it.carrier && it.carrier.trim().toUpperCase() === 'WIFI';
 
           return {
             id: `${meta.prefix.toLowerCase()}-lot-ind-${Date.now()}-${idx}`,
@@ -1529,7 +1603,7 @@ $285.00
             primaryStorage: it.capacity,
             colorHighlights: [it.color],
             batteryHealthRange: '88% - 100% (Verificado)',
-            carrierStatus: '100% Factory Unlocked (Desbloqueado Global)',
+            carrierStatus: isWifiOnly ? 'Wi-Fi Only (Desbloqueado)' : '100% Factory Unlocked (Desbloqueado Global)',
             imeiStatus: 'Clean ESN / 100% Verificado',
             auctionHouse: presetFormat === 'STOCK_APPLE' ? `USAFAST Stock Hub (${it.warehouse})` : meta.house,
             location: presetFormat === 'STOCK_APPLE' ? (it.warehouse.includes('W23') ? 'Miami Hub - Armazém W23' : 'Miami Hub - Armazém W12') : meta.loc,
@@ -1547,7 +1621,7 @@ $285.00
               '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
               '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
             ],
-            description: `Item #${it.itemNumber} - Apple ${it.model} ${it.capacity}. Quantidade: ${it.availableQuantity}. ${it.description}. Grade ${it.grade}. Status: 100% UNLOCKED.`,
+            description: `Item #${it.itemNumber} - ${it.make || 'Apple'} ${it.model} ${it.capacity}. Quantidade: ${it.availableQuantity}. ${it.description}. Grade ${it.grade}. Status: ${isWifiOnly ? 'Wi-Fi / UNLOCKED' : '100% UNLOCKED'}.`,
             diagnosticReport: {
               faceId: true,
               trueTone: true,
@@ -1565,7 +1639,7 @@ $285.00
                 grade: it.grade,
                 batteryHealth: 92,
                 imeiMasked: `359820******${String(100 + (idx * 13) % 899)}`,
-                carrierStatus: '100% Desbloqueado',
+                carrierStatus: isWifiOnly ? 'Wi-Fi Only' : '100% Desbloqueado',
                 icloudStatus: 'Clean / FMI OFF',
                 screenCondition: `Conforme Grade ${it.grade}`,
                 housingCondition: `Conforme Grade ${it.grade}`,
@@ -1589,7 +1663,8 @@ $285.00
       }
 
       const targetSourceType = isStockFeedFormat(presetFormat) ? presetFormat : 'STOCK_APPLE';
-      const finalLots = (presetFormat === 'ASSURANT' || replaceExistingLots)
+      const shouldReplaceSameSource = replaceExistingLots || ['ASSURANT', 'MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3'].includes(presetFormat);
+      const finalLots = shouldReplaceSameSource
         ? [...newLots, ...auctions.filter(a => a.sourceType !== targetSourceType)]
         : [...newLots, ...auctions];
 
@@ -1859,11 +1934,31 @@ $285.00
           const isVerizon = headers.some(h => /lot #|item description|part #|inventory source/i.test(h)) ||
                             /verizon/i.test(file.name);
 
-          if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
+          if (/wesell/i.test(file.name)) {
+            setPresetFormat('MARKETPLACE_3');
+            setStockAppleGroupMode('individual');
+            const { audit } = processStockAppleRows(rows, true);
+            showNotice(`Planilha WeSell (Marketplace 3) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+          } else if (/mannapov/i.test(file.name)) {
+            setPresetFormat('MARKETPLACE_1');
+            setStockAppleGroupMode('individual');
+            const { audit } = processStockAppleRows(rows, true);
+            showNotice(`Planilha Mannapov (Marketplace 1) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
+          } else if (/recirq/i.test(file.name)) {
+            setPresetFormat('MARKETPLACE_2');
+            setStockAppleGroupMode('individual');
+            const { audit } = processStockAppleRows(rows, true);
+            showNotice(`Planilha RecirQ (Marketplace 2) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
+          } else if (/assurant/i.test(file.name)) {
+            setPresetFormat('ASSURANT');
+            setStockAppleGroupMode('individual');
+            const { audit } = processStockAppleRows(rows, true);
+            showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+          } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
             showNotice(`Planilha ${presetFormat} detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-          } else if (/assurant|b-stock|stocklist|stock_list|recirq|wesell|mannapov/i.test(file.name)) {
+          } else if (/b-stock|stocklist|stock_list/i.test(file.name)) {
             setPresetFormat('ASSURANT');
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
@@ -1953,11 +2048,31 @@ $285.00
         const isVerizonFormat = headers.some(h => /lot #|item description|part #|inventory source|package type/i.test(h)) ||
                                 /verizon/i.test(file.name);
 
-        if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
+        if (/wesell/i.test(file.name)) {
+          setPresetFormat('MARKETPLACE_3');
+          setStockAppleGroupMode('individual');
+          const { audit } = processStockAppleRows(rawJson, true);
+          showNotice(`Planilha WeSell (Marketplace 3) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos).`, 'success');
+        } else if (/mannapov/i.test(file.name)) {
+          setPresetFormat('MARKETPLACE_1');
+          setStockAppleGroupMode('individual');
+          const { audit } = processStockAppleRows(rawJson, true);
+          showNotice(`Planilha Mannapov (Marketplace 1) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
+        } else if (/recirq/i.test(file.name)) {
+          setPresetFormat('MARKETPLACE_2');
+          setStockAppleGroupMode('individual');
+          const { audit } = processStockAppleRows(rawJson, true);
+          showNotice(`Planilha RecirQ (Marketplace 2) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
+        } else if (/assurant/i.test(file.name)) {
+          setPresetFormat('ASSURANT');
+          setStockAppleGroupMode('individual');
+          const { audit } = processStockAppleRows(rawJson, true);
+          showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+        } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
           showNotice(`Planilha ${presetFormat} detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-        } else if (/assurant|b-stock|stocklist|stock_list|recirq|wesell|mannapov/i.test(file.name)) {
+        } else if (/b-stock|stocklist|stock_list/i.test(file.name)) {
           setPresetFormat('ASSURANT');
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
@@ -3303,42 +3418,136 @@ $285.00
       {/* ======================================================== */}
       {adminTab === 'upload' && (
         <div className="space-y-6">
-          {/* Verizon Featured Banner */}
-          <div className="p-6 bg-gradient-to-r from-red-950/40 via-slate-900 to-amber-950/30 border border-red-500/40 rounded-2xl space-y-4 shadow-xl">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded bg-red-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
-                    PADRÃO VERIZON
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/30 font-mono text-[11px]">
-                    US Carrier Wholesale Standard
-                  </span>
-                </div>
-                <h2 className="text-xl font-black text-white tracking-tight">
-                  Importador Especializado de Leilões VERIZON (Arquivo Anexado)
-                </h2>
-                <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                  Reconhece o layout exato com as 16 colunas oficiais (<span className="text-amber-300 font-mono">Lot #, Title, Qty, OEM, Model, Item Description, Part #, Category, Grade, Capacity, Color, Inventory Source, End Date, End Time, URL</span>) e agrupa automaticamente linhas com o mesmo número de lote.
-                </p>
+          {/* Clear All Imported Spreadsheets Action Bar */}
+          <div className="p-4 sm:p-5 bg-slate-900/80 border border-rose-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <h3 className="text-sm font-black text-white">
+                  Limpar Dados das Planilhas Importadas
+                </h3>
+                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-mono text-slate-300">
+                  {auctions.length.toLocaleString('pt-BR')} lote(s) ativo(s)
+                </span>
               </div>
+              <p className="text-xs text-slate-400">
+                Remove todos os lotes importados de todas as planilhas (Verizon, Assurant, WeSell, Estoque e Genérico) no catálogo e no banco de dados.
+              </p>
+            </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {!confirmClearAll ? (
+              <button
+                type="button"
+                disabled={isClearingAll}
+                onClick={() => setConfirmClearAll(true)}
+                className="px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/50 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Limpar Tudo que Foi Importado</span>
+              </button>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2 bg-rose-950/60 border border-rose-500/50 px-3 py-2 rounded-xl">
+                <span className="text-xs font-bold text-rose-200">
+                  Apagar todos os {auctions.length.toLocaleString('pt-BR')} lotes?
+                </span>
                 <button
                   type="button"
-                  disabled={isLoadingVerizon}
-                  onClick={handleLoadAttachedVerizonCsv}
-                  className="px-4 py-2.5 bg-red-600 hover:bg-red-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 active:scale-95"
+                  disabled={isClearingAll}
+                  onClick={handleClearAllImportedLots}
+                  className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-black rounded-lg text-xs transition-colors flex items-center gap-1.5"
                 >
-                  {isLoadingVerizon ? (
-                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  ) : (
-                    <FileSpreadsheet className="w-4 h-4 text-white" />
-                  )}
-                  <span>
-                    {isLoadingVerizon ? 'Lendo e Agrupando...' : '⚡ Carregar CSV VERIZON Oficial (Anexo)'}
-                  </span>
+                  {isClearingAll ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span>{isClearingAll ? 'Limpando...' : 'Sim, Limpar Tudo'}</span>
                 </button>
+                <button
+                  type="button"
+                  disabled={isClearingAll}
+                  onClick={() => setConfirmClearAll(false)}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Verizon & WeSell Featured Banners */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="p-6 bg-gradient-to-r from-red-950/40 via-slate-900 to-amber-950/30 border border-red-500/40 rounded-2xl space-y-4 shadow-xl">
+              <div className="flex flex-col justify-between gap-4 h-full">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded bg-red-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
+                      PADRÃO VERIZON
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/30 font-mono text-[11px]">
+                      US Carrier Wholesale
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black text-white tracking-tight">
+                    Importador VERIZON Oficial
+                  </h2>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Layout 16 colunas (<span className="text-amber-300 font-mono">Lot #, Title, Qty, OEM, Model, Grade</span>) com agrupamento automático por lote.
+                  </p>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    disabled={isLoadingVerizon}
+                    onClick={handleLoadAttachedVerizonCsv}
+                    className="px-4 py-2.5 bg-red-600 hover:bg-red-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 active:scale-95"
+                  >
+                    {isLoadingVerizon ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                    )}
+                    <span>
+                      {isLoadingVerizon ? 'Lendo e Agrupando...' : '⚡ Carregar CSV VERIZON Oficial (Anexo)'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-emerald-950/30 border border-cyan-500/40 rounded-2xl space-y-4 shadow-xl">
+              <div className="flex flex-col justify-between gap-4 h-full">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded bg-cyan-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
+                      LEILÃO WESELL (MARKETPLACE 3)
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-cyan-500/30 font-mono text-[11px]">
+                      StockList 11/19
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black text-white tracking-tight">
+                    Planilha WeSell Cellular (Apple, Samsung & Google)
+                  </h2>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Importa automaticamente <span className="text-cyan-300 font-mono">WeSell Cellular - StockList1119.csv</span> filtrando apenas aparelhos <span className="text-emerald-300 font-semibold">UNLOCKED</span> (exclui LOCKED e acessórios).
+                  </p>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    disabled={isLoadingWeSell}
+                    onClick={handleLoadOfficialWeSellCsv}
+                    className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/30 active:scale-95"
+                  >
+                    {isLoadingWeSell ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                    )}
+                    <span>
+                      {isLoadingWeSell ? 'Lendo Planilha WeSell...' : '⚡ Carregar Planilha WeSell 11/19 (Anexo)'}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -3374,6 +3583,33 @@ $285.00
                     }`}
                   >
                     <span>★ Leilão ASSURANT (XLSX / CSV)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPresetFormat('MARKETPLACE_3');
+                      setStockAppleGroupMode('individual');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      presetFormat === 'MARKETPLACE_3'
+                        ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>★ Leilão WeSell (Marketplace 3)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPresetFormat('STOCK_APPLE')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      presetFormat === 'STOCK_APPLE'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-400'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>Pronta Entrega / Stock Apple</span>
                   </button>
 
                   <button
@@ -3615,20 +3851,38 @@ $285.00
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-black uppercase flex items-center gap-1 shadow-sm">
+                    <span className={`px-2.5 py-0.5 rounded text-white text-[10px] font-black uppercase flex items-center gap-1 shadow-sm ${
+                      presetFormat === 'MARKETPLACE_3' ? 'bg-cyan-600' : presetFormat === 'ASSURANT' ? 'bg-indigo-600' : 'bg-emerald-600'
+                    }`}>
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>FILTRO RIGOROSO ATIVO: 100% APPLE UNLOCKED</span>
+                      <span>
+                        {presetFormat === 'MARKETPLACE_3'
+                          ? 'LEILÃO WESELL (MARKETPLACE 3) • 100% UNLOCKED'
+                          : presetFormat === 'ASSURANT'
+                          ? 'LEILÃO ASSURANT • 100% UNLOCKED'
+                          : 'FILTRO RIGOROSO ATIVO: 100% APPLE UNLOCKED'}
+                      </span>
                     </span>
                     <span className="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
-                      Apenas iPhones, iPads & Apple Watches Desbloqueados
+                      {presetFormat === 'STOCK_APPLE'
+                        ? 'Apenas iPhones, iPads & Apple Watches Desbloqueados'
+                        : 'Apple, Samsung & Google Desbloqueados (Sem LOCKED)'}
                     </span>
                   </div>
                   <h3 className="font-black text-white text-lg mt-1.5 flex items-center gap-2">
-                    <span>Estoque Apple Desbloqueado: {stockAppleAudit.approvedCount.toLocaleString()} Itens Aprovados</span>
+                    <span>
+                      {presetFormat === 'MARKETPLACE_3'
+                        ? `WeSell Cellular: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
+                        : presetFormat === 'ASSURANT'
+                        ? `Assurant: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
+                        : `Estoque Apple Desbloqueado: ${stockAppleAudit.approvedCount.toLocaleString()} Itens Aprovados`}
+                    </span>
                     <span className="text-slate-400 text-sm font-normal">({stockAppleAudit.totalApprovedUnits.toLocaleString()} Aparelhos Físicos)</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    Critério de seleção aplicado: Apenas modelos da Apple (<span className="text-emerald-300 font-semibold">iPhones</span>, <span className="text-emerald-300 font-semibold">iPads</span> e <span className="text-emerald-300 font-semibold">Apple Watches</span>) com status <span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>. Todos os aparelhos com bloqueio de operadora ou iCloud (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) foram automaticamente excluídos.
+                    {presetFormat === 'STOCK_APPLE'
+                      ? <>Critério de seleção aplicado: Apenas modelos da Apple (<span className="text-emerald-300 font-semibold">iPhones</span>, <span className="text-emerald-300 font-semibold">iPads</span> e <span className="text-emerald-300 font-semibold">Apple Watches</span>) com status <span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>. Todos os aparelhos com bloqueio de operadora ou iCloud (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) foram automaticamente excluídos.</>
+                      : <>Critério de seleção aplicado: Apenas smartphones, tablets e wearables desbloqueados (<span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>). Todos os aparelhos bloqueados (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) e acessórios foram automaticamente descartados.</>}
                   </p>
                 </div>
 

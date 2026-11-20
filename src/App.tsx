@@ -52,6 +52,9 @@ export default function App() {
   // Auction State with Persistent LocalStorage
   const [auctions, setAuctions] = useState<AuctionLot[]>(() => {
     try {
+      if (localStorage.getItem('us_iphone_auctions_cleared') === 'true') {
+        return [];
+      }
       const saved = localStorage.getItem('us_iphone_auctions_v1');
       if (saved) {
         let parsed = JSON.parse(saved);
@@ -261,15 +264,18 @@ export default function App() {
   const hasLocalUpdateRef = React.useRef(false);
 
   const UNSYNCED_FLAG_KEY = 'us_iphone_unsynced_local';
+  const CLEARED_FLAG_KEY = 'us_iphone_auctions_cleared';
 
   const syncAuctionsToSupabaseDirect = async (lots: AuctionLot[]): Promise<boolean> => {
-    if (!supabase || lots.length === 0) return false;
+    if (!supabase) return false;
     try {
       const { error: deleteError } = await supabase
         .from('leiloes_importados')
         .delete()
         .neq('id', 0);
       if (deleteError) return false;
+
+      if (lots.length === 0) return true;
 
       const chunkSize = 150;
       for (let i = 0; i < lots.length; i += chunkSize) {
@@ -296,14 +302,15 @@ export default function App() {
           .from('leiloes_importados')
           .select('data')
           .range(from, from + pageSize - 1);
-        if (error || !rows || rows.length === 0) break;
+        if (error) return null;
+        if (!rows || rows.length === 0) break;
         for (const r of rows) {
           if (r && r.data) allRows.push(r.data as AuctionLot);
         }
         if (rows.length < pageSize) break;
         from += pageSize;
       }
-      return allRows.length > 0 ? allRows : null;
+      return allRows;
     } catch {
       return null;
     }
@@ -311,6 +318,23 @@ export default function App() {
 
   const postAuctionsToBackend = async (lots: AuctionLot[]): Promise<boolean> => {
     try {
+      if (lots.length === 0) {
+        const res = await fetch('/api/auctions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ auctions: [], mode: 'clear' })
+        });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (!data || !data.ok) {
+          throw new Error(data?.error || 'Falha ao limpar lotes');
+        }
+        console.log('[App.tsx] Backend /api/auctions POST cleared all lots');
+        return true;
+      }
+
       const chunkSize = 1000;
       for (let i = 0; i < lots.length; i += chunkSize) {
         const chunk = lots.slice(i, i + chunkSize);
@@ -348,12 +372,21 @@ export default function App() {
     console.log(`[App.tsx] handleUpdateAuctions called with ${newAuctions.length} lots`);
     setAuctions(newAuctions);
     try {
-      localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(newAuctions));
-      localStorage.setItem(UNSYNCED_FLAG_KEY, 'true');
+      if (newAuctions.length === 0) {
+        localStorage.setItem(CLEARED_FLAG_KEY, 'true');
+        localStorage.setItem('us_iphone_auctions_v1', '[]');
+      } else {
+        localStorage.removeItem(CLEARED_FLAG_KEY);
+        localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(newAuctions));
+      }
       console.log(`[App.tsx] Saved ${newAuctions.length} lots to localStorage key 'us_iphone_auctions_v1'`);
     } catch (e: any) {
       console.error('[App.tsx] Failed to save to localStorage:', e);
     }
+
+    try {
+      localStorage.setItem(UNSYNCED_FLAG_KEY, 'true');
+    } catch (e) {}
 
     postAuctionsToBackend(newAuctions).then(synced => {
       if (synced) {
@@ -375,6 +408,7 @@ export default function App() {
 
     const loadInitialAuctions = async () => {
       let backendLots: AuctionLot[] = [];
+      let backendLoadedOk = false;
 
       try {
         const pageSize = 1000;
@@ -387,7 +421,11 @@ export default function App() {
             throw new Error(`HTTP ${res.status}`);
           }
           const data = await res.json();
-          if (!data || !Array.isArray(data.auctions) || data.auctions.length === 0) {
+          if (!data || !Array.isArray(data.auctions)) {
+            break;
+          }
+          backendLoadedOk = true;
+          if (data.auctions.length === 0) {
             break;
           }
           collected.push(...data.auctions);
@@ -404,9 +442,10 @@ export default function App() {
         console.warn('[App.tsx] Initial fetch from /api/auctions failed, trying Supabase fallback:', err);
       }
 
-      if (backendLots.length === 0) {
+      if (!backendLoadedOk) {
         const directLots = await fetchAuctionsFromSupabaseDirect();
-        if (directLots && directLots.length > 0) {
+        if (directLots !== null) {
+          backendLoadedOk = true;
           backendLots = sanitizeLots(directLots);
         }
       }
@@ -415,8 +454,10 @@ export default function App() {
 
       let localLots: AuctionLot[] = [];
       let hasUnsyncedLocal = false;
+      let isLocallyCleared = false;
       try {
         hasUnsyncedLocal = localStorage.getItem(UNSYNCED_FLAG_KEY) === 'true';
+        isLocallyCleared = localStorage.getItem(CLEARED_FLAG_KEY) === 'true';
         const saved = localStorage.getItem('us_iphone_auctions_v1');
         if (saved) {
           const parsed = JSON.parse(saved);
@@ -424,7 +465,16 @@ export default function App() {
         }
       } catch (e) {}
 
-      if (hasUnsyncedLocal && localLots.length > 0) {
+      if (hasUnsyncedLocal && isLocallyCleared) {
+        console.log('[App.tsx] Pushing pending clear state to backend...');
+        setAuctions([]);
+        const synced = await postAuctionsToBackend([]);
+        if (synced) {
+          try {
+            localStorage.removeItem(UNSYNCED_FLAG_KEY);
+          } catch (e) {}
+        }
+      } else if (hasUnsyncedLocal && localLots.length > 0) {
         console.log(`[App.tsx] Pushing ${localLots.length} unsynced local lots to backend...`);
         setAuctions(localLots);
         const synced = await postAuctionsToBackend(localLots);
@@ -433,11 +483,17 @@ export default function App() {
             localStorage.removeItem(UNSYNCED_FLAG_KEY);
           } catch (e) {}
         }
-      } else if (backendLots.length > 0) {
+      } else if (backendLoadedOk) {
         console.log(`[App.tsx] Loaded ${backendLots.length} lots from backend /api/auctions`);
         setAuctions(backendLots);
         try {
-          localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(backendLots));
+          if (backendLots.length === 0) {
+            localStorage.setItem(CLEARED_FLAG_KEY, 'true');
+            localStorage.setItem('us_iphone_auctions_v1', '[]');
+          } else {
+            localStorage.removeItem(CLEARED_FLAG_KEY);
+            localStorage.setItem('us_iphone_auctions_v1', JSON.stringify(backendLots));
+          }
         } catch (e) {}
       }
     };

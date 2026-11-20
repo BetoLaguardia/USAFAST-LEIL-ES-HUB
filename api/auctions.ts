@@ -57,8 +57,8 @@ export default async function handler(req: any, res: any) {
     try {
       const body = parseBody(req.body);
       const { auctions, mode } = body || {};
-      const saveMode = mode === 'append' ? 'append' : 'replace';
-      const result = await saveAuctionsToStore(auctions, saveMode);
+      const saveMode = mode === 'append' ? 'append' : mode === 'clear' ? 'clear' : 'replace';
+      const result = await saveAuctionsToStore(saveMode === 'clear' ? [] : auctions, saveMode);
 
       if (!result.ok) {
         const statusCode = result.error === 'Array de leilões inválido' ? 400 : 500;

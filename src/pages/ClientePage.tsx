@@ -172,19 +172,19 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     if (selectedGradeFilter !== 'all' && lot.grade !== selectedGradeFilter) return false;
     if (selectedCategoryFilter !== 'all') {
       const text = `${lot.modelFamily} ${lot.title} ${lot.description}`.toLowerCase();
-      if (selectedCategoryFilter === 'Tablets' && !/ipad|tablet/i.test(text)) return false;
+      if (selectedCategoryFilter === 'Tablets' && !/ipad|tablet|galaxy tab/i.test(text)) return false;
       if (selectedCategoryFilter === 'Smartwatch' && !/watch|wearable/i.test(text)) return false;
       if (selectedCategoryFilter === 'MacBooks' && !/macbook|laptop|notebook/i.test(text)) return false;
-      if (selectedCategoryFilter === 'Phones' && (/ipad|tablet|watch|wearable|macbook|laptop|notebook/i.test(text))) return false;
+      if (selectedCategoryFilter === 'Phones' && (/ipad|tablet|galaxy tab|watch|wearable|macbook|laptop|notebook/i.test(text))) return false;
     }
     if (selectedCapacityFilter !== 'all' && !lot.primaryStorage.toLowerCase().includes(selectedCapacityFilter.toLowerCase())) return false;
     if (selectedAuctionHouseFilter !== 'all' && lot.auctionHouse !== selectedAuctionHouseFilter) return false;
     if (selectedAuctionSystemFilter === 'VERIZON' && lot.sourceType !== 'VERIZON' && !/verizon/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && lot.sourceType !== 'MARKETPLACE_2' && !/marketplace 2/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && lot.sourceType !== 'MARKETPLACE_3' && !/marketplace 3/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && lot.sourceType !== 'MARKETPLACE_2' && !/marketplace 2|recirq/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && lot.sourceType !== 'MARKETPLACE_3' && !/marketplace 3|wesell/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'MACBOOKS' && lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse)) return false;
     if (selectedLotTypeFilter === 'wholesale' && lot.quantity <= 1) return false;
     if (selectedLotTypeFilter === 'single' && lot.quantity > 1) return false;
@@ -429,10 +429,13 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-medium"
                 >
                   <option value="all">Todas as Capacidades</option>
+                  <option value="32GB">32GB</option>
+                  <option value="64GB">64GB</option>
                   <option value="128GB">128GB</option>
                   <option value="256GB">256GB</option>
                   <option value="512GB">512GB</option>
                   <option value="1TB">1TB</option>
+                  <option value="2TB">2TB</option>
                 </select>
               </div>
             </div>

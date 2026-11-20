@@ -36,7 +36,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   onCalculateLot,
   onViewAllAuctions
 }) => {
-  // Filter only real spreadsheet auctions (Verizon & Assurant), excluding any banned platforms
+  // Filter only real spreadsheet auctions (Verizon & Assurant), excluding any banned platforms and marketplace feeds
   const carouselLots = auctions.filter(lot => {
     const house = (lot.auctionHouse || '').toLowerCase();
     const title = (lot.title || '').toLowerCase();
@@ -45,6 +45,8 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
     if (house.includes('copart') || title.includes('copart')) return false;
     if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
     if (house.includes('apple certified') || title.includes('apple certified')) return false;
+    if (house.includes('marketplace') || title.includes('marketplace') || house.includes('wesell') || src.startsWith('marketplace')) return false;
+    if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
     return true;
   });
 
@@ -82,7 +84,8 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
     return null;
   }
 
-  const currentLot = carouselLots[currentIndex];
+  const safeIndex = currentIndex % total;
+  const currentLot = carouselLots[safeIndex];
   const isVerizon = currentLot.sourceType === 'VERIZON' || /verizon/i.test(currentLot.auctionHouse);
   const auctionHouseName = isVerizon ? 'Leilão Oficial VERIZON' : 'Leilão Oficial ASSURANT';
   const cleanTitle = stripLotPrefix(currentLot.title);
@@ -113,7 +116,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
               Modelos em Destaque nos Leilões dos EUA
             </span>
             <span className="text-xs text-slate-400">
-              ({currentIndex + 1} de {total} modelos)
+              ({safeIndex + 1} de {total} modelos)
             </span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
@@ -332,7 +335,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                 key={lot.id}
                 onClick={() => setCurrentIndex(idx)}
                 className={`relative shrink-0 w-16 h-12 rounded-lg overflow-hidden border transition-all ${
-                  currentIndex === idx 
+                  safeIndex === idx 
                     ? 'border-amber-400 ring-2 ring-amber-400/30 scale-105' 
                     : 'border-slate-800 opacity-60 hover:opacity-100'
                 }`}
@@ -356,7 +359,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                 key={i}
                 onClick={() => setCurrentIndex(i)}
                 className={`h-1.5 rounded-full transition-all ${
-                  currentIndex === i ? 'w-6 bg-amber-400' : 'w-1.5 bg-slate-700 hover:bg-slate-500'
+                  safeIndex === i ? 'w-6 bg-amber-400' : 'w-1.5 bg-slate-700 hover:bg-slate-500'
                 }`}
                 aria-label={`Slide ${i + 1}`}
               />
