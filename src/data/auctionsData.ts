@@ -60,6 +60,18 @@ export const GRADE_EXPLANATIONS: Record<GradeType, {
     functionality: 'Placa-mãe, sensores e conexões 100% funcionais.',
     targetMarket: 'Perfeito para lojistas que fazem polimento ou recondicionamento estético.'
   },
+  'Grade D': {
+    label: 'Grade D (Reparo / Atacado Técnico)',
+    badgeColor: 'bg-rose-500/10 text-rose-400 border-rose-500/30',
+    borderColor: 'border-rose-500/40',
+    textColor: 'text-rose-400',
+    shortDesc: 'Aparelhos destinados a assistência técnica, troca de tela/vidro ou recondicionamento.',
+    screenDesc: 'Pode apresentar desgaste acentuado ou trinca estética conforme laudo.',
+    housingDesc: 'Sinais severos de uso ou necessidade de restauração de carcaça.',
+    batteryMin: '75% a 84% de capacidade original',
+    functionality: 'Placa lógica verificada e Clean IMEI para reaproveitamento ou reforma.',
+    targetMarket: 'Assistências técnicas e atacadistas de recondicionamento.'
+  },
   'DNA': {
     label: 'DNA (Verizon Padrão Premium Testado)',
     badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',

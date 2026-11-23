@@ -4,7 +4,7 @@ import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
 import { buildExpandedManifestUnits, exportLotManifestXlsx } from '../utils/manifestExport';
 
 interface AuctionDetailModalProps {
@@ -63,6 +63,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
   if (!isOpen || !lot) return null;
 
   const isAssurant = isAssurantLot(lot);
+  const tMobile = isTMobileLot(lot);
   const incrementSize = getLotIncrementSize(lot);
   const qtyStep = isAssurant ? getLotEffectiveQuantityStep(lot) : 1;
   const effectiveQty = verizon
@@ -163,6 +164,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             {(lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse)) && (
               <span className="px-2.5 py-0.5 rounded bg-blue-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
                 ASSURANT
+              </span>
+            )}
+            {tMobile && (
+              <span className="px-2.5 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                T-MOBILE
               </span>
             )}
             <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">

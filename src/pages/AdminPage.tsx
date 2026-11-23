@@ -5,6 +5,7 @@ import { getDeviceImageUrl, stripLotPrefix } from '../utils/deviceImages';
 import { fetchLivePtaxRate } from '../utils/ptaxService';
 import { isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc, sanitizeVerizonTitle, VERIZON_GRADES } from '../utils/verizonUtils';
 import { isAssurantLot, getEstimatedWholesalePrice } from '../utils/assurantUtils';
+import { buildTMobileAuctionLots, groupTMobileRows, isTMobileHeaders, TMobileGroupedLot } from '../utils/tmobileUtils';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -90,16 +91,19 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'paste'>('file');
-  const [presetFormat, setPresetFormat] = useState<'VERIZON' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS' | 'GENERIC'>('VERIZON');
+  const [presetFormat, setPresetFormat] = useState<'VERIZON' | 'T_MOBILE' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS' | 'GENERIC'>('VERIZON');
   const isStockFeedFormat = (fmt: string) => ['STOCK_APPLE', 'ASSURANT', 'MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3', 'MACBOOKS'].includes(fmt);
   const [pasteText, setPasteText] = useState('');
   const [parsedPreviewRows, setParsedPreviewRows] = useState<any[]>([]);
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [isLoadingVerizon, setIsLoadingVerizon] = useState(false);
+  const [isLoadingTMobile, setIsLoadingTMobile] = useState(false);
   const [isLoadingWeSell, setIsLoadingWeSell] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
   const [verizonExpandedLot, setVerizonExpandedLot] = useState<string | null>(null);
+  const [tMobileExpandedLot, setTMobileExpandedLot] = useState<string | null>(null);
+  const [tMobileGroupedLots, setTMobileGroupedLots] = useState<TMobileGroupedLot[]>([]);
   const [replaceExistingLots, setReplaceExistingLots] = useState(false);
   const [verizonImportMode, setVerizonImportMode] = useState<'individual' | 'grouped'>('grouped');
 
@@ -449,6 +453,46 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
   };
 
+  // Core parser for T-MOBILE Coppell (Tab 1 Colors + Tab 2 MIXED grouped by Lot ID)
+  const processTMobileRows = (rawRows: any[]) => {
+    const grouped = groupTMobileRows(rawRows);
+    setTMobileGroupedLots(grouped);
+    return grouped;
+  };
+
+  // 1-Click Loader for the attached T-Mobile Coppell CSV
+  const handleLoadAttachedTMobileCsv = async () => {
+    setIsLoadingTMobile(true);
+    try {
+      const res = await fetch('/assets/aistudio/BUYER_AUCTION_NOV_10_T-MOBILE_COPPELL_LOT_DETAIL_11_05_26_with_COLOR_8c29e0d0.csv');
+      if (!res.ok) {
+        throw new Error('Não foi possível ler a planilha T-Mobile anexada.');
+      }
+      const text = await res.text();
+      const rawRows = parseCsvText(text);
+      if (!rawRows || rawRows.length === 0) {
+        showNotice('Arquivo T-Mobile está vazio.', 'error');
+        return;
+      }
+
+      const grouped = processTMobileRows(rawRows);
+      setUploadedFileName('BUYER_AUCTION_NOV_10_T-MOBILE_COPPELL_with_COLOR.csv (Anexo)');
+      setPresetFormat('T_MOBILE');
+      setRawHeaders(Object.keys(rawRows[0] || {}));
+      setParsedPreviewRows(rawRows);
+
+      const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+      showNotice(
+        `Leilão T-Mobile Coppell carregado: ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) com mix de cores/modelos no padrão Verizon!`,
+        'success'
+      );
+    } catch (err: any) {
+      showNotice(`Falha ao carregar planilha T-Mobile: ${err?.message || err}`, 'error');
+    } finally {
+      setIsLoadingTMobile(false);
+    }
+  };
+
   // ----------------------------------------------------
   // UNIVERSAL XML SPREADSHEET PARSER (.xml / text XML)
   // ----------------------------------------------------
@@ -693,8 +737,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       const tabCount = (line.match(/\t/g) || []).length;
       const delim = semiCount > commaCount && semiCount >= tabCount ? ';' : tabCount > commaCount ? '\t' : ',';
 
-      const parts = parseCsvLineWithQuotes(line, delim).map(p => p.toLowerCase());
-      if (parts.some(p => p.includes('item') || p.includes('lot') || p.includes('model') || p.includes('category') || p.includes('warehouse'))) {
+      const parts = parseCsvLineWithQuotes(line, delim).map(p => p.replace(/\s+/g, ' ').trim().toLowerCase());
+      if (
+        (parts.some(p => p.includes('lot id')) && parts.some(p => p.includes('model') || p.includes('grade') || p.includes('quantity') || p.includes('price'))) ||
+        parts.some(p => p.includes('item') || p === 'lot #' || p.includes('lot#') || p.includes('model') || p.includes('category') || p.includes('warehouse'))
+      ) {
         headerIndex = i;
         delimiter = delim;
         break;
@@ -715,19 +762,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       return cols;
     };
 
-    const rawHeaders = parseRowSmart(lines[headerIndex], delimiter).map(h => h.replace(/^["']|["']$/g, '').trim());
+    const rawHeaders = parseRowSmart(lines[headerIndex], delimiter).map(h =>
+      h.replace(/^["']|["']$/g, '').replace(/\s+/g, ' ').trim()
+    );
     const rows: any[] = [];
 
     for (let i = headerIndex + 1; i < lines.length; i++) {
       const rawLine = lines[i];
       if (!rawLine.trim()) continue;
       const cols = parseRowSmart(rawLine, delimiter);
-      if (cols.length === 0 || cols.every(c => !c)) continue;
+      if (cols.length === 0 || cols.every(c => !String(c || '').trim())) continue;
       const obj: any = {};
       rawHeaders.forEach((h, idx) => {
+        if (!h) return;
         obj[h] = cols[idx] !== undefined ? cols[idx] : '';
       });
-      rows.push(obj);
+      if (Object.values(obj).some(v => String(v || '').trim() !== '')) {
+        rows.push(obj);
+      }
     }
     return rows;
   };
@@ -1598,6 +1650,8 @@ $285.00
       setPasteText('');
       setVerizonGroupedLots([]);
       setVerizonExpandedLot(null);
+      setTMobileGroupedLots([]);
+      setTMobileExpandedLot(null);
       setStockAppleItems([]);
       setStockAppleGroupedLots([]);
       setStockAppleAudit({
@@ -2067,6 +2121,8 @@ $285.00
           setRawHeaders(headers);
           setParsedPreviewRows(rows);
 
+          const isTMobile = isTMobileHeaders(headers, file.name);
+
           const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
                                (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
                                (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
@@ -2074,7 +2130,12 @@ $285.00
           const isVerizon = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
                             /verizon/i.test(file.name);
 
-          if (/wesell/i.test(file.name)) {
+          if (isTMobile) {
+            setPresetFormat('T_MOBILE');
+            const grouped = processTMobileRows(rows);
+            const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+            showNotice(`Planilha T-MOBILE detectada! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) com Mix de Cores/Modelos pronto para publicar.`, 'success');
+          } else if (/wesell/i.test(file.name)) {
             setPresetFormat('MARKETPLACE_3');
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
@@ -2121,6 +2182,10 @@ $285.00
             let totalUnits = 0;
             grouped.forEach(g => { totalUnits += g.totalQty; });
             showNotice(`Arquivo VERIZON detectado! ${grouped.length} lotes agrupados e ${totalUnits} aparelhos lidos.`);
+          } else if (presetFormat === 'T_MOBILE') {
+            const grouped = processTMobileRows(rows);
+            const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+            showNotice(`Planilha T-MOBILE carregada! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos).`, 'success');
           } else {
             setPresetFormat('GENERIC');
             showNotice(`Arquivo "${file.name}" carregado com ${rows.length} linhas.`);
@@ -2133,7 +2198,7 @@ $285.00
       return;
     }
 
-    // Standard binary reading for XLSX / XLS / XLX
+    // Standard binary reading for XLSX / XLS / XLX — reads ALL sheets (e.g. Tab 1 + Tab 2 MIXED)
     console.log(`[XLSX Upload] Reading binary file "${file.name}" with XLSX.read...`);
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -2141,46 +2206,69 @@ $285.00
         const buffer = evt.target?.result as ArrayBuffer;
         const wb = XLSX.read(buffer, { type: 'array' });
         console.log(`[XLSX Upload] Workbook loaded. Sheets found: ${wb.SheetNames.join(', ')}`);
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const dataGrid: any[] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-        console.log(`[XLSX Upload] sheet_to_json extracted ${dataGrid.length} raw matrix rows.`);
 
-        if (dataGrid.length === 0) {
-          console.warn('[XLSX Upload] dataGrid is empty!');
-          showNotice('O arquivo parece vazio ou sem dados válidos.', 'error');
-          return;
-        }
-
-        // Find header row in first 20 rows
-        let headerIdx = 0;
-        for (let r = 0; r < Math.min(20, dataGrid.length); r++) {
-          const rowStr = (dataGrid[r] || []).map((c: any) => String(c || '').toLowerCase()).join(' ');
-          if (rowStr.includes('item') && (rowStr.includes('warehouse') || rowStr.includes('model') || rowStr.includes('category') || rowStr.includes('lock'))) {
-            headerIdx = r;
-            break;
-          } else if (rowStr.includes('lot') && (rowStr.includes('description') || rowStr.includes('title') || rowStr.includes('model'))) {
-            headerIdx = r;
-            break;
-          }
-        }
-
-        console.log(`[XLSX Upload] Header row detected at index ${headerIdx}:`, dataGrid[headerIdx]);
-        const headers = (dataGrid[headerIdx] as string[]).map(h => String(h || '').trim());
         const rawJson: any[] = [];
-        for (let r = headerIdx + 1; r < dataGrid.length; r++) {
-          const rowData = dataGrid[r];
-          if (!rowData || rowData.length === 0) continue;
-          const obj: any = {};
-          headers.forEach((h, i) => {
-            obj[h] = rowData[i] !== undefined ? rowData[i] : '';
-          });
-          if (Object.values(obj).some(v => v !== '')) {
-            rawJson.push(obj);
+        const allHeadersSet = new Set<string>();
+        const loadedSheetLabels: string[] = [];
+
+        for (const sheetName of wb.SheetNames) {
+          const ws = wb.Sheets[sheetName];
+          if (!ws) continue;
+          const dataGrid: any[] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          if (!dataGrid || dataGrid.length < 2) continue;
+
+          // Find header row in first 25 rows (collapsing multiline headers like "Lot ID \n(In Ivalua)")
+          let headerIdx = -1;
+          for (let r = 0; r < Math.min(25, dataGrid.length); r++) {
+            const rowStr = (dataGrid[r] || [])
+              .map((c: any) => String(c || '').replace(/\s+/g, ' ').trim().toLowerCase())
+              .join(' ');
+            if (
+              (rowStr.includes('item') && (rowStr.includes('warehouse') || rowStr.includes('model') || rowStr.includes('category') || rowStr.includes('lock'))) ||
+              (rowStr.includes('lot') && (rowStr.includes('description') || rowStr.includes('title') || rowStr.includes('model') || rowStr.includes('grade') || rowStr.includes('quantity') || rowStr.includes('price')))
+            ) {
+              headerIdx = r;
+              break;
+            }
+          }
+
+          if (headerIdx === -1) {
+            if (wb.SheetNames.length === 1 && (dataGrid[0] || []).filter((c: any) => String(c || '').trim() !== '').length >= 2) {
+              headerIdx = 0;
+            } else {
+              continue;
+            }
+          }
+
+          const sheetHeaders = (dataGrid[headerIdx] as any[]).map(h =>
+            String(h || '').replace(/\s+/g, ' ').trim()
+          );
+          let sheetRowsAdded = 0;
+          for (let r = headerIdx + 1; r < dataGrid.length; r++) {
+            const rowData = dataGrid[r];
+            if (!rowData || rowData.length === 0) continue;
+            const obj: any = { _sheetName: sheetName };
+            let hasCell = false;
+            sheetHeaders.forEach((h, i) => {
+              if (!h) return;
+              const cellVal = rowData[i] !== undefined ? rowData[i] : '';
+              if (String(cellVal ?? '').trim() !== '') hasCell = true;
+              obj[h] = cellVal;
+            });
+            if (hasCell) {
+              rawJson.push(obj);
+              sheetRowsAdded++;
+            }
+          }
+
+          if (sheetRowsAdded > 0) {
+            sheetHeaders.filter(Boolean).forEach(h => allHeadersSet.add(h));
+            loadedSheetLabels.push(`${sheetName} (${sheetRowsAdded})`);
           }
         }
 
-        console.log(`[XLSX Upload] Transformed ${rawJson.length} objects from XLSX rows.`);
+        const headers = Array.from(allHeadersSet);
+        console.log(`[XLSX Upload] Transformed ${rawJson.length} objects across ${loadedSheetLabels.length} sheet(s): ${loadedSheetLabels.join(', ')}`);
         if (rawJson.length === 0) {
           showNotice('O arquivo parece vazio ou sem dados válidos.', 'error');
           return;
@@ -2189,6 +2277,8 @@ $285.00
         setRawHeaders(headers);
         setParsedPreviewRows(rawJson);
 
+        const isTMobileFormat = isTMobileHeaders(headers, file.name);
+
         const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
                              (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
                              (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
@@ -2196,7 +2286,15 @@ $285.00
         const isVerizonFormat = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
                                 /verizon/i.test(file.name);
 
-        if (/wesell/i.test(file.name)) {
+        if (isTMobileFormat) {
+          setPresetFormat('T_MOBILE');
+          const grouped = processTMobileRows(rawJson);
+          const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+          showNotice(
+            `Planilha T-MOBILE detectada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos com Mix de Modelos/Cores.`,
+            'success'
+          );
+        } else if (/wesell/i.test(file.name)) {
           setPresetFormat('MARKETPLACE_3');
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
@@ -2222,7 +2320,7 @@ $285.00
           const grouped = processVerizonRows(rawJson);
           let totalUnits = 0;
           grouped.forEach(g => { totalUnits += g.totalQty; });
-          showNotice(`Planilha VERIZON detectada! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
+          showNotice(`Planilha VERIZON detectada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
         } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
@@ -2243,6 +2341,10 @@ $285.00
           let totalUnits = 0;
           grouped.forEach(g => { totalUnits += g.totalQty; });
           showNotice(`Arquivo VERIZON detectado! ${grouped.length} lotes agrupados e ${totalUnits} aparelhos lidos.`);
+        } else if (presetFormat === 'T_MOBILE') {
+          const grouped = processTMobileRows(rawJson);
+          const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+          showNotice(`Planilha T-MOBILE carregada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos).`, 'success');
         } else {
           setPresetFormat('GENERIC');
           const mapping = {
@@ -2407,12 +2509,19 @@ $285.00
       setParsedPreviewRows(rows);
       setUploadedFileName('Dados Colados do Excel / CSV');
 
+      const isTMobile = isTMobileHeaders(headers);
+
       const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
                            (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
 
       const isVerizon = headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h));
 
-      if (/A02-ASSURANT|assurant/i.test(pasteText)) {
+      if (isTMobile || presetFormat === 'T_MOBILE') {
+        setPresetFormat('T_MOBILE');
+        const grouped = processTMobileRows(rows);
+        const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+        showNotice(`Padrão T-MOBILE detectado! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) no padrão Mix.`, 'success');
+      } else if (/A02-ASSURANT|assurant/i.test(pasteText)) {
         setPresetFormat('ASSURANT');
         setStockAppleGroupMode('individual');
         const { audit } = processStockAppleRows(rows, true);
@@ -2632,6 +2741,33 @@ $285.00
     }
   };
 
+  // Publish T-MOBILE lots (Grouped by Lot ID using Verizon Mix architecture)
+  const handleApplyTMobileImport = () => {
+    if (tMobileGroupedLots.length === 0) {
+      showNotice('Nenhum lote T-MOBILE para publicar.', 'error');
+      return;
+    }
+    try {
+      const newLots = buildTMobileAuctionLots(tMobileGroupedLots, usdRate);
+      const finalLots = replaceExistingLots
+        ? newLots
+        : [
+            ...newLots,
+            ...auctions.filter(a => !/t-?mobile/i.test(a.auctionHouse || '')),
+          ];
+
+      onUpdateAuctions(finalLots);
+      const totalUnits = newLots.reduce((acc, l) => acc + l.quantity, 0);
+      showNotice(
+        `🎉 ${newLots.length} Lotes Oficiais T-MOBILE (${totalUnits.toLocaleString()} aparelhos) publicados com sucesso com Mix expandível!`,
+        'success'
+      );
+      setAdminTab('lots');
+    } catch (err: any) {
+      showNotice(`Falha ao publicar lotes T-MOBILE: ${err?.message}`, 'error');
+    }
+  };
+
   // Publish Generic Custom Lots
   const handleApplyImport = () => {
     if (isStockFeedFormat(presetFormat) && stockAppleItems.length > 0) {
@@ -2641,6 +2777,11 @@ $285.00
 
     if (presetFormat === 'VERIZON' && verizonGroupedLots.length > 0) {
       handleApplyVerizonImport();
+      return;
+    }
+
+    if (presetFormat === 'T_MOBILE' && tMobileGroupedLots.length > 0) {
+      handleApplyTMobileImport();
       return;
     }
 
@@ -3663,8 +3804,8 @@ $285.00
             )}
           </div>
 
-          {/* Verizon & WeSell Featured Banners */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {/* Verizon, T-Mobile & WeSell Featured Banners */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <div className="p-6 bg-gradient-to-r from-red-950/40 via-slate-900 to-amber-950/30 border border-red-500/40 rounded-2xl space-y-4 shadow-xl">
               <div className="flex flex-col justify-between gap-4 h-full">
                 <div className="space-y-1">
@@ -3698,6 +3839,45 @@ $285.00
                     )}
                     <span>
                       {isLoadingVerizon ? 'Lendo e Agrupando...' : '⚡ Carregar CSV VERIZON Oficial (Anexo)'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-gradient-to-r from-fuchsia-950/40 via-slate-900 to-pink-950/30 border border-fuchsia-500/40 rounded-2xl space-y-4 shadow-xl">
+              <div className="flex flex-col justify-between gap-4 h-full">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
+                      LEILÃO T-MOBILE COPPELL
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded bg-slate-800 text-fuchsia-300 border border-fuchsia-500/30 font-mono text-[11px]">
+                      2 Abas (Color + Mixed)
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black text-white tracking-tight">
+                    Importador T-Mobile Live Auction
+                  </h2>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Lê todas as abas do XLSX/CSV (<span className="text-fuchsia-300 font-mono">BUYER LOTS w/ COLOR</span> e <span className="text-fuchsia-300 font-mono">MIXED</span>), expandindo cores e modelos no padrão Mix da Verizon.
+                  </p>
+                </div>
+
+                <div>
+                  <button
+                    type="button"
+                    disabled={isLoadingTMobile}
+                    onClick={handleLoadAttachedTMobileCsv}
+                    className="px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-600/30 active:scale-95"
+                  >
+                    {isLoadingTMobile ? (
+                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    ) : (
+                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                    )}
+                    <span>
+                      {isLoadingTMobile ? 'Lendo T-Mobile...' : '⚡ Carregar Lista T-Mobile Coppell (Anexo)'}
                     </span>
                   </button>
                 </div>
@@ -3760,6 +3940,18 @@ $285.00
                     }`}
                   >
                     <span>★ Padrão VERIZON (DNA, DNB, DNC, DND)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPresetFormat('T_MOBILE')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      presetFormat === 'T_MOBILE'
+                        ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-600/25 ring-1 ring-fuchsia-400'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>★ Leilão T-MOBILE (2 Abas / Mix)</span>
                   </button>
 
                   <button
@@ -4662,6 +4854,151 @@ $285.00
                                           </span>
                                         </td>
                                         <td className="py-1.5 px-2.5 font-bold text-emerald-300">{item.grade}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* T-MOBILE MIX PREVIEW & PUBLISH CONSOLE                   */}
+          {/* ======================================================== */}
+          {presetFormat === 'T_MOBILE' && tMobileGroupedLots.length > 0 && (
+            <div className="space-y-6 p-6 bg-slate-900/90 border border-fuchsia-500/40 rounded-2xl shadow-2xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded bg-fuchsia-600 text-white text-[10px] font-black uppercase">
+                      T-MOBILE COPPELL PRONTO
+                    </span>
+                    <h3 className="font-black text-white text-lg">
+                      {tMobileGroupedLots.length} Lotes Agrupados Detectados ({tMobileGroupedLots.reduce((acc, l) => acc + l.totalQty, 0).toLocaleString()} Aparelhos)
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Lotes agrupados por Lot ID no mesmo padrão Mix da Verizon: cores detalhadas por coluna, modelos combinados na aba MIXED e lance inicial unitário oficial.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleApplyTMobileImport}
+                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Publicar {tMobileGroupedLots.length} Lotes T-Mobile no Catálogo</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span className="font-semibold text-slate-300">Prévia dos Lotes T-Mobile Agrupados (Mix de Modelos, GBs e Cores):</span>
+                  <span>Clique em &quot;Manifesto&quot; para expandir as cores e itens</span>
+                </div>
+
+                <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 divide-y divide-slate-800/80 max-h-[500px] overflow-y-auto">
+                  {tMobileGroupedLots.map((lot, idx) => {
+                    const isExpanded = tMobileExpandedLot === lot.lotNumber;
+                    return (
+                      <div key={lot.lotNumber} className="transition-colors hover:bg-slate-900/40">
+                        <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <span className="font-mono text-xs px-2 py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 font-bold shrink-0">
+                              #{idx + 1} · {lot.lotNumber}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+                                {lot.title}
+                              </h4>
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-400">
+                                <span className="text-slate-300 font-medium">
+                                  {lot.uniqueModels.length > 1 ? `Mix (${lot.uniqueModels.length} modelos)` : lot.primaryModel}
+                                </span>
+                                <span>·</span>
+                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 font-mono font-bold">
+                                  {lot.totalQty.toLocaleString()} un.
+                                </span>
+                                <span>·</span>
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
+                                  {lot.mappedGrade}
+                                </span>
+                                {lot.uniqueCapacities.length > 0 && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-cyan-300 font-mono">{lot.uniqueCapacities.join(' / ')}</span>
+                                  </>
+                                )}
+                                {lot.uniqueColors.length > 0 && (
+                                  <>
+                                    <span>·</span>
+                                    <span className="text-slate-300">
+                                      {lot.uniqueColors.length} Cores ({lot.uniqueColors.slice(0, 4).join(', ')}{lot.uniqueColors.length > 4 ? ` +${lot.uniqueColors.length - 4}` : ''})
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right font-mono">
+                              <span className="text-xs font-black text-amber-400 block">
+                                ${lot.unitPriceUsd.toLocaleString()} USD / un.
+                              </span>
+                              <span className="text-[10px] text-slate-400 block">
+                                Total: ${lot.totalStartPriceUsd.toLocaleString()} USD
+                              </span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setTMobileExpandedLot(isExpanded ? null : lot.lotNumber)}
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                            >
+                              <Layers className="w-3.5 h-3.5 text-amber-400" />
+                              <span>{isExpanded ? 'Ocultar' : `Manifesto (${lot.manifest.length})`}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className={`grid transition-all duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                          <div className="overflow-hidden">
+                            <div className="p-4 bg-slate-900/80 border-t border-slate-800 space-y-2">
+                              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-800">
+                                <table className="w-full text-left text-[11px] border-collapse bg-slate-950">
+                                  <thead>
+                                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-900/90">
+                                      <th className="py-1.5 px-2.5">Qtd</th>
+                                      <th className="py-1.5 px-2.5">Modelo</th>
+                                      <th className="py-1.5 px-2.5">Memória</th>
+                                      <th className="py-1.5 px-2.5">Cor</th>
+                                      <th className="py-1.5 px-2.5">Ivalua ID</th>
+                                      <th className="py-1.5 px-2.5">Status</th>
+                                      <th className="py-1.5 px-2.5">Grade</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                    {lot.manifest.map((item, mIdx) => (
+                                      <tr key={mIdx} className="hover:bg-slate-900/50">
+                                        <td className="py-1.5 px-2.5 font-mono text-amber-400 font-bold">{item.qty || 1}x</td>
+                                        <td className="py-1.5 px-2.5 font-medium text-white">{item.model}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-cyan-300">{item.storage}</td>
+                                        <td className="py-1.5 px-2.5 text-slate-200 font-semibold">{item.color}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-slate-400">{item.partNumber || '-'}</td>
+                                        <td className="py-1.5 px-2.5 text-emerald-300">{item.carrierStatus}</td>
+                                        <td className="py-1.5 px-2.5 font-bold text-amber-300">{item.grade}</td>
                                       </tr>
                                     ))}
                                   </tbody>

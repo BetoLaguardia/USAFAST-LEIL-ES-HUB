@@ -29,7 +29,7 @@ import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
 import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from '../components/LotMixExpandable';
 
 interface ClientePageProps {
@@ -69,7 +69,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [selectedCapacityFilter, setSelectedCapacityFilter] = useState<string>('all');
   const [selectedAuctionHouseFilter, setSelectedAuctionHouseFilter] = useState<string>('all');
-  const [selectedAuctionSystemFilter, setSelectedAuctionSystemFilter] = useState<'all' | 'VERIZON' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS'>('all');
+  const [selectedAuctionSystemFilter, setSelectedAuctionSystemFilter] = useState<'all' | 'VERIZON' | 'T_MOBILE' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS'>('all');
   const [selectedLotTypeFilter, setSelectedLotTypeFilter] = useState<string>('all');
   const [clientSearch, setClientSearch] = useState('');
   const [clientPage, setClientPage] = useState<number>(1);
@@ -170,6 +170,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   const matchesClientAuctionFilter = (lot: AuctionLot) => {
     if (selectedAuctionHouseFilter !== 'all' && lot.auctionHouse !== selectedAuctionHouseFilter) return false;
     if (selectedAuctionSystemFilter === 'VERIZON' && !isVerizonLot(lot)) return false;
+    if (selectedAuctionSystemFilter === 'T_MOBILE' && !isTMobileLot(lot)) return false;
     if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
@@ -192,7 +193,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
 
   // Dynamic list of models, grades and auction houses present in active catalog
   const availableModels = Array.from(new Set(lotsForClientAuction.map(a => a.modelFamily))).filter(Boolean).sort((a, b) => a.localeCompare(b));
-  const GRADE_ORDER = ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND'];
+  const GRADE_ORDER = ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'Grade D', 'DNA', 'DNB', 'DNC', 'DND'];
   const availableGrades = Array.from(new Set(lotsForClientGrades.map(a => a.grade)))
     .filter(g => Boolean(g) && (!isVerizonFilterActive || VERIZON_GRADES.includes(g)))
     .sort((a, b) => {
@@ -252,6 +253,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     }
     if (selectedAuctionHouseFilter !== 'all' && lot.auctionHouse !== selectedAuctionHouseFilter) return false;
     if (selectedAuctionSystemFilter === 'VERIZON' && !isVerizonLot(lot)) return false;
+    if (selectedAuctionSystemFilter === 'T_MOBILE' && !isTMobileLot(lot)) return false;
     if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
@@ -437,6 +439,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                 >
                   <option value="all">Todos os Leilões</option>
                   <option value="VERIZON">⚡ Leilão VERIZON</option>
+                  <option value="T_MOBILE">📡 Leilão T-MOBILE Coppell</option>
                   <option value="ASSURANT">🔹 Leilão ASSURANT</option>
                   <option value="STOCK_APPLE">📦 Estoque Apple Pronta Entrega</option>
                   <option value="MARKETPLACE_1">🏬 Marketplace 1 (Mannapov)</option>
@@ -626,6 +629,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 ASSURANT
                               </span>
                             )}
+                            {isTMobileLot(lot) && (
+                              <span className="px-1.5 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[9px] uppercase">
+                                T-MOBILE
+                              </span>
+                            )}
                             <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
                               {isVerizon && <Lock className="w-2.5 h-2.5 text-red-400" />}
                               <span>{lot.quantity} un.{isVerizon ? ' fixas' : ''}</span>
@@ -786,6 +794,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 {isAssurant && (
                                   <span className="px-1.5 py-0.5 rounded bg-blue-600/90 text-white font-black text-[9px] block w-max uppercase tracking-wider">
                                     ASSURANT
+                                  </span>
+                                )}
+                                {isTMobileLot(lot) && (
+                                  <span className="px-1.5 py-0.5 rounded bg-fuchsia-600/90 text-white font-black text-[9px] block w-max uppercase tracking-wider">
+                                    T-MOBILE
                                   </span>
                                 )}
                               </div>

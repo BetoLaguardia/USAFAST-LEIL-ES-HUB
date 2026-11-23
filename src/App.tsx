@@ -25,7 +25,7 @@ import {
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
-import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
 import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { 
@@ -666,7 +666,9 @@ export default function App() {
         ? auctions.filter(a => a.sourceType === 'VERIZON' || /verizon/i.test(a.auctionHouse))
         : filterAuctionHouse === 'ASSURANT'
           ? auctions.filter(a => a.sourceType === 'ASSURANT' || /assurant/i.test(a.auctionHouse))
-          : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
+          : filterAuctionHouse === 'T_MOBILE'
+            ? auctions.filter(a => isTMobileLot(a))
+            : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
 
     const modelMap = new Map<string, { model: string; count: number; totalUnits: number }>();
 
@@ -692,7 +694,7 @@ export default function App() {
 
   // Dynamic list of grades belonging ONLY to the currently selected auction (and model)
   const availableGrades = useMemo(() => {
-    const GRADE_ORDER = ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'DNA', 'DNB', 'DNC', 'DND'];
+    const GRADE_ORDER = ['Grade A+', 'Grade A', 'Grade B', 'Grade C', 'Grade D', 'DNA', 'DNB', 'DNC', 'DND'];
     const sourceLots = auctions.filter(lot => {
       const house = (lot.auctionHouse || '').toLowerCase();
       const title = (lot.title || '').toLowerCase();
@@ -707,6 +709,8 @@ export default function App() {
         if (!isVerizonLot(lot)) return false;
       } else if (filterAuctionHouse === 'ASSURANT') {
         if (lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse || '')) return false;
+      } else if (filterAuctionHouse === 'T_MOBILE') {
+        if (!isTMobileLot(lot)) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) return false;
       }
@@ -846,6 +850,8 @@ export default function App() {
       } else if (filterAuctionHouse === 'ASSURANT') {
         const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
         if (!isAssurant) return false;
+      } else if (filterAuctionHouse === 'T_MOBILE') {
+        if (!isTMobileLot(lot)) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) {
           return false;
@@ -1221,10 +1227,26 @@ export default function App() {
                         {t.assurantBadge}
                       </button>
 
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterAuctionHouse(filterAuctionHouse === 'T_MOBILE' ? 'all' : 'T_MOBILE');
+                          setFilterModel('all');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                          filterAuctionHouse === 'T_MOBILE'
+                            ? 'bg-fuchsia-600 text-white font-bold'
+                            : 'text-fuchsia-300 hover:bg-fuchsia-500/15'
+                        }`}
+                      >
+                        T-MOBILE
+                      </button>
+
                       {Array.from(new Set(auctions.map(a => a.auctionHouse)))
                         .filter(h => h &&
                           !/verizon/i.test(h) &&
                           !/assurant/i.test(h) &&
+                          !/t-?mobile/i.test(h) &&
                           !/liquidation\.com/i.test(h) &&
                           !/apple certified/i.test(h) &&
                           !/marketplace/i.test(h) &&
@@ -1534,6 +1556,11 @@ export default function App() {
                                       ASSURANT
                                     </span>
                                   )}
+                                  {isTMobileLot(lot) && (
+                                    <span className="px-1.5 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[9px] uppercase tracking-wider">
+                                      T-MOBILE
+                                    </span>
+                                  )}
                                 </div>
                                 <h4
                                   onClick={() => setSelectedLotForDetail(lot)}
@@ -1718,6 +1745,10 @@ export default function App() {
                                     ) : isAssurant ? (
                                       <span className="px-2 py-1 rounded bg-blue-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
                                         ASSURANT
+                                      </span>
+                                    ) : isTMobileLot(lot) ? (
+                                      <span className="px-2 py-1 rounded bg-fuchsia-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
+                                        T-MOBILE
                                       </span>
                                     ) : (
                                       <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 font-bold text-[10px] inline-block">

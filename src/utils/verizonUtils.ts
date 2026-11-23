@@ -11,6 +11,15 @@ export const isVerizonLot = (lot?: Partial<AuctionLot> | null): boolean => {
   );
 };
 
+export const isTMobileLot = (lot?: Partial<AuctionLot> | null): boolean => {
+  if (!lot) return false;
+  return (
+    /t-?mobile/i.test(lot.auctionHouse || '') ||
+    /t-?mobile/i.test(lot.carrierStatus || '') ||
+    (lot.sourceType === 'CARRIER' && /coppell|t-?mobile/i.test(`${lot.auctionHouse || ''} ${lot.location || ''}`))
+  );
+};
+
 export const mapVerizonGradeStrict = (raw: string): GradeType => {
   const g = String(raw || '').trim().toUpperCase();
   if (!g) return 'DNC';
@@ -175,12 +184,15 @@ export const getLotMixSummary = (lot?: Partial<AuctionLot> | null): LotMixSummar
     const model = String(item.model || lot?.modelFamily || 'Smartphone').trim();
     const storage = String(item.storage || lot?.primaryStorage || '-').trim();
     const rawColor = String(item.color || '').trim();
+    const parsedFromDesc = item.itemDescription
+      ? parseBstockColorFromDesc(item.itemDescription, rawColor === 'Black' ? '' : rawColor)
+      : '';
     const color =
       rawColor && rawColor !== 'Black'
         ? rawColor
-        : item.itemDescription
-          ? parseBstockColorFromDesc(item.itemDescription, rawColor === 'Black' ? '' : rawColor)
-          : rawColor || 'Padrão';
+        : rawColor === 'Black'
+          ? (parsedFromDesc && parsedFromDesc !== 'Misto / Padrão' ? parsedFromDesc : 'Black')
+          : parsedFromDesc || 'Padrão';
     const rawGrade = String(item.grade || lot?.grade || '-').trim();
     const grade = verizon ? mapVerizonGradeStrict(rawGrade) : rawGrade;
     const qty = Math.max(1, Number(item.qty) || 1);

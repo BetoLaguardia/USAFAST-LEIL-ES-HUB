@@ -3,7 +3,7 @@ import { Gavel, Clock, MapPin, Battery, Smartphone, ShieldCheck, ArrowUpRight, L
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { isAssurantLot, getLotUnitPriceUsd, getLotIncrementSize } from '../utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
@@ -55,6 +55,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
   }, [lot.endTime]);
 
   const verizon = isVerizonLot(lot);
+  const tMobile = isTMobileLot(lot);
   const isAssurant = isAssurantLot(lot);
   const cleanGrade = verizon
     ? mapVerizonGradeStrict(lot.grade || 'DNC')
@@ -107,6 +108,11 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
             {(lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse)) && (
               <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
                 ASSURANT
+              </span>
+            )}
+            {tMobile && (
+              <span className="px-2 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                T-MOBILE
               </span>
             )}
           </div>
