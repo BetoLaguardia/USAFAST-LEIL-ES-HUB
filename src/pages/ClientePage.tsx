@@ -29,7 +29,7 @@ import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
 import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, isTMobileLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from '../components/LotMixExpandable';
 
 interface ClientePageProps {
@@ -163,7 +163,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   };
 
   const normalizedAuctions = React.useMemo(
-    () => auctions.map(normalizeVerizonLot),
+    () => auctions.filter(isLotUnlockedOnly).map(normalizeVerizonLot),
     [auctions]
   );
 
@@ -173,9 +173,9 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     if (selectedAuctionSystemFilter === 'T_MOBILE' && !isTMobileLot(lot)) return false;
     if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && lot.sourceType !== 'MARKETPLACE_2' && !/marketplace 2|recirq/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && lot.sourceType !== 'MARKETPLACE_3' && !/marketplace 3|wesell/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && getMarketplaceNumber(lot) !== 1) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && getMarketplaceNumber(lot) !== 2) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && getMarketplaceNumber(lot) !== 3) return false;
     if (selectedAuctionSystemFilter === 'MACBOOKS' && lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse)) return false;
     return true;
   };
@@ -256,9 +256,9 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     if (selectedAuctionSystemFilter === 'T_MOBILE' && !isTMobileLot(lot)) return false;
     if (selectedAuctionSystemFilter === 'ASSURANT' && lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse)) return false;
     if (selectedAuctionSystemFilter === 'STOCK_APPLE' && lot.sourceType !== 'STOCK_APPLE' && !/stock/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && lot.sourceType !== 'MARKETPLACE_1' && !/marketplace 1|mannapov/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && lot.sourceType !== 'MARKETPLACE_2' && !/marketplace 2|recirq/i.test(lot.auctionHouse)) return false;
-    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && lot.sourceType !== 'MARKETPLACE_3' && !/marketplace 3|wesell/i.test(lot.auctionHouse)) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && getMarketplaceNumber(lot) !== 1) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && getMarketplaceNumber(lot) !== 2) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && getMarketplaceNumber(lot) !== 3) return false;
     if (selectedAuctionSystemFilter === 'MACBOOKS' && lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse)) return false;
     if (selectedLotTypeFilter === 'wholesale' && lot.quantity <= 1) return false;
     if (selectedLotTypeFilter === 'single' && lot.quantity > 1) return false;
@@ -322,7 +322,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
               ${currentUser.biddingLimitUsd.toLocaleString()} USD
             </span>
             <span className="text-[10px] text-slate-500 block font-mono">
-              ≈ R$ {(currentUser.biddingLimitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+              aprox. R$ {(currentUser.biddingLimitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
             </span>
           </div>
 
@@ -442,9 +442,9 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <option value="T_MOBILE">📡 Leilão T-MOBILE Coppell</option>
                   <option value="ASSURANT">🔹 Leilão ASSURANT</option>
                   <option value="STOCK_APPLE">📦 Estoque Apple Pronta Entrega</option>
-                  <option value="MARKETPLACE_1">🏬 Marketplace 1 (Mannapov)</option>
-                  <option value="MARKETPLACE_2">🏬 Marketplace 2 (RecirQ)</option>
-                  <option value="MARKETPLACE_3">🏬 Marketplace 3 (WeSell)</option>
+                  <option value="MARKETPLACE_1">🏬 Marketplace 1</option>
+                  <option value="MARKETPLACE_2">🏬 Marketplace 2</option>
+                  <option value="MARKETPLACE_3">🏬 Marketplace 3</option>
                   <option value="MACBOOKS">💻 Leilão Macbooks</option>
                 </select>
               </div>
@@ -634,6 +634,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 T-MOBILE
                               </span>
                             )}
+                            {getMarketplaceNumber(lot) && (
+                              <span className="px-1.5 py-0.5 rounded bg-cyan-600 text-white font-black text-[9px] uppercase">
+                                MARKETPLACE {getMarketplaceNumber(lot)}
+                              </span>
+                            )}
                             <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
                               {isVerizon && <Lock className="w-2.5 h-2.5 text-red-400" />}
                               <span>{lot.quantity} un.{isVerizon ? ' fixas' : ''}</span>
@@ -677,7 +682,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                               ${unitPriceUsd.toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
                             </span>
                             <span className="text-[10px] text-slate-400 font-mono ml-1.5">
-                              (≈ R$ {unitPriceBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
+                              (aprox. R$ {unitPriceBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
                             </span>
                             {!isAssurant && lot.quantity > 1 && (
                               <span className="text-[10px] text-amber-300/80 font-mono block">
@@ -801,6 +806,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                     T-MOBILE
                                   </span>
                                 )}
+                                {getMarketplaceNumber(lot) && (
+                                  <span className="px-1.5 py-0.5 rounded bg-cyan-600/90 text-white font-black text-[9px] block w-max uppercase tracking-wider">
+                                    MARKETPLACE {getMarketplaceNumber(lot)}
+                                  </span>
+                                )}
                               </div>
                             </td>
 
@@ -857,7 +867,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                     ${unitPriceUsd.toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
                                   </span>
                                   <span className="text-[10px] text-slate-400 block">
-                                    ≈ R$ {Math.round(unitPriceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                                    aprox. R$ {Math.round(unitPriceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
                                   </span>
                                   {!isAssurant && lot.quantity > 1 && (
                                     <span className="text-[10px] text-amber-300/80 font-mono block">
@@ -993,6 +1003,16 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                             ASSURANT
                           </span>
                         )}
+                        {isTMobileLot(lot) && (
+                          <span className="px-2 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                            T-MOBILE
+                          </span>
+                        )}
+                        {getMarketplaceNumber(lot) && (
+                          <span className="px-2 py-0.5 rounded bg-cyan-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                            MARKETPLACE {getMarketplaceNumber(lot)}
+                          </span>
+                        )}
                       </div>
 
                       <div className="absolute top-3 right-3">
@@ -1085,7 +1105,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 ${unitPriceUsd.toLocaleString()} USD <span className="text-xs font-normal text-slate-400">/ un.</span>
                               </span>
                               <span className="text-[10px] text-slate-400 font-mono block">
-                                ≈ R$ {Math.round(unitPriceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                                aprox. R$ {Math.round(unitPriceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
                               </span>
                               {!isAssurant && lot.quantity > 1 && (
                                 <span className="text-[10px] text-amber-300/80 font-mono block">
@@ -1110,7 +1130,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                     {isAssurant && lot.quantity > 1 ? 'Lucro Bruto Est. (/ un.):' : 'Lucro Bruto Est.:'}
                                   </span>
                                   <span className="text-xs font-bold text-emerald-400 font-mono block">
-                                    + R$ {grossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                                    aprox. + R$ {grossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                                   </span>
                                 </>
                               ) : null}
@@ -1431,7 +1451,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                           ${b.amountUsd.toLocaleString()} USD
                         </td>
                         <td className="py-3 px-4 font-mono text-slate-300">
-                          R$ {(b.amountUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                          aprox. R$ {(b.amountUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                         </td>
                         <td className="py-3 px-4 text-slate-400">{b.timestamp}</td>
                         <td className="py-3 px-4">
@@ -1758,7 +1778,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                 <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
                   <span>Conversão PTAX da sua oferta:</span>
                   <span className="font-mono text-slate-300">
-                    R$ {((quickBidAmount || 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    aprox. R$ {((quickBidAmount || 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     {isAssurantLot(quickBidLot) && quickBidUnits > 1 ? ' / un.' : ''}
                   </span>
                 </div>

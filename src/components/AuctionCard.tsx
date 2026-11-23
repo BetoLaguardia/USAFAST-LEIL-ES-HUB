@@ -3,7 +3,7 @@ import { Gavel, Clock, MapPin, Battery, Smartphone, ShieldCheck, ArrowUpRight, L
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, isTMobileLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { isAssurantLot, getLotUnitPriceUsd, getLotIncrementSize } from '../utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
@@ -56,6 +56,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
   const verizon = isVerizonLot(lot);
   const tMobile = isTMobileLot(lot);
+  const mktNum = getMarketplaceNumber(lot);
   const isAssurant = isAssurantLot(lot);
   const cleanGrade = verizon
     ? mapVerizonGradeStrict(lot.grade || 'DNC')
@@ -70,7 +71,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
   const formattedCurrentPrice = currency === 'USD'
     ? `$ ${displayPrimaryUsd.toLocaleString()} USD`
-    : `R$ ${(displayPrimaryUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+    : `aprox. R$ ${(displayPrimaryUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
 
   const currentBidBrl = displayPrimaryUsd * usdRate;
   const hasRetailEstimate = (lot.estimatedBrazilRetailBrl || 0) > 0;
@@ -113,6 +114,11 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
             {tMobile && (
               <span className="px-2 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
                 T-MOBILE
+              </span>
+            )}
+            {mktNum && (
+              <span className="px-2 py-0.5 rounded bg-cyan-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                MARKETPLACE {mktNum}
               </span>
             )}
           </div>
@@ -250,7 +256,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                 )}
                 <span className="text-[10px] text-slate-400 font-mono">
                   {currency === 'USD'
-                    ? `≈ R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
+                    ? `aprox. R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
                     : `≈ $ ${displayPrimaryUsd.toLocaleString()} USD${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`}
                 </span>
               </div>
@@ -266,7 +272,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                       {isAssurant && lot.quantity > 1 ? 'Lucro Bruto Est. (/ un.):' : 'Lucro Bruto Est.:'}
                     </span>
                     <span className="text-xs font-bold text-emerald-400 font-mono block">
-                      + R$ {estimatedGrossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                      aprox. + R$ {estimatedGrossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </span>
                   </>
                 ) : null}

@@ -214,7 +214,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                     ${currentUser.biddingLimitUsd.toLocaleString()} USD
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                    ≈ R$ {(currentUser.biddingLimitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    aprox. R$ {(currentUser.biddingLimitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                   </span>
                 </div>
                 <div>
@@ -341,7 +341,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         />
                       </div>
                       <span className="text-[11px] text-slate-400 block mt-1">
-                        Valor aproximado em Reais: R$ {(((customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)) * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                        Valor aproximado em Reais: aprox. R$ {(((customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)) * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
                       </span>
                     </div>
 

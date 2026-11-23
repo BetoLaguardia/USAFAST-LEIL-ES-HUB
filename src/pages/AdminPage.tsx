@@ -3,7 +3,7 @@ import { supabase } from '../services/supabaseClient.ts';
 import * as XLSX from 'xlsx';
 import { getDeviceImageUrl, stripLotPrefix } from '../utils/deviceImages';
 import { fetchLivePtaxRate } from '../utils/ptaxService';
-import { isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc, sanitizeVerizonTitle, VERIZON_GRADES } from '../utils/verizonUtils';
+import { getMarketplaceNumber, isLotUnlockedOnly, isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc, sanitizeSupplierStrings, sanitizeVerizonTitle, VERIZON_GRADES } from '../utils/verizonUtils';
 import { isAssurantLot, getEstimatedWholesalePrice } from '../utils/assurantUtils';
 import { buildTMobileAuctionLots, groupTMobileRows, isTMobileHeaders, TMobileGroupedLot } from '../utils/tmobileUtils';
 import { 
@@ -98,7 +98,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [rawHeaders, setRawHeaders] = useState<string[]>([]);
   const [isLoadingVerizon, setIsLoadingVerizon] = useState(false);
   const [isLoadingTMobile, setIsLoadingTMobile] = useState(false);
-  const [isLoadingWeSell, setIsLoadingWeSell] = useState(false);
+  const [isLoadingMarketplace3, setIsLoadingMarketplace3] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
   const [verizonExpandedLot, setVerizonExpandedLot] = useState<string | null>(null);
@@ -320,6 +320,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }>();
 
     rawRows.forEach((r, idx) => {
+      const lockCheckText = [
+        r['Lock Status'], r['LockStatus'], r['lock_status'], r['Carrier Lock'],
+        r['FMIP/Google Lock Status'], r['Item Description'], r['itemDescription'],
+        r['Condition'], r['Grade'], r['Model'], r['Title']
+      ].map(v => String(v || '')).join(' ');
+      if (/\b(?:locked|sim\s*lock(?:ed)?|carrier\s*lock(?:ed)?|icloud\s*lock(?:ed)?|fmip\s*on|fmi\s*on|bad\s*esn|blacklisted|mdm\s*lock)\b/i.test(lockCheckText) && !/\bunlocked\b/i.test(lockCheckText)) {
+        return;
+      }
+
       const lotNum = String(r['Lot #'] || r['Lot#'] || r['Lot'] || r['lotNumber'] || r['Item #'] || r['Item'] || r['ID'] || `VZ-${idx + 1}`).trim();
       if (!lotNum) return;
 
@@ -1216,6 +1225,9 @@ $285.00
     let discardedNonAppleCount = 0;
     let totalApprovedUnits = 0;
 
+    const hasLockColumn = rawRows.some(r =>
+      normalizeField(r, 'Lock Status', 'LockStatus', 'lock_status', 'lock-status', 'StatusBloqueio', 'FMIP/Google Lock Status', 'Carrier Lock') !== ''
+    );
     const processedItems: StockAppleItem[] = [];
 
     rawRows.forEach((row, idx) => {
@@ -1363,18 +1375,27 @@ $285.00
         return;
       }
 
-      // 3. LOCK STATUS CHECK: ONLY UNLOCKED!
-      // "importará apenas os iphones, applewatches, Ipads desbloqueados entendeu?"
+      // 3. LOCK STATUS CHECK: ONLY UNLOCKED! (Applies strictly to ALL auction formats)
       const lockUpper = lockStatus.trim().toUpperCase();
       const descUpper = description.trim().toUpperCase();
       const carrierUpper = carrier.trim().toUpperCase();
+      const modelUpper = model.trim().toUpperCase();
 
-      // Explicit LOCKED check
+      // Explicit LOCKED / Bad ESN / Blacklist / SIM Lock check
       const isExplicitlyLocked = lockUpper === 'LOCKED' ||
         (lockUpper.includes('LOCKED') && !lockUpper.includes('UNLOCKED')) ||
-        (descUpper.includes('LOCKED') && !descUpper.includes('UNLOCKED'));
+        (descUpper.includes('LOCKED') && !descUpper.includes('UNLOCKED')) ||
+        carrierUpper === 'LOCKED' ||
+        /\b(?:SIM\s*LOCK|CARRIER\s*LOCK|ICLOUD\s*LOCK|FMIP\s*ON|FMI\s*ON|BLACKLIST|BAD\s*ESN|MDM\s*LOCK)\b/i.test(`${lockUpper} ${descUpper} ${carrierUpper} ${modelUpper}`);
 
-      if (isExplicitlyLocked) {
+      // Restricted carrier without UNLOCKED confirmation
+      const isRestrictedCarrier = carrierUpper !== '' &&
+        !['UNL', 'UNLOCKED', 'GSM UNLOCKED', 'FACTORY UNLOCKED', 'WIFI', 'N/A', 'NA', 'NONE', '-'].includes(carrierUpper) &&
+        !carrierUpper.includes('UNLOCK') &&
+        !lockUpper.includes('UNLOCKED') &&
+        !descUpper.includes('UNLOCKED');
+
+      if (isExplicitlyLocked || isRestrictedCarrier) {
         discardedLockedCount++;
         processedItems.push({
           id: `stock-item-${idx}`,
@@ -1395,17 +1416,21 @@ $285.00
           currency,
           deviceType,
           status: 'DISCARDED_LOCKED',
-          discardReason: 'Aparelho bloqueado (LOCKED detectado no status ou descrição)'
+          discardReason: isExplicitlyLocked
+            ? 'Aparelho bloqueado (LOCKED detectado no status ou descrição)'
+            : `Operadora restrita ("${carrier}") sem confirmação UNLOCKED`
         });
         return;
       }
 
-      // For Phones & Tablets: Must be verified UNLOCKED (for Assurant, any non-LOCKED item is approved)
-      if (!allowAllBrands && (deviceType === 'iPhone' || deviceType === 'iPad')) {
+      // Whenever the feed provides a Lock Status column, strictly require confirmed UNLOCKED
+      if (hasLockColumn) {
         const isConfirmedUnlocked = lockUpper.includes('UNLOCKED') ||
           descUpper.includes('UNLOCKED') ||
           carrierUpper === 'UNL' ||
-          carrierUpper === 'UNLOCKED';
+          carrierUpper === 'UNLOCKED' ||
+          carrierUpper === 'GSM UNLOCKED' ||
+          carrierUpper === 'FACTORY UNLOCKED';
 
         if (!isConfirmedUnlocked) {
           discardedLockedCount++;
@@ -1615,29 +1640,29 @@ $285.00
     }
   };
 
-  const handleLoadOfficialWeSellCsv = async () => {
-    setIsLoadingWeSell(true);
+  const handleLoadMarketplace3Csv = async () => {
+    setIsLoadingMarketplace3(true);
     try {
-      const res = await fetch('/assets/aistudio/WeSell_Cellular_-_StockList1119_a33ba42d.csv');
-      if (!res.ok) throw new Error('Não foi possível ler a planilha WeSell anexada.');
+      const res = await fetch('/assets/marketplace3_stocklist_1119.csv');
+      if (!res.ok) throw new Error('Não foi possível ler a planilha Marketplace 3 anexada.');
       const text = await res.text();
       const rows = parseCsvText(text);
-      if (rows.length === 0) throw new Error('A planilha WeSell não retornou linhas legíveis.');
+      if (rows.length === 0) throw new Error('A planilha Marketplace 3 não retornou linhas legíveis.');
 
-      setUploadedFileName('WeSell Cellular - StockList1119.csv');
+      setUploadedFileName('Marketplace_3_StockList_1119.csv');
       setRawHeaders(Object.keys(rows[0] || {}));
       setParsedPreviewRows(rows);
       setPresetFormat('MARKETPLACE_3');
       setStockAppleGroupMode('individual');
       const { audit } = processStockAppleRows(rows, true);
       showNotice(
-        `Planilha WeSell (11/19) carregada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`,
+        `Planilha Marketplace 3 carregada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`,
         'success'
       );
     } catch (err: any) {
-      showNotice(`Erro ao carregar planilha WeSell: ${err?.message}`, 'error');
+      showNotice(`Erro ao carregar planilha Marketplace 3: ${err?.message}`, 'error');
     } finally {
-      setIsLoadingWeSell(false);
+      setIsLoadingMarketplace3(false);
     }
   };
 
@@ -1694,9 +1719,9 @@ $285.00
       const markupPerUnit = isAssurant && addAssurantFiveUsd ? assurantMarkupAmount : 0;
       const formatMeta: Record<string, { prefix: string; house: string; loc: string; label: string }> = {
         ASSURANT: { prefix: 'ASR', house: 'Assurant Liquidation Hub', loc: 'Assurant Hub - Miami / Orlando', label: 'ASSURANT' },
-        MARKETPLACE_1: { prefix: 'MKT1', house: 'Marketplace 1 (Mannapov)', loc: 'Miami Hub - Mannapov', label: 'Marketplace 1 (Mannapov)' },
-        MARKETPLACE_2: { prefix: 'MKT2', house: 'Marketplace 2 (RecirQ)', loc: 'Miami Hub - RecirQ Global', label: 'Marketplace 2 (RecirQ)' },
-        MARKETPLACE_3: { prefix: 'MKT3', house: 'Marketplace 3 (WeSell)', loc: 'New York / Miami Hub - WeSell', label: 'Marketplace 3 (WeSell)' },
+        MARKETPLACE_1: { prefix: 'MKT1', house: 'Marketplace 1', loc: 'Miami Hub - Warehouse 01', label: 'Marketplace 1' },
+        MARKETPLACE_2: { prefix: 'MKT2', house: 'Marketplace 2', loc: 'Miami Hub - Warehouse 02', label: 'Marketplace 2' },
+        MARKETPLACE_3: { prefix: 'MKT3', house: 'Marketplace 3', loc: 'New York / Miami Hub - Warehouse 03', label: 'Marketplace 3' },
         MACBOOKS: { prefix: 'MAC', house: 'Leilão Macbooks Hub', loc: 'Miami Hub - Apple Macbooks', label: 'Leilão Macbooks' },
         STOCK_APPLE: { prefix: 'UF', house: 'USAFAST Stock Hub', loc: 'Miami Hub - Armazém W23', label: 'Estoque Pronta Entrega' }
       };
@@ -2042,8 +2067,8 @@ $285.00
     const file = e.target.files?.[0];
     if (!file) return;
 
-    console.log(`[XLSX Upload] File selected: "${file.name}", size: ${(file.size / 1024).toFixed(1)} KB, type: "${file.type}"`);
-    setUploadedFileName(file.name);
+    const displayFileName = sanitizeSupplierStrings(file.name).replace(/^[\s\-_]+|[\s\-_]+$/g, '') || 'Planilha_Marketplace';
+    setUploadedFileName(displayFileName);
     const isXml = file.name.toLowerCase().endsWith('.xml') || file.type.includes('xml');
     const isCsv = file.name.toLowerCase().endsWith('.csv');
 
@@ -2135,21 +2160,21 @@ $285.00
             const grouped = processTMobileRows(rows);
             const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
             showNotice(`Planilha T-MOBILE detectada! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) com Mix de Cores/Modelos pronto para publicar.`, 'success');
-          } else if (/wesell/i.test(file.name)) {
+          } else if (getMarketplaceNumber(file.name) === 3) {
             setPresetFormat('MARKETPLACE_3');
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha WeSell (Marketplace 3) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (/mannapov/i.test(file.name)) {
+            showNotice(`Planilha Marketplace 3 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+          } else if (getMarketplaceNumber(file.name) === 1) {
             setPresetFormat('MARKETPLACE_1');
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha Mannapov (Marketplace 1) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
-          } else if (/recirq/i.test(file.name)) {
+            showNotice(`Planilha Marketplace 1 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+          } else if (getMarketplaceNumber(file.name) === 2) {
             setPresetFormat('MARKETPLACE_2');
             setStockAppleGroupMode('individual');
             const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha RecirQ (Marketplace 2) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
+            showNotice(`Planilha Marketplace 2 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
           } else if (/assurant/i.test(file.name)) {
             setPresetFormat('ASSURANT');
             setStockAppleGroupMode('individual');
@@ -2294,21 +2319,21 @@ $285.00
             `Planilha T-MOBILE detectada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos com Mix de Modelos/Cores.`,
             'success'
           );
-        } else if (/wesell/i.test(file.name)) {
+        } else if (getMarketplaceNumber(file.name) === 3) {
           setPresetFormat('MARKETPLACE_3');
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha WeSell (Marketplace 3) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos).`, 'success');
-        } else if (/mannapov/i.test(file.name)) {
+          showNotice(`Planilha Marketplace 3 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+        } else if (getMarketplaceNumber(file.name) === 1) {
           setPresetFormat('MARKETPLACE_1');
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha Mannapov (Marketplace 1) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
-        } else if (/recirq/i.test(file.name)) {
+          showNotice(`Planilha Marketplace 1 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
+        } else if (getMarketplaceNumber(file.name) === 2) {
           setPresetFormat('MARKETPLACE_2');
           setStockAppleGroupMode('individual');
           const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha RecirQ (Marketplace 2) detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados.`, 'success');
+          showNotice(`Planilha Marketplace 2 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
         } else if (/assurant/i.test(file.name)) {
           setPresetFormat('ASSURANT');
           setStockAppleGroupMode('individual');
@@ -2580,7 +2605,15 @@ $285.00
       let newLots: AuctionLot[] = [];
 
       if (verizonImportMode === 'individual' && parsedPreviewRows.length > 0) {
-        newLots = parsedPreviewRows.map((r, idx) => {
+        const unlockedVerizonRows = parsedPreviewRows.filter(r => {
+          const lockCheck = [
+            r['Lock Status'], r['LockStatus'], r['lock_status'], r['Carrier Lock'],
+            r['FMIP/Google Lock Status'], r['Item Description'], r['itemDescription'],
+            r['Condition'], r['Grade'], r['Model'], r['Title']
+          ].map(v => String(v || '')).join(' ');
+          return !(/\b(?:locked|sim\s*lock(?:ed)?|carrier\s*lock(?:ed)?|icloud\s*lock(?:ed)?|fmip\s*on|fmi\s*on|bad\s*esn|blacklisted|mdm\s*lock)\b/i.test(lockCheck) && !/\bunlocked\b/i.test(lockCheck));
+        });
+        newLots = unlockedVerizonRows.map((r, idx) => {
           const lotNum = String(r['Lot #'] || r['Lot#'] || r['Lot'] || r['lotNumber'] || r['Item #'] || r['Item'] || r['ID'] || `VZ-${idx + 1}`).trim();
           const oem = String(r['OEM'] || r['oem'] || 'Apple').trim();
           const primaryModel = String(r['Model'] || r['model'] || 'Smartphone').trim();
@@ -2791,7 +2824,14 @@ $285.00
     }
 
     try {
-      const newLots: AuctionLot[] = parsedPreviewRows.map((row, idx) => {
+      const unlockedPreviewRows = parsedPreviewRows.filter(row => {
+        const joined = Object.values(row || {}).map(v => String(v ?? '')).join(' ');
+        if (/\b(?:locked|sim\s*lock(?:ed)?|carrier\s*lock(?:ed)?|icloud\s*lock(?:ed)?|fmip\s*on|fmi\s*on|bad\s*esn|blacklisted|mdm\s*lock)\b/i.test(joined) && !/\bunlocked\b/i.test(joined)) {
+          return false;
+        }
+        return true;
+      });
+      const newLots: AuctionLot[] = unlockedPreviewRows.map((row, idx) => {
         const lotNumber = String(row[columnMapping.lotNumber] || `US-${Math.floor(10000 + Math.random() * 90000)}`);
         const title = String(row[columnMapping.title] || `Lote Importado iPhone ${idx + 1}`);
         const modelFamilyRaw = String(row[columnMapping.modelFamily] || 'iPhone 16 Pro Max');
@@ -2806,7 +2846,7 @@ $285.00
         else if (/14/i.test(modelFamilyRaw)) modelFamily = 'iPhone 14 Series';
         else modelFamily = modelFamilyRaw || 'Lote Misto';
 
-        const auctionHouse = String(row[columnMapping.auctionHouse] || 'USA Wholesale Direct');
+        const auctionHouse = sanitizeSupplierStrings(String(row[columnMapping.auctionHouse] || 'USA Wholesale Direct'));
         const isVzRow = /verizon/i.test(auctionHouse);
         const rawGradeStr = String(row[columnMapping.grade] || (isVzRow ? 'DNC' : 'Grade A'));
         const grade = isVzRow ? mapVerizonGradeStrict(rawGradeStr) : mapGrade(rawGradeStr);
@@ -3475,7 +3515,7 @@ $285.00
                 ${auctions.reduce((acc, l) => acc + l.currentBidUsd, 0).toLocaleString()}
               </span>
               <span className="text-[10px] text-slate-400 block font-mono">
-                ≈ R$ {(auctions.reduce((acc, l) => acc + l.currentBidUsd, 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                aprox. R$ {(auctions.reduce((acc, l) => acc + l.currentBidUsd, 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
               </span>
             </div>
 
@@ -3717,7 +3757,7 @@ $285.00
                       <td className="py-2.5 px-3 font-mono font-bold text-amber-400">{offer.lotNumber}</td>
                       <td className="py-2.5 px-3 font-semibold text-white">{offer.clientName}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-emerald-400">${offer.amountUsd.toLocaleString()} USD</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-300">R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-300">aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                           offer.status === 'Vencendo'
@@ -3764,7 +3804,7 @@ $285.00
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Remove todos os lotes importados de todas as planilhas (Verizon, Assurant, WeSell, Estoque e Genérico) no catálogo e no banco de dados.
+                Remove todos os lotes importados de todas as planilhas (Verizon, T-Mobile, Assurant, Marketplaces 1/2/3, Estoque e Genérico) no catálogo e no banco de dados.
               </p>
             </div>
 
@@ -3804,7 +3844,7 @@ $285.00
             )}
           </div>
 
-          {/* Verizon, T-Mobile & WeSell Featured Banners */}
+          {/* Verizon, T-Mobile & Marketplace 3 Featured Banners */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <div className="p-6 bg-gradient-to-r from-red-950/40 via-slate-900 to-amber-950/30 border border-red-500/40 rounded-2xl space-y-4 shadow-xl">
               <div className="flex flex-col justify-between gap-4 h-full">
@@ -3889,34 +3929,34 @@ $285.00
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded bg-cyan-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
-                      LEILÃO WESELL (MARKETPLACE 3)
+                      LEILÃO MARKETPLACE 3
                     </span>
                     <span className="px-2.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-cyan-500/30 font-mono text-[11px]">
                       StockList 11/19
                     </span>
                   </div>
                   <h2 className="text-lg font-black text-white tracking-tight">
-                    Planilha WeSell Cellular (Apple, Samsung & Google)
+                    Planilha Marketplace 3 (Apple, Samsung & Google)
                   </h2>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Importa automaticamente <span className="text-cyan-300 font-mono">WeSell Cellular - StockList1119.csv</span> filtrando apenas aparelhos <span className="text-emerald-300 font-semibold">UNLOCKED</span> (exclui LOCKED e acessórios).
+                    Importa automaticamente <span className="text-cyan-300 font-mono">Marketplace_3_StockList_1119.csv</span> filtrando apenas aparelhos <span className="text-emerald-300 font-semibold">UNLOCKED</span> (exclui LOCKED e acessórios).
                   </p>
                 </div>
 
                 <div>
                   <button
                     type="button"
-                    disabled={isLoadingWeSell}
-                    onClick={handleLoadOfficialWeSellCsv}
+                    disabled={isLoadingMarketplace3}
+                    onClick={handleLoadMarketplace3Csv}
                     className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/30 active:scale-95"
                   >
-                    {isLoadingWeSell ? (
+                    {isLoadingMarketplace3 ? (
                       <RefreshCw className="w-4 h-4 animate-spin text-white" />
                     ) : (
                       <FileSpreadsheet className="w-4 h-4 text-white" />
                     )}
                     <span>
-                      {isLoadingWeSell ? 'Lendo Planilha WeSell...' : '⚡ Carregar Planilha WeSell 11/19 (Anexo)'}
+                      {isLoadingMarketplace3 ? 'Lendo Marketplace 3...' : '⚡ Carregar Planilha Marketplace 3 (Anexo)'}
                     </span>
                   </button>
                 </div>
@@ -3972,6 +4012,36 @@ $285.00
                   <button
                     type="button"
                     onClick={() => {
+                      setPresetFormat('MARKETPLACE_1');
+                      setStockAppleGroupMode('individual');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      presetFormat === 'MARKETPLACE_1'
+                        ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>★ Marketplace 1</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPresetFormat('MARKETPLACE_2');
+                      setStockAppleGroupMode('individual');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      presetFormat === 'MARKETPLACE_2'
+                        ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>★ Marketplace 2</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
                       setPresetFormat('MARKETPLACE_3');
                       setStockAppleGroupMode('individual');
                     }}
@@ -3981,7 +4051,7 @@ $285.00
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
-                    <span>★ Leilão WeSell (Marketplace 3)</span>
+                    <span>★ Marketplace 3</span>
                   </button>
 
                   <button
@@ -4236,12 +4306,20 @@ $285.00
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded text-white text-[10px] font-black uppercase flex items-center gap-1 shadow-sm ${
-                      presetFormat === 'MARKETPLACE_3' ? 'bg-cyan-600' : presetFormat === 'ASSURANT' ? 'bg-indigo-600' : 'bg-emerald-600'
+                      presetFormat === 'MARKETPLACE_1' || presetFormat === 'MARKETPLACE_2' || presetFormat === 'MARKETPLACE_3'
+                        ? 'bg-cyan-600'
+                        : presetFormat === 'ASSURANT'
+                        ? 'bg-indigo-600'
+                        : 'bg-emerald-600'
                     }`}>
                       <ShieldCheck className="w-3.5 h-3.5" />
                       <span>
-                        {presetFormat === 'MARKETPLACE_3'
-                          ? 'LEILÃO WESELL (MARKETPLACE 3) • 100% UNLOCKED'
+                        {presetFormat === 'MARKETPLACE_1'
+                          ? 'LEILÃO MARKETPLACE 1 • 100% UNLOCKED'
+                          : presetFormat === 'MARKETPLACE_2'
+                          ? 'LEILÃO MARKETPLACE 2 • 100% UNLOCKED'
+                          : presetFormat === 'MARKETPLACE_3'
+                          ? 'LEILÃO MARKETPLACE 3 • 100% UNLOCKED'
                           : presetFormat === 'ASSURANT'
                           ? 'LEILÃO ASSURANT • 100% UNLOCKED'
                           : 'FILTRO RIGOROSO ATIVO: 100% APPLE UNLOCKED'}
@@ -4255,8 +4333,12 @@ $285.00
                   </div>
                   <h3 className="font-black text-white text-lg mt-1.5 flex items-center gap-2">
                     <span>
-                      {presetFormat === 'MARKETPLACE_3'
-                        ? `WeSell Cellular: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
+                      {presetFormat === 'MARKETPLACE_1'
+                        ? `Marketplace 1: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
+                        : presetFormat === 'MARKETPLACE_2'
+                        ? `Marketplace 2: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
+                        : presetFormat === 'MARKETPLACE_3'
+                        ? `Marketplace 3: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
                         : presetFormat === 'ASSURANT'
                         ? `Assurant: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
                         : `Estoque Apple Desbloqueado: ${stockAppleAudit.approvedCount.toLocaleString()} Itens Aprovados`}
@@ -5368,7 +5450,7 @@ $285.00
                         <td className="py-3 px-3 font-mono text-slate-300">
                           {isVerizonLot(lot) && lot.estimatedBrazilRetailBrl === 0
                             ? <span className="text-slate-500">Valor Livre</span>
-                            : `R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}${isAssurantLot(lot) && lot.quantity > 1 ? ' / un.' : ''}`}
+                            : `aprox. R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}${isAssurantLot(lot) && lot.quantity > 1 ? ' / un.' : ''}`}
                         </td>
                         <td className="py-3 px-3 text-slate-400 truncate max-w-[120px]">
                           {lot.location}
@@ -5621,7 +5703,7 @@ $285.00
                       ${offer.amountUsd.toLocaleString()} USD
                     </td>
                     <td className="py-3 px-3 font-mono text-slate-200">
-                      R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                      aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </td>
                     <td className="py-3 px-3">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${

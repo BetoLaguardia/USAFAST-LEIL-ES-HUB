@@ -172,10 +172,10 @@ export function exportLotManifestXlsx(
     verizon && lot.currentBidUsd === 0
       ? 'Sem Preço Fixo (Livre Escolha em USD)'
       : isAssurant
-        ? `$ ${unitUsd.toLocaleString('en-US')} USD / un. | Incremento: ${incrementSize} un. (≈ R$ ${(unitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.)`
+        ? `$ ${unitUsd.toLocaleString('en-US')} USD / un. | Incremento: ${incrementSize} un. (aprox. R$ ${(unitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.)`
         : currency === 'USD'
-          ? `$ ${totalUsd.toLocaleString('en-US')} USD (≈ R$ ${(totalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })})`
-          : `R$ ${(totalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ($ ${totalUsd.toLocaleString('en-US')} USD)`;
+          ? `$ ${totalUsd.toLocaleString('en-US')} USD (aprox. R$ ${(totalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })})`
+          : `aprox. R$ ${(totalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ($ ${totalUsd.toLocaleString('en-US')} USD)`;
 
   const headers = [
     'Item #',

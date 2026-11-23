@@ -20,6 +20,50 @@ export const isTMobileLot = (lot?: Partial<AuctionLot> | null): boolean => {
   );
 };
 
+export const getMarketplaceNumber = (lot?: Partial<AuctionLot> | string | null): 1 | 2 | 3 | null => {
+  if (!lot) return null;
+  if (typeof lot === 'string') {
+    if (/marketplace\s*1|manna?pov/i.test(lot)) return 1;
+    if (/marketplace\s*2|recirq/i.test(lot)) return 2;
+    if (/marketplace\s*3|wesell/i.test(lot)) return 3;
+    return null;
+  }
+  if (lot.sourceType === 'MARKETPLACE_1') return 1;
+  if (lot.sourceType === 'MARKETPLACE_2') return 2;
+  if (lot.sourceType === 'MARKETPLACE_3') return 3;
+  const text = `${lot.auctionHouse || ''} ${lot.location || ''}`;
+  if (/marketplace\s*1|manna?pov/i.test(text)) return 1;
+  if (/marketplace\s*2|recirq/i.test(text)) return 2;
+  if (/marketplace\s*3|wesell/i.test(text)) return 3;
+  return null;
+};
+
+export const sanitizeSupplierStrings = (value: string): string => {
+  if (!value) return '';
+  return String(value)
+    .replace(/\s*\(\s*(?:mannapov|recirq(?:\s+global)?|wesell(?:\s+cellular)?)\s*\)/gi, '')
+    .replace(/\s*[-–·]\s*(?:mannapov|recirq(?:\s+global)?|wesell(?:\s+cellular)?)\b/gi, '')
+    .replace(/\b(?:mannapov|recirq(?:\s+global)?|wesell(?:\s+cellular)?)\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+};
+
+export const isLotUnlockedOnly = (lot?: Partial<AuctionLot> | null): boolean => {
+  if (!lot) return false;
+  const fields = [lot.carrierStatus, lot.imeiStatus, lot.title, lot.description];
+  for (const field of fields) {
+    const text = String(field || '');
+    if (!text) continue;
+    if (/\b(?:sim[\s-]*lock(?:ed)?|carrier[\s-]*lock(?:ed)?|network[\s-]*lock(?:ed)?|icloud[\s-]*lock(?:ed)?|fmip[\s:]*on|fmi[\s:]*on|bad\s*esn|blacklisted|mdm[\s-]*lock(?:ed)?)\b/i.test(text)) {
+      return false;
+    }
+    if (/\blocked\b/i.test(text) && !/\bunlocked\b/i.test(text)) {
+      return false;
+    }
+  }
+  return true;
+};
+
 export const mapVerizonGradeStrict = (raw: string): GradeType => {
   const g = String(raw || '').trim().toUpperCase();
   if (!g) return 'DNC';
@@ -73,21 +117,45 @@ export const sanitizeVerizonDescription = (desc: string): string => {
 };
 
 export const normalizeVerizonLot = (lot: AuctionLot): AuctionLot => {
-  if (!isVerizonLot(lot)) return lot;
-  const normalizedGrade = mapVerizonGradeStrict(lot.grade);
-  const normalizedManifest = Array.isArray(lot.manifest)
-    ? lot.manifest.map(item => ({
+  const mktNum = getMarketplaceNumber(lot);
+  const cleanHouse =
+    mktNum === 1
+      ? 'Marketplace 1'
+      : mktNum === 2
+        ? 'Marketplace 2'
+        : mktNum === 3
+          ? 'Marketplace 3'
+          : sanitizeSupplierStrings(lot.auctionHouse || '');
+  const cleanLoc =
+    mktNum === 1 && /mannapov/i.test(lot.location || '')
+      ? 'Miami Hub - Warehouse 01'
+      : mktNum === 2 && /recirq/i.test(lot.location || '')
+        ? 'Miami Hub - Warehouse 02'
+        : mktNum === 3 && /wesell/i.test(lot.location || '')
+          ? 'New York / Miami Hub - Warehouse 03'
+          : sanitizeSupplierStrings(lot.location || '');
+
+  const baseLot: AuctionLot = {
+    ...lot,
+    auctionHouse: cleanHouse || lot.auctionHouse,
+    location: cleanLoc || lot.location,
+  };
+
+  if (!isVerizonLot(baseLot)) return baseLot;
+  const normalizedGrade = mapVerizonGradeStrict(baseLot.grade);
+  const normalizedManifest = Array.isArray(baseLot.manifest)
+    ? baseLot.manifest.map(item => ({
         ...item,
         grade: mapVerizonGradeStrict(item.grade || normalizedGrade)
       }))
     : [];
 
   return {
-    ...lot,
-    sourceType: lot.sourceType || 'VERIZON',
+    ...baseLot,
+    sourceType: baseLot.sourceType || 'VERIZON',
     grade: normalizedGrade,
-    title: sanitizeVerizonTitle(lot.title),
-    description: sanitizeVerizonDescription(lot.description),
+    title: sanitizeVerizonTitle(baseLot.title),
+    description: sanitizeVerizonDescription(baseLot.description),
     manifest: normalizedManifest
   };
 };

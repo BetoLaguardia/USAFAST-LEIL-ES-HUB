@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
 interface ModelCarouselProps {
@@ -37,17 +37,16 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   onCalculateLot,
   onViewAllAuctions
 }) => {
-  // Filter only real spreadsheet auctions (Verizon & Assurant), excluding any banned platforms and marketplace feeds
+  // Filter unlocked auctions (Verizon, Assurant, T-Mobile, Marketplaces), excluding banned platforms
   const carouselLots = auctions.filter(lot => {
     const house = (lot.auctionHouse || '').toLowerCase();
     const title = (lot.title || '').toLowerCase();
-    const src = (lot.sourceType || '').toLowerCase();
     if (house.includes('govdeals') || title.includes('govdeals')) return false;
     if (house.includes('copart') || title.includes('copart')) return false;
     if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
     if (house.includes('apple certified') || title.includes('apple certified')) return false;
-    if (house.includes('marketplace') || title.includes('marketplace') || house.includes('wesell') || src.startsWith('marketplace')) return false;
     if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
+    if (!isLotUnlockedOnly(lot)) return false;
     return true;
   });
 
@@ -93,8 +92,18 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   const safeIndex = currentIndex % total;
   const currentLot = carouselLots[safeIndex];
   const isVerizon = isVerizonLot(currentLot);
+  const isTMobile = isTMobileLot(currentLot);
   const isAssurant = currentLot.sourceType === 'ASSURANT' || /assurant/i.test(currentLot.auctionHouse || '');
-  const auctionHouseName = isVerizon ? 'Leilão Oficial VERIZON' : 'Leilão Oficial ASSURANT';
+  const mktNum = getMarketplaceNumber(currentLot);
+  const auctionHouseName = isVerizon
+    ? 'Leilão Oficial VERIZON'
+    : isTMobile
+      ? 'Leilão Oficial T-MOBILE'
+      : isAssurant
+        ? 'Leilão Oficial ASSURANT'
+        : mktNum
+          ? `Marketplace ${mktNum}`
+          : (currentLot.auctionHouse || 'Leilão Oficial EUA');
   const cleanTitle = stripLotPrefix(currentLot.title);
   const displayGrade = isVerizon ? mapVerizonGradeStrict(currentLot.grade) : `Grade ${currentLot.grade}`;
 
@@ -106,11 +115,11 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   const totalLotBrl = Math.round(totalLotUsd * usdRate);
   const unitPriceBrl = Math.round(unitPriceUsd * usdRate);
   const formattedTotalUsd = `$${totalLotUsd.toLocaleString('en-US')}`;
-  const formattedTotalBrl = `R$ ${totalLotBrl.toLocaleString('pt-BR')}`;
+  const formattedTotalBrl = `aprox. R$ ${totalLotBrl.toLocaleString('pt-BR')}`;
   const displayPrice = currency === 'USD' ? formattedTotalUsd : formattedTotalBrl;
   const secondaryPrice = currency === 'USD' ? formattedTotalBrl : formattedTotalUsd;
-  const displayUnitPrice = currency === 'USD' ? `$${unitPriceUsd.toLocaleString('en-US')}` : `R$ ${unitPriceBrl.toLocaleString('pt-BR')}`;
-  const secondaryUnitPrice = currency === 'USD' ? `R$ ${unitPriceBrl.toLocaleString('pt-BR')}` : `$${unitPriceUsd.toLocaleString('en-US')} USD`;
+  const displayUnitPrice = currency === 'USD' ? `$${unitPriceUsd.toLocaleString('en-US')}` : `aprox. R$ ${unitPriceBrl.toLocaleString('pt-BR')}`;
+  const secondaryUnitPrice = currency === 'USD' ? `aprox. R$ ${unitPriceBrl.toLocaleString('pt-BR')}` : `$${unitPriceUsd.toLocaleString('en-US')} USD`;
   const incrementSize = Math.max(1, Number(currentLot.incrementSize) || 1);
 
   return (
@@ -346,7 +355,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                   </div>
                   {currentLot.estimatedBrazilRetailBrl > 0 && (
                     <span className="text-[11px] text-emerald-400 font-medium block">
-                      Venda estimada no Brasil: ~R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}{isAssurant && qty > 1 ? ' / un.' : ''}
+                      Venda estimada no Brasil: aprox. R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}{isAssurant && qty > 1 ? ' / un.' : ''}
                     </span>
                   )}
                 </div>

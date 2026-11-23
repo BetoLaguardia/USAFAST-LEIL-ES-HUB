@@ -221,7 +221,15 @@ export const groupTMobileRows = (rawRows: Record<string, any>[]): TMobileGrouped
     const carrier = getTMobileField(row, 'Carrier') || 'T-MOBILE';
     const warehouse = getTMobileField(row, 'Warehouse', 'Inventory Source') || 'DC90';
     const dataClear = getTMobileField(row, 'Data Clear') || 'Yes';
-    const lockStatus = getTMobileField(row, 'FMIP/Google Lock Status', 'Lock Status') || 'Unlocked';
+    const rawLockField = getTMobileField(row, 'FMIP/Google Lock Status', 'Lock Status');
+    const combinedLockText = `${rawLockField} ${rawModelName} ${getTMobileField(row, 'Condition')}`;
+    if (
+      (/\blocked\b|sim[\s-]*lock|carrier[\s-]*lock|fmip\s*on|fmi\s*on|bad\s*esn|blacklisted/i.test(combinedLockText) && !/\bunlocked\b/i.test(combinedLockText)) ||
+      (rawLockField && !/unlocked|clean|off|desbloqueado/i.test(rawLockField))
+    ) {
+      return;
+    }
+    const lockStatus = rawLockField || 'Unlocked';
     const itemDescription = getTMobileField(row, 'Item Description', 'Item Type') || 'Phone';
     const condition = getTMobileField(row, 'Condition') || 'used';
     const unitStartPrice = getTMobileNumericField(row, 'Unit Start Price', 'Start Price', 'Unit Price', 'List Price', 'Price');

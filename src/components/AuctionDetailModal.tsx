@@ -4,7 +4,7 @@ import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
-import { isVerizonLot, isTMobileLot, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
 import { buildExpandedManifestUnits, exportLotManifestXlsx } from '../utils/manifestExport';
 
 interface AuctionDetailModalProps {
@@ -64,6 +64,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
   const isAssurant = isAssurantLot(lot);
   const tMobile = isTMobileLot(lot);
+  const mktNum = getMarketplaceNumber(lot);
   const incrementSize = getLotIncrementSize(lot);
   const qtyStep = isAssurant ? getLotEffectiveQuantityStep(lot) : 1;
   const effectiveQty = verizon
@@ -133,12 +134,12 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
   const formattedCurrentPrice = currency === 'USD'
     ? `$ ${lot.currentBidUsd.toLocaleString()} USD`
-    : `R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+    : `aprox. R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
 
   const hasRetailEstimate = (lot.estimatedBrazilRetailBrl || 0) > 0;
   const formattedRetailPrice = currency === 'USD'
     ? `$ ${(lot.estimatedBrazilRetailBrl / usdRate).toLocaleString('en-US', { maximumFractionDigits: 0 })} USD`
-    : `R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}`;
+    : `aprox. R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}`;
 
   const visibleManifestUnits = showAllManifestRows
     ? expandedManifest.units
@@ -169,6 +170,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             {tMobile && (
               <span className="px-2.5 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
                 T-MOBILE
+              </span>
+            )}
+            {mktNum && (
+              <span className="px-2.5 py-0.5 rounded bg-cyan-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                MARKETPLACE {mktNum}
               </span>
             )}
             <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
@@ -376,7 +382,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                             {formattedCurrentPrice}
                           </span>
                           <span className="text-[11px] text-slate-400 block font-mono">
-                            {currency === 'USD' ? `≈ R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD`}
+                            {currency === 'USD' ? `aprox. R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD`}
                           </span>
                         </>
                       )}
@@ -406,7 +412,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       </span>
                       <span className="text-[11px] text-slate-400 block font-mono">
                         {currency === 'USD'
-                          ? `≈ R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
+                          ? `aprox. R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
                           : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`}
                       </span>
                     </div>
@@ -420,7 +426,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                           {formattedRetailPrice}
                         </span>
                         <span className="text-[10px] text-emerald-400 font-semibold block">
-                          Margem Bruta Estimada: R$ {(lot.estimatedBrazilRetailBrl - (lot.currentBidUsd * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
+                          Margem Bruta Estimada: aprox. R$ {(lot.estimatedBrazilRetailBrl - (lot.currentBidUsd * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                         </span>
                       </div>
                     )}
@@ -543,8 +549,8 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       <span>Equivalente aproximado (PTAX):</span>
                       <span className="text-slate-200 font-semibold">
                         {isAssurant
-                          ? `R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ' / un.' : ''}`
-                          : `R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ` (~$${Math.round(parsedBid / effectiveQty).toLocaleString()} / un.)` : ''}`}
+                          ? `aprox. R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ' / un.' : ''}`
+                          : `aprox. R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ` (~$${Math.round(parsedBid / effectiveQty).toLocaleString()} / un.)` : ''}`}
                       </span>
                     </div>
                   )}

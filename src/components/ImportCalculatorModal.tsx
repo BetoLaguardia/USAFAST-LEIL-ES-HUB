@@ -222,13 +222,13 @@ export const ImportCalculatorModal: React.FC<ImportCalculatorModalProps> = ({
                 <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-white">
                   <span>Custo Total no Brasil:</span>
                   <span className="font-mono text-amber-400">
-                    R$ {totalLandedCostBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    aprox. R$ {totalLandedCostBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                   </span>
                 </div>
                 <div className="flex justify-between text-[11px] text-slate-400">
                   <span>Custo Médio por Aparelho:</span>
                   <span className="font-mono text-slate-300">
-                    R$ {unitCostBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un
+                    aprox. R$ {unitCostBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un
                   </span>
                 </div>
               </div>
@@ -245,14 +245,14 @@ export const ImportCalculatorModal: React.FC<ImportCalculatorModalProps> = ({
                   <div>
                     <span className="text-slate-400 block text-[11px]">Faturamento Bruto de Venda:</span>
                     <span className="text-lg font-bold text-white font-mono">
-                      R$ {totalGrossRevenueBrl.toLocaleString('pt-BR')}
+                      aprox. R$ {totalGrossRevenueBrl.toLocaleString('pt-BR')}
                     </span>
                   </div>
 
                   <div>
                     <span className="text-slate-400 block text-[11px]">Lucro Líquido Estimado:</span>
                     <span className="text-xl font-black text-emerald-400 font-mono">
-                      R$ {netProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                      aprox. R$ {netProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </span>
                   </div>
 

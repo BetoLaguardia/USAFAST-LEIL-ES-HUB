@@ -25,7 +25,7 @@ import {
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
-import { isVerizonLot, isTMobileLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
+import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
 import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { 
@@ -418,7 +418,7 @@ export default function App() {
     const sanitizeLots = (lots: any[]): AuctionLot[] => {
       const banned = /govdeals|copart|liquidation\.com|apple certified/i;
       return (lots || [])
-        .filter(l => !banned.test(l.auctionHouse || '') && !banned.test(l.title || '') && !banned.test(l.sourceType || ''))
+        .filter(l => !banned.test(l.auctionHouse || '') && !banned.test(l.title || '') && !banned.test(l.sourceType || '') && isLotUnlockedOnly(l))
         .map(l => normalizeVerizonLot({ ...l, title: stripLotPrefix(l.title) }));
     };
 
@@ -668,7 +668,13 @@ export default function App() {
           ? auctions.filter(a => a.sourceType === 'ASSURANT' || /assurant/i.test(a.auctionHouse))
           : filterAuctionHouse === 'T_MOBILE'
             ? auctions.filter(a => isTMobileLot(a))
-            : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
+            : filterAuctionHouse === 'MARKETPLACE_1'
+              ? auctions.filter(a => getMarketplaceNumber(a) === 1)
+              : filterAuctionHouse === 'MARKETPLACE_2'
+                ? auctions.filter(a => getMarketplaceNumber(a) === 2)
+                : filterAuctionHouse === 'MARKETPLACE_3'
+                  ? auctions.filter(a => getMarketplaceNumber(a) === 3)
+                  : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
 
     const modelMap = new Map<string, { model: string; count: number; totalUnits: number }>();
 
@@ -679,8 +685,8 @@ export default function App() {
       if (house.includes('copart') || title.includes('copart')) return;
       if (house.includes('liquidation.com') || title.includes('liquidation.com')) return;
       if (house.includes('apple certified') || title.includes('apple certified')) return;
-      if (house.includes('marketplace') || title.includes('marketplace')) return;
       if (house.includes('pronta entrega') || title.includes('pronta entrega')) return;
+      if (!isLotUnlockedOnly(lot)) return;
 
       const m = (lot.modelFamily || 'Outros').trim();
       const current = modelMap.get(m) || { model: m, count: 0, totalUnits: 0 };
@@ -702,8 +708,8 @@ export default function App() {
       if (house.includes('copart') || title.includes('copart')) return false;
       if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
       if (house.includes('apple certified') || title.includes('apple certified')) return false;
-      if (house.includes('marketplace') || title.includes('marketplace')) return false;
       if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
+      if (!isLotUnlockedOnly(lot)) return false;
 
       if (filterAuctionHouse === 'VERIZON') {
         if (!isVerizonLot(lot)) return false;
@@ -711,6 +717,12 @@ export default function App() {
         if (lot.sourceType !== 'ASSURANT' && !/assurant/i.test(lot.auctionHouse || '')) return false;
       } else if (filterAuctionHouse === 'T_MOBILE') {
         if (!isTMobileLot(lot)) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_1') {
+        if (getMarketplaceNumber(lot) !== 1) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_2') {
+        if (getMarketplaceNumber(lot) !== 2) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_3') {
+        if (getMarketplaceNumber(lot) !== 3) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) return false;
       }
@@ -790,8 +802,8 @@ export default function App() {
       if (house.includes('copart') || title.includes('copart')) return false;
       if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
       if (house.includes('apple certified') || title.includes('apple certified')) return false;
-      if (house.includes('marketplace') || title.includes('marketplace')) return false;
       if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
+      if (!isLotUnlockedOnly(lot)) return false;
 
       // 1. Clean grade representation
       const cleanGrade = isVerizonLot(lot)
@@ -852,6 +864,12 @@ export default function App() {
         if (!isAssurant) return false;
       } else if (filterAuctionHouse === 'T_MOBILE') {
         if (!isTMobileLot(lot)) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_1') {
+        if (getMarketplaceNumber(lot) !== 1) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_2') {
+        if (getMarketplaceNumber(lot) !== 2) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_3') {
+        if (getMarketplaceNumber(lot) !== 3) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) {
           return false;
@@ -1242,6 +1260,27 @@ export default function App() {
                         T-MOBILE
                       </button>
 
+                      {(['MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3'] as const).map((mktKey, i) => {
+                        const label = `Marketplace ${i + 1}`;
+                        return (
+                          <button
+                            key={mktKey}
+                            type="button"
+                            onClick={() => {
+                              setFilterAuctionHouse(filterAuctionHouse === mktKey ? 'all' : mktKey);
+                              setFilterModel('all');
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                              filterAuctionHouse === mktKey
+                                ? 'bg-cyan-600 text-white font-bold'
+                                : 'text-cyan-300 hover:bg-cyan-500/15'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+
                       {Array.from(new Set(auctions.map(a => a.auctionHouse)))
                         .filter(h => h &&
                           !/verizon/i.test(h) &&
@@ -1279,7 +1318,7 @@ export default function App() {
                     <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
                       <span>
-                        Modelo {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : ''}
+                        Modelo {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : filterAuctionHouse === 'T_MOBILE' ? '(T-Mobile)' : filterAuctionHouse === 'MARKETPLACE_1' ? '(Marketplace 1)' : filterAuctionHouse === 'MARKETPLACE_2' ? '(Marketplace 2)' : filterAuctionHouse === 'MARKETPLACE_3' ? '(Marketplace 3)' : ''}
                       </span>
                     </label>
                     <select
@@ -1561,6 +1600,11 @@ export default function App() {
                                       T-MOBILE
                                     </span>
                                   )}
+                                  {getMarketplaceNumber(lot) && (
+                                    <span className="px-1.5 py-0.5 rounded bg-cyan-600 text-white font-black text-[9px] uppercase tracking-wider">
+                                      MARKETPLACE {getMarketplaceNumber(lot)}
+                                    </span>
+                                  )}
                                 </div>
                                 <h4
                                   onClick={() => setSelectedLotForDetail(lot)}
@@ -1602,7 +1646,7 @@ export default function App() {
                                     ${lot.currentBidUsd.toLocaleString()} USD{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-mono ml-1.5">
-                                    (R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
+                                    (aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
                                   </span>
                                   {isAssurant && (
                                     <span className="text-[10px] text-cyan-300 font-mono font-semibold block">
@@ -1750,6 +1794,10 @@ export default function App() {
                                       <span className="px-2 py-1 rounded bg-fuchsia-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
                                         T-MOBILE
                                       </span>
+                                    ) : getMarketplaceNumber(lot) ? (
+                                      <span className="px-2 py-1 rounded bg-cyan-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
+                                        MARKETPLACE {getMarketplaceNumber(lot)}
+                                      </span>
                                     ) : (
                                       <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 font-bold text-[10px] inline-block">
                                         {lot.auctionHouse}
@@ -1813,7 +1861,7 @@ export default function App() {
                                           ${lot.currentBidUsd.toLocaleString()} USD{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                         </span>
                                         <span className="text-[10px] text-slate-400 font-mono">
-                                          R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
+                                          aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                         </span>
                                         {!isAssurant && (
                                           <span className="text-[10px] text-slate-500 block">

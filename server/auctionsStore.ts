@@ -37,16 +37,54 @@ export function isSupabaseConfigured(): boolean {
 
 export function sanitizeAuctions(lots: any[]): any[] {
   if (!Array.isArray(lots)) return [];
-  return lots.filter((lot) => {
-    const house = String(lot?.auctionHouse || '');
-    const title = String(lot?.title || '');
-    const source = String(lot?.sourceType || '');
-    return (
-      !BANNED_PATTERNS.test(house) &&
-      !BANNED_PATTERNS.test(title) &&
-      !BANNED_PATTERNS.test(source)
-    );
-  });
+  return lots
+    .filter((lot) => {
+      const house = String(lot?.auctionHouse || '');
+      const title = String(lot?.title || '');
+      const source = String(lot?.sourceType || '');
+      const carrier = String(lot?.carrierStatus || '');
+      const desc = String(lot?.description || '');
+      const imei = String(lot?.imeiStatus || '');
+      if (BANNED_PATTERNS.test(house) || BANNED_PATTERNS.test(title) || BANNED_PATTERNS.test(source)) {
+        return false;
+      }
+      const lockCheckText = `${carrier} ${imei} ${title} ${desc}`;
+      if (
+        /\b(?:sim[\s-]*lock(?:ed)?|carrier[\s-]*lock(?:ed)?|network[\s-]*lock(?:ed)?|icloud[\s-]*lock(?:ed)?|bad\s*esn|blacklisted)\b/i.test(lockCheckText) ||
+        (/\blocked\b/i.test(lockCheckText) && !/\bunlocked\b/i.test(lockCheckText))
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .map((lot) => {
+      const house = String(lot?.auctionHouse || '');
+      const loc = String(lot?.location || '');
+      const src = String(lot?.sourceType || '');
+      const cleanStr = (s: string) =>
+        s
+          .replace(/\s*\(\s*(?:mannapov|recirq(?:\s+global)?|wesell(?:\s+cellular)?)\s*\)/gi, '')
+          .replace(/\s*[-–·]\s*(?:mannapov|recirq(?:\s+global)?|wesell(?:\s+cellular)?)\b/gi, '')
+          .replace(/\b(?:mannapov|recirq(?:\s+global)?|wesell(?:\s+cellular)?)\b/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+
+      let nextHouse = cleanStr(house);
+      let nextLoc = cleanStr(loc);
+      if (src === 'MARKETPLACE_1' || /marketplace\s*1|mannapov/i.test(house)) {
+        nextHouse = 'Marketplace 1';
+        if (/mannapov/i.test(loc) || !nextLoc) nextLoc = 'Miami Hub - Warehouse 01';
+      } else if (src === 'MARKETPLACE_2' || /marketplace\s*2|recirq/i.test(house)) {
+        nextHouse = 'Marketplace 2';
+        if (/recirq/i.test(loc) || !nextLoc) nextLoc = 'Miami Hub - Warehouse 02';
+      } else if (src === 'MARKETPLACE_3' || /marketplace\s*3|wesell/i.test(house)) {
+        nextHouse = 'Marketplace 3';
+        if (/wesell/i.test(loc) || !nextLoc) nextLoc = 'New York / Miami Hub - Warehouse 03';
+      }
+
+      if (nextHouse === house && nextLoc === loc) return lot;
+      return { ...lot, auctionHouse: nextHouse, location: nextLoc };
+    });
 }
 
 export function readLocalStore(): any[] {

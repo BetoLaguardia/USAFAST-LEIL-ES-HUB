@@ -278,7 +278,7 @@ export const downloadOfficialInvoicePdf = (data: InvoiceData) => {
             </tr>
             <tr>
               <td>Total Estimado em BRL:</td>
-              <td style="text-align: right; font-family: monospace;">R$ ${totalBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td style="text-align: right; font-family: monospace;">aprox. R$ ${totalBrl.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
             </tr>
             <tr class="grand-total">
               <td style="padding: 12px;">TOTAL DA INVOICE:</td>
