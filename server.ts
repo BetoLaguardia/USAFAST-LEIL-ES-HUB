@@ -9,6 +9,7 @@ import {
   saveAuctionsToStore,
 } from './server/auctionsStore.ts';
 import {
+  deleteClientAccount,
   getAuthenticatedProfile,
   listClientsForAdmin,
   registerClientInSupabase,
@@ -110,6 +111,11 @@ async function startServer() {
 
     if (action === 'update-client-access') {
       const result = await updateClientAccessType(authHeader, body);
+      return res.status(result.status).json(result);
+    }
+
+    if (action === 'delete-client') {
+      const result = await deleteClientAccount(authHeader, body);
       return res.status(result.status).json(result);
     }
 

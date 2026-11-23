@@ -623,3 +623,84 @@ export async function updateClientAccessType(
     client: mapClientRowToUser(clientRow, updatedAuth.user),
   };
 }
+
+export async function deleteClientAccount(
+  authHeader: string | undefined,
+  payload: {
+    clientId?: string;
+    email?: string;
+  }
+) {
+  const sb = getSupabaseAdminClient();
+  if (!sb) {
+    return { ok: false, status: 500, error: 'Serviço de banco de dados não configurado.' };
+  }
+
+  const { user: authUser, error: authErr } = await authenticateBearerToken(sb, authHeader);
+  if (!authUser) {
+    return { ok: false, status: 401, error: authErr || 'Não autenticado.' };
+  }
+
+  const allowed = await isCallerAdminGeral(sb, authUser);
+  if (!allowed) {
+    return {
+      ok: false,
+      status: 403,
+      error: 'Apenas o Admin Geral pode excluir usuários do sistema.',
+    };
+  }
+
+  let query = sb.from('clients').select('*');
+  if (payload.clientId) {
+    query = query.eq('id', payload.clientId);
+  } else if (payload.email) {
+    query = query.ilike('email', payload.email.trim());
+  } else {
+    return { ok: false, status: 400, error: 'Identificador do usuário não informado.' };
+  }
+
+  const { data: clientRow, error: findErr } = await query.maybeSingle();
+  if (findErr) {
+    return { ok: false, status: 500, error: 'Erro ao consultar usuário para exclusão.' };
+  }
+  if (!clientRow) {
+    return { ok: false, status: 404, error: 'Usuário não encontrado.' };
+  }
+
+  const isSelf =
+    clientRow.id === authUser.id ||
+    (clientRow.email &&
+      authUser.email &&
+      String(clientRow.email).toLowerCase() === String(authUser.email).toLowerCase());
+  if (isSelf) {
+    return {
+      ok: false,
+      status: 400,
+      error: 'Você não pode excluir a própria conta administrativa atualmente conectada.',
+    };
+  }
+
+  const { error: deleteRowErr } = await sb
+    .from('clients')
+    .delete()
+    .eq('id', clientRow.id);
+
+  if (deleteRowErr) {
+    return {
+      ok: false,
+      status: 500,
+      error: 'Erro ao excluir registro do usuário no banco de dados.',
+    };
+  }
+
+  if (clientRow.id) {
+    await sb.auth.admin.deleteUser(clientRow.id).catch(() => {});
+  }
+
+  return {
+    ok: true,
+    status: 200,
+    deletedId: clientRow.id,
+    deletedEmail: clientRow.email,
+  };
+}

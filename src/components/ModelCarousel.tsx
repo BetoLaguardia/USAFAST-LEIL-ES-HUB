@@ -93,20 +93,25 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
   const safeIndex = currentIndex % total;
   const currentLot = carouselLots[safeIndex];
   const isVerizon = isVerizonLot(currentLot);
+  const isAssurant = currentLot.sourceType === 'ASSURANT' || /assurant/i.test(currentLot.auctionHouse || '');
   const auctionHouseName = isVerizon ? 'Leilão Oficial VERIZON' : 'Leilão Oficial ASSURANT';
   const cleanTitle = stripLotPrefix(currentLot.title);
   const displayGrade = isVerizon ? mapVerizonGradeStrict(currentLot.grade) : `Grade ${currentLot.grade}`;
 
-  // Price calculations
+  // Price calculations (ASSURANT currentBidUsd is already unit price — never divide by quantity)
   const priceUsd = currentLot.currentBidUsd;
-  const priceBrl = Math.round(priceUsd * usdRate);
-  const unitPriceUsd = Math.round(priceUsd / (currentLot.quantity || 1));
-  const unitPriceBrl = Math.round(priceBrl / (currentLot.quantity || 1));
-  const formattedUsd = `$${priceUsd.toLocaleString('en-US')}`;
-  const formattedBrl = `R$ ${priceBrl.toLocaleString('pt-BR')}`;
-  const displayPrice = currency === 'USD' ? formattedUsd : formattedBrl;
-  const secondaryPrice = currency === 'USD' ? formattedBrl : formattedUsd;
+  const qty = Math.max(1, currentLot.quantity || 1);
+  const unitPriceUsd = isAssurant ? Math.round(priceUsd) : Math.round(priceUsd / qty);
+  const totalLotUsd = isAssurant ? Math.round(priceUsd * qty) : Math.round(priceUsd);
+  const totalLotBrl = Math.round(totalLotUsd * usdRate);
+  const unitPriceBrl = Math.round(unitPriceUsd * usdRate);
+  const formattedTotalUsd = `$${totalLotUsd.toLocaleString('en-US')}`;
+  const formattedTotalBrl = `R$ ${totalLotBrl.toLocaleString('pt-BR')}`;
+  const displayPrice = currency === 'USD' ? formattedTotalUsd : formattedTotalBrl;
+  const secondaryPrice = currency === 'USD' ? formattedTotalBrl : formattedTotalUsd;
   const displayUnitPrice = currency === 'USD' ? `$${unitPriceUsd.toLocaleString('en-US')}` : `R$ ${unitPriceBrl.toLocaleString('pt-BR')}`;
+  const secondaryUnitPrice = currency === 'USD' ? `R$ ${unitPriceBrl.toLocaleString('pt-BR')}` : `$${unitPriceUsd.toLocaleString('en-US')} USD`;
+  const incrementSize = Math.max(1, Number(currentLot.incrementSize) || 1);
 
   return (
     <section 
@@ -321,19 +326,27 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
               ) : (
                 <div>
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                    {currentLot.quantity > 1 ? `Lance Unitário (${currentLot.quantity} unidades${isVerizon ? ' fixas' : ''})` : 'Lance Atual no Leilão'}
+                    {isAssurant
+                      ? `Valor Unitário (Assurant · ${currentLot.quantity} un. · Inc: ${incrementSize} un.)`
+                      : currentLot.quantity > 1
+                        ? `Lance Unitário (${currentLot.quantity} unidades${isVerizon ? ' fixas' : ''})`
+                        : 'Lance Atual no Leilão'}
                   </span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight font-mono">
                       {currentLot.quantity > 1 ? `${displayUnitPrice} / un.` : displayPrice}
                     </span>
                     <span className="text-xs text-slate-400 font-mono">
-                      {currentLot.quantity > 1 ? `(Lote: ${displayPrice})` : `(${secondaryPrice})`}
+                      {isAssurant
+                        ? `(${secondaryUnitPrice}${qty > 1 ? ' / un.' : ''})`
+                        : currentLot.quantity > 1
+                          ? `(Lote: ${displayPrice})`
+                          : `(${secondaryPrice})`}
                     </span>
                   </div>
                   {currentLot.estimatedBrazilRetailBrl > 0 && (
                     <span className="text-[11px] text-emerald-400 font-medium block">
-                      Venda estimada no Brasil: ~R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}
+                      Venda estimada no Brasil: ~R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}{isAssurant && qty > 1 ? ' / un.' : ''}
                     </span>
                   )}
                 </div>

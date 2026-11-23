@@ -332,7 +332,7 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-full text-left px-3 py-2 rounded-lg font-bold flex items-center gap-2 ${currentPage === 'admin' ? 'bg-amber-400 text-slate-950' : 'bg-amber-500/10 text-amber-300 border border-amber-500/30'}`}
           >
             <Lock className="w-3.5 h-3.5" />
-            <span>Painel Admin & Importar Excel</span>
+            <span>{t.adminPanel}</span>
           </button>
         </div>
       )}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Gavel, MapPin, Download, CheckCircle2, Battery, Smartphone, AlertTriangle, Lock, Layers, ChevronDown } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
-import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
+import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
 import { buildExpandedManifestUnits, exportLotManifestXlsx } from '../utils/manifestExport';
@@ -62,16 +62,21 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
   if (!isOpen || !lot) return null;
 
+  const isAssurant = isAssurantLot(lot);
+  const incrementSize = getLotIncrementSize(lot);
+  const qtyStep = isAssurant ? getLotEffectiveQuantityStep(lot) : 1;
   const effectiveQty = verizon
     ? Math.max(1, lot.quantity)
-    : Math.max(1, Math.min(Math.max(1, lot.quantity), bidQuantity));
+    : Math.max(qtyStep, Math.min(Math.max(1, lot.quantity), bidQuantity));
 
-  const unitReferenceUsd = lot.currentBidUsd > 0 ? lot.currentBidUsd / Math.max(1, lot.quantity) : 50;
+  const unitReferenceUsd = lot.currentBidUsd > 0 ? getLotUnitPriceUsd(lot) : 50;
   const minBid = verizon
     ? 1
-    : effectiveQty >= lot.quantity
+    : isAssurant
       ? lot.currentBidUsd + 25
-      : Math.max(25, Math.round(unitReferenceUsd * effectiveQty) + 25);
+      : effectiveQty >= lot.quantity
+        ? lot.currentBidUsd + 25
+        : Math.max(25, Math.round(unitReferenceUsd * effectiveQty) + 25);
 
   const parsedBid = Number(bidValue);
   const mix = getLotMixSummary(lot);
@@ -86,12 +91,18 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
   const handleChangeBidQuantity = (nextRaw: number) => {
     if (verizon) return;
-    const clamped = Math.max(1, Math.min(Math.max(1, lot.quantity), Math.round(nextRaw) || 1));
+    const maxQty = Math.max(1, lot.quantity);
+    let clamped = Math.max(qtyStep, Math.min(maxQty, Math.round(nextRaw) || qtyStep));
+    if (qtyStep > 1 && clamped < maxQty) {
+      clamped = Math.max(qtyStep, Math.min(maxQty, Math.round(clamped / qtyStep) * qtyStep));
+    }
     setBidQuantity(clamped);
     setBidError(null);
-    const suggested = clamped >= lot.quantity
+    const suggested = isAssurant
       ? lot.currentBidUsd + 25
-      : Math.max(25, Math.round(unitReferenceUsd * clamped) + 25);
+      : clamped >= lot.quantity
+        ? lot.currentBidUsd + 25
+        : Math.max(25, Math.round(unitReferenceUsd * clamped) + 25);
     setBidValue(String(suggested));
   };
 
@@ -379,24 +390,31 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <span className="text-[11px] text-slate-400 uppercase font-semibold block">
-                        Lance Atual no Leilão:
+                        {isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual no Leilão:'}
                       </span>
                       <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
                         {formattedCurrentPrice}
+                        {isAssurant && lot.quantity > 1 && (
+                          <span className="text-sm font-normal text-slate-400"> / un.</span>
+                        )}
                       </span>
                       <span className="text-[11px] text-slate-400 block font-mono">
-                        {currency === 'USD' ? `≈ R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD`}
+                        {currency === 'USD'
+                          ? `≈ R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
+                          : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`}
                       </span>
                     </div>
 
                     {hasRetailEstimate && (
                       <div className="text-right">
-                        <span className="text-[11px] text-slate-400 block">Revenda Estimada Brasil:</span>
+                        <span className="text-[11px] text-slate-400 block">
+                          Revenda Estimada Brasil{isAssurant && lot.quantity > 1 ? ' (/ un.)' : ''}:
+                        </span>
                         <span className="text-base font-bold text-white font-mono">
                           {formattedRetailPrice}
                         </span>
                         <span className="text-[10px] text-emerald-400 font-semibold block">
-                          Margem Bruta Estimada: R$ {(lot.estimatedBrazilRetailBrl - (lot.currentBidUsd * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                          Margem Bruta Estimada: R$ {(lot.estimatedBrazilRetailBrl - (lot.currentBidUsd * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                         </span>
                       </div>
                     )}
@@ -409,11 +427,19 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                     <span className="font-mono font-bold text-emerald-300">Sem mínimo obrigatório</span>
                   </div>
                 ) : isAssurantLot(lot) ? (
-                  <div className="p-2.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-xs flex items-center justify-between">
-                    <span className="text-blue-200 font-semibold">Média lance aprovado arremate anterior:</span>
-                    <span className="font-mono font-bold text-blue-300 text-sm">
-                      ${getAssurantPreviousApprovedBid(lot).toLocaleString()} USD <span className="text-[10px] text-slate-400 font-normal">/ un.</span>
-                    </span>
+                  <div className="p-2.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-blue-200 font-semibold">Média lance aprovado arremate anterior:</span>
+                      <span className="font-mono font-bold text-blue-300 text-sm">
+                        ${getAssurantPreviousApprovedBid(lot).toLocaleString()} USD <span className="text-[10px] text-slate-400 font-normal">/ un.</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-blue-500/20">
+                      <span className="text-cyan-200 font-semibold">Incremento (Assurant):</span>
+                      <span className="font-mono font-bold text-cyan-300">
+                        {incrementSize} {incrementSize === 1 ? 'unidade' : 'unidades'}
+                      </span>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium px-1">
@@ -432,14 +458,15 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                         </span>
                         <span className="text-[10px] text-slate-400">
                           Disponível no lote: {lot.quantity} {lot.quantity === 1 ? 'aparelho' : 'aparelhos'}
+                          {isAssurant ? ` · Incremento: ${incrementSize} un.` : ''}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => handleChangeBidQuantity(effectiveQty - 1)}
-                          disabled={effectiveQty <= 1}
+                          onClick={() => handleChangeBidQuantity(effectiveQty - qtyStep)}
+                          disabled={effectiveQty <= qtyStep}
                           className="w-7 h-7 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center transition-colors"
                           aria-label="Diminuir quantidade"
                         >
@@ -447,15 +474,16 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                         </button>
                         <input
                           type="number"
-                          min={1}
+                          min={qtyStep}
                           max={Math.max(1, lot.quantity)}
+                          step={qtyStep}
                           value={effectiveQty}
                           onChange={e => handleChangeBidQuantity(Number(e.target.value))}
                           className="w-16 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-center text-xs font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-400"
                         />
                         <button
                           type="button"
-                          onClick={() => handleChangeBidQuantity(effectiveQty + 1)}
+                          onClick={() => handleChangeBidQuantity(effectiveQty + qtyStep)}
                           disabled={effectiveQty >= lot.quantity}
                           className="w-7 h-7 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center transition-colors"
                           aria-label="Aumentar quantidade"
@@ -508,8 +536,9 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                     <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
                       <span>Equivalente aproximado (PTAX):</span>
                       <span className="text-slate-200 font-semibold">
-                        R$ {(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                        {effectiveQty > 1 ? ` (~$${Math.round(parsedBid / effectiveQty).toLocaleString()} / un.)` : ''}
+                        {isAssurant
+                          ? `R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ' / un.' : ''}`
+                          : `R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ` (~$${Math.round(parsedBid / effectiveQty).toLocaleString()} / un.)` : ''}`}
                       </span>
                     </div>
                   )}

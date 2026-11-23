@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock } from 'lucide-react';
 import { AuctionLot, SystemUser, UserAccessType } from '../types/auction';
-import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
+import { isAssurantLot, getAssurantPreviousApprovedBid, getLotIncrementSize } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
 import { registerClientWithSupabase } from '../services/authService';
 
@@ -274,11 +274,20 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                     {currentSelectedLot && (
                       <div className="mt-3 p-3 bg-slate-950/80 rounded-lg text-xs space-y-1.5 border border-slate-800">
                         <div className="flex justify-between">
-                          <span className="text-slate-400">{isVerizonSelected ? 'Modelo de Preço (Verizon):' : 'Lance Atual no Leilão:'}</span>
+                          <span className="text-slate-400">
+                            {isVerizonSelected
+                              ? 'Modelo de Preço (Verizon):'
+                              : isAssurantLot(currentSelectedLot) && currentSelectedLot.quantity > 1
+                                ? 'Valor Unitário (Assurant):'
+                                : 'Lance Atual no Leilão:'}
+                          </span>
                           {isVerizonSelected && currentSelectedLot.currentBidUsd === 0 ? (
                             <span className="font-bold text-emerald-400">Sem Preço Fixo (Cliente Escolhe)</span>
                           ) : (
-                            <span className="font-mono font-bold text-white">${currentSelectedLot.currentBidUsd.toLocaleString()} USD</span>
+                            <span className="font-mono font-bold text-white">
+                              ${currentSelectedLot.currentBidUsd.toLocaleString()} USD
+                              {isAssurantLot(currentSelectedLot) && currentSelectedLot.quantity > 1 ? ' / un.' : ''}
+                            </span>
                           )}
                         </div>
                         {isVerizonSelected ? (
@@ -287,10 +296,20 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                             <span className="font-mono font-bold text-white">{currentSelectedLot.quantity} unidade(s) fixas</span>
                           </div>
                         ) : isAssurantLot(currentSelectedLot) ? (
-                          <div className="flex justify-between items-center font-medium">
-                            <span className="text-blue-300">Média lance aprovado arremate anterior:</span>
-                            <span className="font-mono font-bold text-blue-300">${getAssurantPreviousApprovedBid(currentSelectedLot).toLocaleString()} USD</span>
-                          </div>
+                          <>
+                            <div className="flex justify-between items-center font-medium">
+                              <span className="text-blue-300">Média lance aprovado arremate anterior:</span>
+                              <span className="font-mono font-bold text-blue-300">
+                                ${getAssurantPreviousApprovedBid(currentSelectedLot).toLocaleString()} USD{currentSelectedLot.quantity > 1 ? ' / un.' : ''}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center font-medium">
+                              <span className="text-cyan-300">Incremento (Assurant):</span>
+                              <span className="font-mono font-bold text-cyan-300">
+                                {getLotIncrementSize(currentSelectedLot)} un.
+                              </span>
+                            </div>
+                          </>
                         ) : (
                           <div className="flex justify-between">
                             <span className="text-slate-400">Lance Mínimo Aceito:</span>

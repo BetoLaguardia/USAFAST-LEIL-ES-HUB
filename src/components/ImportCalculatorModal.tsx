@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calculator, DollarSign, TrendingUp, ArrowRight, ShieldCheck, HelpCircle } from 'lucide-react';
 
 interface ImportCalculatorModalProps {
@@ -22,6 +22,13 @@ export const ImportCalculatorModal: React.FC<ImportCalculatorModalProps> = ({
   const [shippingUsdPerUnit, setShippingUsdPerUnit] = useState<number>(38); // Frete seguro Miami -> Brasil por un.
   const [taxRegime, setTaxRegime] = useState<'remessa' | 'importa_facil' | 'despacho_comercial'>('importa_facil');
   const [resellPricePerUnitBrl, setResellPricePerUnitBrl] = useState<number>(7990); // preço de revenda no Brasil
+
+  useEffect(() => {
+    if (isOpen) {
+      setBidUsd(initialLotPriceUsd);
+      setUnits(Math.max(1, initialLotUnits));
+    }
+  }, [isOpen, initialLotPriceUsd, initialLotUnits]);
 
   if (!isOpen) return null;
 

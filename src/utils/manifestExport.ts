@@ -7,6 +7,7 @@ import {
   mapVerizonGradeStrict,
   parseBstockColorFromDesc
 } from './verizonUtils';
+import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './assurantUtils';
 
 export interface ExpandedManifestDevice extends DeviceItem {
   unitIndex: number;
@@ -162,12 +163,19 @@ export function exportLotManifestXlsx(
   const { units, totalLotQuantity } = buildExpandedManifestUnits(lot);
   const mix = getLotMixSummary(lot);
 
+  const isAssurant = isAssurantLot(lot);
+  const unitUsd = getLotUnitPriceUsd(lot);
+  const totalUsd = getLotTotalPriceUsd(lot);
+  const incrementSize = getLotIncrementSize(lot);
+
   const priceSummary =
     verizon && lot.currentBidUsd === 0
       ? 'Sem Preço Fixo (Livre Escolha em USD)'
-      : currency === 'USD'
-        ? `$ ${lot.currentBidUsd.toLocaleString('en-US')} USD (≈ R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })})`
-        : `R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ($ ${lot.currentBidUsd.toLocaleString('en-US')} USD)`;
+      : isAssurant
+        ? `$ ${unitUsd.toLocaleString('en-US')} USD / un. | Incremento: ${incrementSize} un. (≈ R$ ${(unitUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.)`
+        : currency === 'USD'
+          ? `$ ${totalUsd.toLocaleString('en-US')} USD (≈ R$ ${(totalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })})`
+          : `R$ ${(totalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ($ ${totalUsd.toLocaleString('en-US')} USD)`;
 
   const headers = [
     'Item #',

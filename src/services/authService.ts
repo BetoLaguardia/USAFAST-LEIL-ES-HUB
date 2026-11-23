@@ -335,3 +335,35 @@ export async function updateAdminClientAccessType(
   }
   return { ok: true, client: json.client as SystemUser };
 }
+
+export async function deleteAdminClient(
+  clientId: string | undefined,
+  email: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!supabase) {
+    return { ok: false, error: 'Supabase não configurado.' };
+  }
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (!token) {
+    return { ok: false, error: 'Sessão administrativa expirada.' };
+  }
+
+  const res = await fetch('/api/auth', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      action: 'delete-client',
+      clientId,
+      email,
+    }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json?.ok) {
+    return { ok: false, error: json?.error || 'Falha ao excluir usuário.' };
+  }
+  return { ok: true };
+}

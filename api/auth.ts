@@ -1,4 +1,5 @@
 import {
+  deleteClientAccount,
   getAuthenticatedProfile,
   listClientsForAdmin,
   registerClientInSupabase,
@@ -66,6 +67,11 @@ export default async function handler(req: any, res: any) {
 
     if (action === 'update-client-access') {
       const result = await updateClientAccessType(authHeader, body);
+      return res.status(result.status).json(result);
+    }
+
+    if (action === 'delete-client') {
+      const result = await deleteClientAccount(authHeader, body);
       return res.status(result.status).json(result);
     }
 

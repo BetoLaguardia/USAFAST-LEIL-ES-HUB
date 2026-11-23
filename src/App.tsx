@@ -26,6 +26,7 @@ import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
 import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
+import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { 
   Search, 
@@ -651,7 +652,7 @@ export default function App() {
 
   const handleOpenCalculatorForLot = (lot: AuctionLot) => {
     setCalculatorInitData({
-      priceUsd: lot.currentBidUsd,
+      priceUsd: getLotTotalPriceUsd(lot),
       units: lot.quantity
     });
     setIsCalculatorModalOpen(true);
@@ -765,11 +766,11 @@ export default function App() {
     const selectedLotsObjects = auctions.filter(a => selectedLotIds.includes(a.id));
     if (selectedLotsObjects.length === 0) return;
     const totalUnits = selectedLotsObjects.reduce((acc, l) => acc + (l.quantity || 1), 0);
-    const avgPriceUsd = Math.round(
-      selectedLotsObjects.reduce((acc, l) => acc + l.currentBidUsd, 0) / (selectedLotsObjects.length || 1)
+    const totalPriceUsd = Math.round(
+      selectedLotsObjects.reduce((acc, l) => acc + getLotTotalPriceUsd(l), 0)
     );
     setCalculatorInitData({
-      priceUsd: avgPriceUsd,
+      priceUsd: totalPriceUsd,
       units: totalUnits
     });
     setIsCalculatorModalOpen(true);
@@ -857,14 +858,18 @@ export default function App() {
         return new Date(a.endTime).getTime() - new Date(b.endTime).getTime();
       }
       if (sortBy === 'priceAsc') {
-        return a.currentBidUsd - b.currentBidUsd;
+        return getLotTotalPriceUsd(a) - getLotTotalPriceUsd(b);
       }
       if (sortBy === 'priceDesc') {
-        return b.currentBidUsd - a.currentBidUsd;
+        return getLotTotalPriceUsd(b) - getLotTotalPriceUsd(a);
       }
       if (sortBy === 'profitDesc') {
-        const profitA = a.estimatedBrazilRetailBrl - (a.currentBidUsd * usdRate);
-        const profitB = b.estimatedBrazilRetailBrl - (b.currentBidUsd * usdRate);
+        const profitA = isAssurantLot(a)
+          ? (a.estimatedBrazilRetailBrl - a.currentBidUsd * usdRate) * Math.max(1, a.quantity || 1)
+          : a.estimatedBrazilRetailBrl - a.currentBidUsd * usdRate;
+        const profitB = isAssurantLot(b)
+          ? (b.estimatedBrazilRetailBrl - b.currentBidUsd * usdRate) * Math.max(1, b.quantity || 1)
+          : b.estimatedBrazilRetailBrl - b.currentBidUsd * usdRate;
         return profitB - profitA;
       }
       if (sortBy === 'mostBids') {
@@ -1157,203 +1162,216 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Filter Rows: Leilão, Modelos Importados, Grade, Capacidade */}
-              <div className="space-y-3.5 pt-3 border-t border-slate-800/80 text-xs">
-                {/* Row 1: Leilão */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-slate-400 font-semibold w-24 shrink-0 flex items-center gap-1">
-                    <Gavel className="w-3.5 h-3.5 text-amber-400" />
-                    {t.auctionFilter}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setFilterAuctionHouse('all');
-                      setFilterModel('all');
-                    }}
-                    className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                      filterAuctionHouse === 'all'
-                        ? 'bg-amber-400 text-slate-950 font-bold'
-                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    {t.allAuctionsFilter}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      const nextHouse = filterAuctionHouse === 'VERIZON' ? 'all' : 'VERIZON';
-                      setFilterAuctionHouse(nextHouse);
-                      setFilterModel('all');
-                      if (nextHouse === 'VERIZON' && filterGrade !== 'all' && !VERIZON_GRADES.includes(filterGrade as GradeType)) {
-                        setFilterGrade('all');
-                      }
-                    }}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                      filterAuctionHouse === 'VERIZON'
-                        ? 'bg-red-600 text-white shadow-md shadow-red-600/30 ring-2 ring-red-400'
-                        : 'bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20'
-                    }`}
-                  >
-                    <span>⚡ {t.verizonBadge}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setFilterAuctionHouse(filterAuctionHouse === 'ASSURANT' ? 'all' : 'ASSURANT');
-                      setFilterModel('all');
-                    }}
-                    className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                      filterAuctionHouse === 'ASSURANT'
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400'
-                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
-                    }`}
-                  >
-                    <span>🔹 {t.assurantBadge}</span>
-                  </button>
-
-                  {/* Dynamic auction house buttons (excluding non-auctions) */}
-                  {Array.from(new Set(auctions.map(a => a.auctionHouse)))
-                    .filter(h => h && 
-                      !/verizon/i.test(h) && 
-                      !/assurant/i.test(h) && 
-                      !/liquidation\.com/i.test(h) && 
-                      !/apple certified/i.test(h) && 
-                      !/marketplace/i.test(h) && 
-                      !/pronta entrega/i.test(h) && 
-                      !/stock/i.test(h)
-                    )
-                    .slice(0, 5)
-                    .map(house => (
+              {/* Clean Structured Filter Controls */}
+              <div className="pt-3 border-t border-slate-800/80 space-y-3 text-xs">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+                  {/* Leilão Segmented Bar */}
+                  <div className="lg:col-span-5 space-y-1.5">
+                    <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{t.auctionFilter}</span>
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
                       <button
-                        key={house}
+                        type="button"
                         onClick={() => {
-                          setFilterAuctionHouse(filterAuctionHouse === house ? 'all' : house);
+                          setFilterAuctionHouse('all');
                           setFilterModel('all');
                         }}
-                        className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                          filterAuctionHouse === house
-                            ? 'bg-slate-200 text-slate-950 font-bold'
-                            : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                          filterAuctionHouse === 'all'
+                            ? 'bg-amber-400 text-slate-950 font-bold'
+                            : 'text-slate-300 hover:text-white hover:bg-slate-900'
                         }`}
                       >
-                        {house.length > 22 ? house.slice(0, 20) + '...' : house}
+                        {t.allAuctionsFilter}
                       </button>
-                    ))}
-                </div>
 
-                {/* Row 2: Modelos Importados por Leilão */}
-                <div className="space-y-1.5 pt-1 border-t border-slate-800/40">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextHouse = filterAuctionHouse === 'VERIZON' ? 'all' : 'VERIZON';
+                          setFilterAuctionHouse(nextHouse);
+                          setFilterModel('all');
+                          if (nextHouse === 'VERIZON' && filterGrade !== 'all' && !VERIZON_GRADES.includes(filterGrade as GradeType)) {
+                            setFilterGrade('all');
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                          filterAuctionHouse === 'VERIZON'
+                            ? 'bg-red-600 text-white font-bold'
+                            : 'text-red-300 hover:bg-red-500/15'
+                        }`}
+                      >
+                        {t.verizonBadge}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterAuctionHouse(filterAuctionHouse === 'ASSURANT' ? 'all' : 'ASSURANT');
+                          setFilterModel('all');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                          filterAuctionHouse === 'ASSURANT'
+                            ? 'bg-blue-600 text-white font-bold'
+                            : 'text-blue-300 hover:bg-blue-500/15'
+                        }`}
+                      >
+                        {t.assurantBadge}
+                      </button>
+
+                      {Array.from(new Set(auctions.map(a => a.auctionHouse)))
+                        .filter(h => h &&
+                          !/verizon/i.test(h) &&
+                          !/assurant/i.test(h) &&
+                          !/liquidation\.com/i.test(h) &&
+                          !/apple certified/i.test(h) &&
+                          !/marketplace/i.test(h) &&
+                          !/pronta entrega/i.test(h) &&
+                          !/stock/i.test(h)
+                        )
+                        .slice(0, 3)
+                        .map(house => (
+                          <button
+                            key={house}
+                            type="button"
+                            onClick={() => {
+                              setFilterAuctionHouse(filterAuctionHouse === house ? 'all' : house);
+                              setFilterModel('all');
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 ${
+                              filterAuctionHouse === house
+                                ? 'bg-slate-200 text-slate-950 font-bold'
+                                : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                            }`}
+                          >
+                            {house.length > 20 ? house.slice(0, 18) + '...' : house}
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Modelo Dropdown (All 60+ models cleanly organized) */}
+                  <div className="lg:col-span-3 space-y-1.5">
+                    <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
                       <span>
-                        Modelos Importados {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : '(Todos os Leilões)'}:
+                        Modelo {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : ''}
                       </span>
+                    </label>
+                    <select
+                      value={filterModel}
+                      onChange={e => setFilterModel(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400 tabular-nums"
+                    >
+                      <option value="all">
+                        Todos os Modelos ({availableImportedModels.reduce((acc, m) => acc + m.totalUnits, 0).toLocaleString('pt-BR')} un)
+                      </option>
+                      {availableImportedModels.map(item => (
+                        <option key={item.model} value={item.model}>
+                          {item.model} ({item.totalUnits.toLocaleString('pt-BR')} un)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Grade Dropdown */}
+                  <div className="lg:col-span-2 space-y-1.5">
+                    <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>{t.gradeFilter.replace(':', '')}</span>
+                    </label>
+                    <select
+                      value={filterGrade}
+                      onChange={e => setFilterGrade(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="all">{t.allGradesFilter}</option>
+                      {availableGrades.map(gradeKey => (
+                        <option key={gradeKey} value={gradeKey}>
+                          {gradeKey}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Capacidade Dropdown */}
+                  <div className="lg:col-span-2 space-y-1.5">
+                    <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{t.capacityFilter.replace(':', '')}</span>
+                    </label>
+                    <select
+                      value={filterCapacity}
+                      onChange={e => setFilterCapacity(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="all">{t.allCapacitiesFilter}</option>
+                      {['64GB', '128GB', '256GB', '512GB', '1TB'].map(cap => (
+                        <option key={cap} value={cap}>
+                          {cap}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Single-line Top Models Quick Strip (max 6 primary models, zero vertical wall) */}
+                {availableImportedModels.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60 overflow-x-auto pb-0.5">
+                    <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap shrink-0">
+                      Principais:
                     </span>
-                    {filterModel !== 'all' && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterModel('all')}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0 tabular-nums ${
+                        filterModel === 'all'
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70'
+                      }`}
+                    >
+                      Todos · {availableImportedModels.reduce((acc, m) => acc + m.totalUnits, 0).toLocaleString('pt-BR')}
+                    </button>
+
+                    {availableImportedModels
+                      .filter(m => !/^Mix:/i.test(m.model))
+                      .slice(0, 6)
+                      .map(item => {
+                        const isActive = filterModel === item.model;
+                        return (
+                          <button
+                            key={item.model}
+                            type="button"
+                            onClick={() => setFilterModel(isActive ? 'all' : item.model)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 tabular-nums ${
+                              isActive
+                                ? 'bg-amber-400 text-slate-950 font-bold'
+                                : 'bg-slate-950/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>{item.model}</span>
+                            <span className={`font-mono text-[10px] ${isActive ? 'text-slate-900 font-bold' : 'text-slate-500'}`}>
+                              {item.totalUnits.toLocaleString('pt-BR')}
+                            </span>
+                          </button>
+                        );
+                      })}
+
+                    {filterModel !== 'all' && !availableImportedModels.filter(m => !/^Mix:/i.test(m.model)).slice(0, 6).some(m => m.model === filterModel) && (
                       <button
+                        type="button"
                         onClick={() => setFilterModel('all')}
-                        className="text-[11px] text-amber-400 hover:underline font-semibold"
+                        className="px-2.5 py-1 rounded-lg text-[11px] bg-amber-400 text-slate-950 font-bold whitespace-nowrap shrink-0 flex items-center gap-1.5"
+                        title="Remover filtro de modelo"
                       >
-                        ✕ Ver Todos os Modelos
+                        <span className="max-w-[200px] truncate">{filterModel}</span>
+                        <span>✕</span>
                       </button>
                     )}
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      onClick={() => setFilterModel('all')}
-                      className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                        filterModel === 'all'
-                          ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/20'
-                          : 'bg-slate-800/70 text-slate-300 hover:bg-slate-800 border border-slate-700/60'
-                      }`}
-                    >
-                      Todos os Modelos ({availableImportedModels.reduce((acc, m) => acc + m.totalUnits, 0)} aparelhos)
-                    </button>
-
-                    {availableImportedModels.map(item => (
-                      <button
-                        key={item.model}
-                        onClick={() => setFilterModel(filterModel === item.model ? 'all' : item.model)}
-                        className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                          filterModel === item.model
-                            ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                            : 'bg-slate-900 text-slate-200 hover:bg-slate-800 border border-slate-800'
-                        }`}
-                      >
-                        <span>{item.model}</span>
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
-                          filterModel === item.model ? 'bg-slate-950 text-amber-300 font-bold' : 'bg-slate-800 text-slate-400'
-                        }`}>
-                          {item.totalUnits} un
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Row 3: Grade */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-slate-400 font-semibold w-24 shrink-0 flex items-center gap-1">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
-                    {t.gradeFilter}
-                  </span>
-                  <button
-                    onClick={() => setFilterGrade('all')}
-                    className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                      filterGrade === 'all'
-                        ? 'bg-amber-400 text-slate-950 font-bold'
-                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    {t.allGradesFilter}
-                  </button>
-                  {availableGrades.map(gradeKey => (
-                    <button
-                      key={gradeKey}
-                      onClick={() => setFilterGrade(filterGrade === gradeKey ? 'all' : gradeKey)}
-                      className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                        filterGrade === gradeKey
-                          ? 'bg-amber-400 text-slate-950 font-bold'
-                          : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      {gradeKey}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Row 4: Capacidade */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-slate-400 font-semibold w-24 shrink-0 flex items-center gap-1">
-                    <Package className="w-3.5 h-3.5 text-emerald-400" />
-                    {t.capacityFilter}
-                  </span>
-                  <button
-                    onClick={() => setFilterCapacity('all')}
-                    className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                      filterCapacity === 'all'
-                        ? 'bg-amber-400 text-slate-950 font-bold'
-                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    {t.allCapacitiesFilter}
-                  </button>
-                  {['64GB', '128GB', '256GB', '512GB', '1TB'].map(cap => (
-                    <button
-                      key={cap}
-                      onClick={() => setFilterCapacity(filterCapacity === cap ? 'all' : cap)}
-                      className={`px-3 py-1 rounded-lg font-medium transition-colors ${
-                        filterCapacity === cap
-                          ? 'bg-amber-400 text-slate-950 font-bold'
-                          : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      {cap}
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
             </div>
 
@@ -1551,14 +1569,19 @@ export default function App() {
                               ) : (
                                 <div>
                                   <span className="text-[10px] text-slate-400 block">
-                                    {isVerizon ? 'Última Oferta (Valor Livre):' : 'Lance Atual:'}
+                                    {isVerizon ? 'Última Oferta (Valor Livre):' : isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual:'}
                                   </span>
                                   <span className="font-mono font-bold text-amber-400 text-sm">
-                                    ${lot.currentBidUsd.toLocaleString()} USD
+                                    ${lot.currentBidUsd.toLocaleString()} USD{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-mono ml-1.5">
                                     (R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
                                   </span>
+                                  {isAssurant && (
+                                    <span className="text-[10px] text-cyan-300 font-mono font-semibold block">
+                                      Incremento: {getLotIncrementSize(lot)} un.
+                                    </span>
+                                  )}
                                 </div>
                               )}
                               <div className="flex items-center gap-1.5">
@@ -1720,6 +1743,11 @@ export default function App() {
                                       {isVerizon && (
                                         <span className="text-[10px] text-red-300 font-semibold block">Qtd Fixa (Fechado)</span>
                                       )}
+                                      {isAssurant && (
+                                        <span className="text-[10px] text-cyan-300 font-semibold block">
+                                          Inc: {getLotIncrementSize(lot)} un.
+                                        </span>
+                                      )}
                                       <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
                                     </div>
                                   </td>
@@ -1751,14 +1779,16 @@ export default function App() {
                                     ) : (
                                       <div>
                                         <span className="font-mono font-bold text-amber-400 text-sm block">
-                                          ${lot.currentBidUsd.toLocaleString()} USD
+                                          ${lot.currentBidUsd.toLocaleString()} USD{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                         </span>
                                         <span className="text-[10px] text-slate-400 font-mono">
-                                          R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                                          R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                         </span>
-                                        <span className="text-[10px] text-slate-500 block">
-                                          (${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()}/un){isVerizon ? ' · Livre' : ''}
-                                        </span>
+                                        {!isAssurant && (
+                                          <span className="text-[10px] text-slate-500 block">
+                                            {`($${getLotUnitPriceUsd(lot).toLocaleString()}/un)${isVerizon ? ' · Livre' : ''}`}
+                                          </span>
+                                        )}
                                       </div>
                                     )}
                                   </td>

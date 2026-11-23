@@ -13,6 +13,57 @@ export function isAssurantLot(lot: AuctionLot | null | undefined): boolean {
 }
 
 /**
+ * Retorna o preço UNITÁRIO (em USD) de um lote.
+ * No leilão ASSURANT, currentBidUsd já representa o valor unitário (NUNCA dividir pela quantidade).
+ * Nos demais leilões/estoques, currentBidUsd representa o valor total do lote.
+ */
+export function getLotUnitPriceUsd(lot: AuctionLot | null | undefined): number {
+  if (!lot) return 0;
+  const raw = Number(lot.currentBidUsd) || 0;
+  if (raw <= 0) return 0;
+  if (isAssurantLot(lot)) {
+    return Math.round(raw);
+  }
+  const qty = Math.max(1, Number(lot.quantity) || 1);
+  return Math.round(raw / qty);
+}
+
+/**
+ * Retorna o valor TOTAL DO LOTE (em USD).
+ * No leilão ASSURANT, multiplica o valor unitário (currentBidUsd) pela quantidade de aparelhos.
+ * Nos demais leilões/estoques, currentBidUsd já é o valor total do lote.
+ */
+export function getLotTotalPriceUsd(lot: AuctionLot | null | undefined): number {
+  if (!lot) return 0;
+  const raw = Number(lot.currentBidUsd) || 0;
+  if (raw <= 0) return 0;
+  if (isAssurantLot(lot)) {
+    const qty = Math.max(1, Number(lot.quantity) || 1);
+    return Math.round(raw * qty);
+  }
+  return Math.round(raw);
+}
+
+/**
+ * Retorna o incremento de quantidade ("Increments Of") do lote.
+ * Nos leilões Assurant / Stock, define o múltiplo/passo de unidades por lance.
+ */
+export function getLotIncrementSize(lot: AuctionLot | null | undefined): number {
+  if (!lot) return 1;
+  return Math.max(1, Number(lot.incrementSize) || 1);
+}
+
+/**
+ * Retorna o passo efetivo permitido para seleção de quantidade sem ultrapassar o total disponível.
+ */
+export function getLotEffectiveQuantityStep(lot: AuctionLot | null | undefined): number {
+  if (!lot) return 1;
+  const qty = Math.max(1, Number(lot.quantity) || 1);
+  const inc = getLotIncrementSize(lot);
+  return inc > 1 && qty >= inc ? inc : 1;
+}
+
+/**
  * Calcula o valor histórico da "Média lance aprovado arremate anterior" para lotes ASSURANT
  * aplicando variações de -$7, -$10, -$15 ou -$5 sobre o valor inicial/atual.
  */

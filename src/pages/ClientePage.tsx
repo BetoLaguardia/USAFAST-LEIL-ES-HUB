@@ -27,7 +27,7 @@ import {
 import { AuctionLot, GradeType, SystemUser } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
-import { isAssurantLot, getAssurantPreviousApprovedBid } from '../utils/assurantUtils';
+import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from '../components/LotMixExpandable';
@@ -435,7 +435,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   onChange={e => setSelectedAuctionSystemFilter(e.target.value as any)}
                   className="w-full bg-slate-950 border border-amber-500/40 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400 font-bold"
                 >
-                  <option value="all">Todos os Leilões & Feeds</option>
+                  <option value="all">Todos os Leilões</option>
                   <option value="VERIZON">⚡ Leilão VERIZON</option>
                   <option value="ASSURANT">🔹 Leilão ASSURANT</option>
                   <option value="STOCK_APPLE">📦 Estoque Apple Pronta Entrega</option>
@@ -593,8 +593,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     <div className="md:hidden divide-y divide-slate-800/80">
                       {paginatedClientLots.map(lot => {
                         const isVerizon = isVerizonLot(lot);
+                        const isAssurant = isAssurantLot(lot);
                         const isMixExpanded = !!expandedMixLotIds[lot.id];
-                        const unitPriceUsd = Math.round(lot.currentBidUsd / (lot.quantity || 1));
+                        const unitPriceUsd = getLotUnitPriceUsd(lot);
+                        const totalLotPriceUsd = getLotTotalPriceUsd(lot);
                         const unitPriceBrl = unitPriceUsd * usdRate;
                   return (
                     <div key={lot.id} className="p-4 space-y-3">
@@ -617,6 +619,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                             {isVerizon && (
                               <span className="px-1.5 py-0.5 rounded bg-red-600 text-white font-black text-[9px] uppercase">
                                 VERIZON
+                              </span>
+                            )}
+                            {isAssurant && (
+                              <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white font-black text-[9px] uppercase">
+                                ASSURANT
                               </span>
                             )}
                             <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
@@ -664,9 +671,14 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                             <span className="text-[10px] text-slate-400 font-mono ml-1.5">
                               (≈ R$ {unitPriceBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
                             </span>
-                            {lot.quantity > 1 && (
+                            {!isAssurant && lot.quantity > 1 && (
                               <span className="text-[10px] text-amber-300/80 font-mono block">
-                                Total Lote: ${lot.currentBidUsd.toLocaleString()} USD
+                                Total Lote: ${totalLotPriceUsd.toLocaleString()} USD
+                              </span>
+                            )}
+                            {isAssurant && (
+                              <span className="text-[10px] text-cyan-300 font-mono font-semibold block">
+                                Incremento: {getLotIncrementSize(lot)} un.
                               </span>
                             )}
                           </div>
@@ -703,8 +715,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     {paginatedClientLots.map(lot => {
                       const gradeInfo = GRADE_EXPLANATIONS[lot.grade];
                       const isVerizon = isVerizonLot(lot);
+                      const isAssurant = isAssurantLot(lot);
                       const isMixExpanded = !!expandedMixLotIds[lot.id];
                       const mixSummary = getLotMixSummary(lot);
+                      const unitPriceUsd = getLotUnitPriceUsd(lot);
+                      const totalLotPriceUsd = getLotTotalPriceUsd(lot);
 
                       return (
                         <React.Fragment key={lot.id}>
@@ -768,6 +783,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                     VERIZON
                                   </span>
                                 )}
+                                {isAssurant && (
+                                  <span className="px-1.5 py-0.5 rounded bg-blue-600/90 text-white font-black text-[9px] block w-max uppercase tracking-wider">
+                                    ASSURANT
+                                  </span>
+                                )}
                               </div>
                             </td>
 
@@ -780,6 +800,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 </span>
                                 {isVerizon && (
                                   <span className="text-[10px] text-red-300 font-semibold block">Qtd Fixa (Fechado)</span>
+                                )}
+                                {isAssurant && (
+                                  <span className="text-[10px] text-cyan-300 font-semibold block">
+                                    Inc: {getLotIncrementSize(lot)} un.
+                                  </span>
                                 )}
                                 <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
                               </div>
@@ -816,14 +841,14 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                               ) : (
                                 <div className="font-mono">
                                   <span className="text-base font-black text-amber-400 block">
-                                    ${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
+                                    ${unitPriceUsd.toLocaleString()} USD <span className="text-[10px] font-normal text-slate-400">/ un.</span>
                                   </span>
                                   <span className="text-[10px] text-slate-400 block">
-                                    ≈ R$ {Math.round((lot.currentBidUsd / (lot.quantity || 1)) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                                    ≈ R$ {Math.round(unitPriceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
                                   </span>
-                                  {lot.quantity > 1 && (
+                                  {!isAssurant && lot.quantity > 1 && (
                                     <span className="text-[10px] text-amber-300/80 font-mono block">
-                                      Total Lote: ${lot.currentBidUsd.toLocaleString()} USD
+                                      Total Lote: ${totalLotPriceUsd.toLocaleString()} USD
                                     </span>
                                   )}
                                   <span className="text-[10px] text-slate-500 font-sans block">
@@ -916,7 +941,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
               {paginatedClientLots.map(lot => {
                 const gradeInfo = GRADE_EXPLANATIONS[lot.grade];
                 const isVerizon = isVerizonLot(lot);
+                const isAssurant = isAssurantLot(lot);
                 const isMixExpanded = !!expandedMixLotIds[lot.id];
+                const unitPriceUsd = getLotUnitPriceUsd(lot);
+                const totalLotPriceUsd = getLotTotalPriceUsd(lot);
                 const currentBrl = lot.currentBidUsd * usdRate;
                 const hasRetailEstimate = (lot.estimatedBrazilRetailBrl || 0) > 0;
                 const grossProfitBrl = lot.estimatedBrazilRetailBrl - currentBrl;
@@ -945,6 +973,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                         {isVerizon && (
                           <span className="px-2 py-0.5 rounded bg-red-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
                             VERIZON
+                          </span>
+                        )}
+                        {isAssurant && (
+                          <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                            ASSURANT
                           </span>
                         )}
                       </div>
@@ -1033,17 +1066,22 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                           <div className="flex items-end justify-between">
                             <div>
                               <span className="text-[11px] text-slate-400 block">
-                                {isVerizon ? 'Última Oferta (Valor Livre):' : 'Lance Atual:'}
+                                {isVerizon ? 'Última Oferta (Valor Livre):' : isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual:'}
                               </span>
                               <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono tracking-tight block">
-                                ${Math.round(lot.currentBidUsd / (lot.quantity || 1)).toLocaleString()} USD <span className="text-xs font-normal text-slate-400">/ un.</span>
+                                ${unitPriceUsd.toLocaleString()} USD <span className="text-xs font-normal text-slate-400">/ un.</span>
                               </span>
                               <span className="text-[10px] text-slate-400 font-mono block">
-                                ≈ R$ {Math.round((lot.currentBidUsd / (lot.quantity || 1)) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                                ≈ R$ {Math.round(unitPriceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
                               </span>
-                              {lot.quantity > 1 && (
+                              {!isAssurant && lot.quantity > 1 && (
                                 <span className="text-[10px] text-amber-300/80 font-mono block">
-                                  Total Lote ({lot.quantity} un.): ${lot.currentBidUsd.toLocaleString()} USD
+                                  Total Lote ({lot.quantity} un.): ${totalLotPriceUsd.toLocaleString()} USD
+                                </span>
+                              )}
+                              {isAssurant && (
+                                <span className="text-[10px] text-cyan-300 font-mono font-semibold block mt-0.5">
+                                  Incremento: {getLotIncrementSize(lot)} un.
                                 </span>
                               )}
                             </div>
@@ -1055,7 +1093,9 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 </span>
                               ) : hasRetailEstimate ? (
                                 <>
-                                  <span className="text-[10px] text-slate-400 block">Lucro Bruto Est.:</span>
+                                  <span className="text-[10px] text-slate-400 block">
+                                    {isAssurant && lot.quantity > 1 ? 'Lucro Bruto Est. (/ un.):' : 'Lucro Bruto Est.:'}
+                                  </span>
                                   <span className="text-xs font-bold text-emerald-400 font-mono block">
                                     + R$ {grossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                                   </span>
@@ -1670,15 +1710,29 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                 ) : (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-slate-400">Lance Atual no Leilão:</span>
-                      <span className="font-mono font-bold text-white">${quickBidLot.currentBidUsd.toLocaleString()} USD</span>
+                      <span className="text-slate-400">
+                        {isAssurantLot(quickBidLot) && quickBidLot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual no Leilão:'}
+                      </span>
+                      <span className="font-mono font-bold text-white">
+                        ${quickBidLot.currentBidUsd.toLocaleString()} USD{isAssurantLot(quickBidLot) && quickBidLot.quantity > 1 ? ' / un.' : ''}
+                      </span>
                     </div>
 
                     {isAssurantLot(quickBidLot) ? (
-                      <div className="flex justify-between items-center text-blue-300 font-medium">
-                        <span>Média lance aprovado arremate anterior:</span>
-                        <span className="font-mono font-bold">${getAssurantPreviousApprovedBid(quickBidLot).toLocaleString()} USD</span>
-                      </div>
+                      <>
+                        <div className="flex justify-between items-center text-blue-300 font-medium">
+                          <span>Média lance aprovado arremate anterior:</span>
+                          <span className="font-mono font-bold">
+                            ${getAssurantPreviousApprovedBid(quickBidLot).toLocaleString()} USD{quickBidLot.quantity > 1 ? ' / un.' : ''}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-cyan-300 font-medium">
+                          <span>Incremento (Assurant):</span>
+                          <span className="font-mono font-bold">
+                            {getLotIncrementSize(quickBidLot)} un.
+                          </span>
+                        </div>
+                      </>
                     ) : (
                       <div className="flex justify-between">
                         <span className="text-slate-400">Lance Mínimo Requerido:</span>
@@ -1692,6 +1746,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <span>Conversão PTAX da sua oferta:</span>
                   <span className="font-mono text-slate-300">
                     R$ {((quickBidAmount || 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                    {isAssurantLot(quickBidLot) && quickBidUnits > 1 ? ' / un.' : ''}
                   </span>
                 </div>
               </div>
@@ -1705,39 +1760,48 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   </span>
                   <span className="font-mono font-bold text-white">{quickBidLot.quantity} unidade(s)</span>
                 </div>
-              ) : (
+              ) : (() => {
+                const isAssurantQuick = isAssurantLot(quickBidLot);
+                const incSizeQuick = getLotIncrementSize(quickBidLot);
+                const qtyStepQuick = isAssurantQuick ? getLotEffectiveQuantityStep(quickBidLot) : 1;
+                return (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-300">
                       Quantidade de Unidades (Máx: {quickBidLot.quantity}):
                     </label>
                     <span className="text-[11px] text-amber-400 font-mono">
-                      1 a {quickBidLot.quantity} un.
+                      {isAssurantQuick ? `Inc: ${incSizeQuick} un.` : `1 a ${quickBidLot.quantity} un.`}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setQuickBidUnits(u => Math.max(1, u - 1))}
-                      disabled={quickBidUnits <= 1}
+                      onClick={() => setQuickBidUnits(u => Math.max(qtyStepQuick, u - qtyStepQuick))}
+                      disabled={quickBidUnits <= qtyStepQuick}
                       className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold rounded-lg text-xs"
                     >
                       -
                     </button>
                     <input
                       type="number"
-                      min={1}
+                      min={qtyStepQuick}
                       max={quickBidLot.quantity}
+                      step={qtyStepQuick}
                       value={quickBidUnits}
                       onChange={e => {
-                        const val = parseInt(e.target.value || '1', 10);
-                        setQuickBidUnits(Math.max(1, Math.min(quickBidLot.quantity, isNaN(val) ? 1 : val)));
+                        const rawVal = parseInt(e.target.value || String(qtyStepQuick), 10);
+                        let next = Math.max(qtyStepQuick, Math.min(quickBidLot.quantity, isNaN(rawVal) ? qtyStepQuick : rawVal));
+                        if (qtyStepQuick > 1 && next < quickBidLot.quantity) {
+                          next = Math.max(qtyStepQuick, Math.min(quickBidLot.quantity, Math.round(next / qtyStepQuick) * qtyStepQuick));
+                        }
+                        setQuickBidUnits(next);
                       }}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-center text-white focus:outline-none focus:border-amber-400"
                     />
                     <button
                       type="button"
-                      onClick={() => setQuickBidUnits(u => Math.min(quickBidLot.quantity, u + 1))}
+                      onClick={() => setQuickBidUnits(u => Math.min(quickBidLot.quantity, u + qtyStepQuick))}
                       disabled={quickBidUnits >= quickBidLot.quantity}
                       className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold rounded-lg text-xs"
                     >
@@ -1745,7 +1809,8 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     </button>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1">

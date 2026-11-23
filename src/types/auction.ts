@@ -33,6 +33,7 @@ export interface AuctionLot {
   modelFamily: string;
   oemBrand?: string;
   quantity: number;
+  incrementSize?: number;
   grade: GradeType;
   primaryStorage: string;
   colorHighlights: string[];

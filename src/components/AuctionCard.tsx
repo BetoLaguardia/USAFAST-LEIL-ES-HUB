@@ -4,6 +4,7 @@ import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, mapVerizonGradeStrict } from '../utils/verizonUtils';
+import { isAssurantLot, getLotUnitPriceUsd, getLotIncrementSize } from '../utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
 interface AuctionCardProps {
@@ -54,6 +55,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
   }, [lot.endTime]);
 
   const verizon = isVerizonLot(lot);
+  const isAssurant = isAssurantLot(lot);
   const cleanGrade = verizon
     ? mapVerizonGradeStrict(lot.grade || 'DNC')
     : ((lot.grade || '').replace(/\(T\)/gi, '').trim() || 'Grade A');
@@ -61,11 +63,15 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
   const gradeInfo = GRADE_EXPLANATIONS[cleanGrade] || GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[verizon ? 'DNC' : 'Grade A'];
 
-  const formattedCurrentPrice = currency === 'USD'
-    ? `$ ${lot.currentBidUsd.toLocaleString()} USD`
-    : `R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+  const unitPriceUsd = getLotUnitPriceUsd(lot);
+  const incrementSize = getLotIncrementSize(lot);
+  const displayPrimaryUsd = isAssurant ? unitPriceUsd : lot.currentBidUsd;
 
-  const currentBidBrl = lot.currentBidUsd * usdRate;
+  const formattedCurrentPrice = currency === 'USD'
+    ? `$ ${displayPrimaryUsd.toLocaleString()} USD`
+    : `R$ ${(displayPrimaryUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+
+  const currentBidBrl = displayPrimaryUsd * usdRate;
   const hasRetailEstimate = (lot.estimatedBrazilRetailBrl || 0) > 0;
   const estimatedGrossProfitBrl = lot.estimatedBrazilRetailBrl - currentBidBrl;
 
@@ -212,18 +218,34 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
             <div className="flex items-end justify-between">
               <div>
                 <span className="text-[11px] text-slate-400 block">
-                  {verizon ? 'Última Oferta (Valor Livre):' : lot.quantity > 1 ? 'Lance Atual (Total Lote):' : 'Lance Atual:'}
+                  {verizon
+                    ? 'Última Oferta (Valor Livre):'
+                    : isAssurant && lot.quantity > 1
+                      ? 'Valor Unitário (Assurant):'
+                      : lot.quantity > 1
+                        ? 'Lance Atual (Total Lote):'
+                        : 'Lance Atual:'}
                 </span>
                 <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono tracking-tight block">
                   {formattedCurrentPrice}
+                  {isAssurant && lot.quantity > 1 && (
+                    <span className="text-xs font-normal text-slate-400"> / un.</span>
+                  )}
                 </span>
-                {lot.quantity > 1 && (
+                {!isAssurant && lot.quantity > 1 && (
                   <span className="text-[11px] text-amber-300 font-mono block">
-                    ($ {Math.round(lot.currentBidUsd / lot.quantity).toLocaleString()} USD / un.)
+                    {`($ ${unitPriceUsd.toLocaleString()} USD / un.)`}
+                  </span>
+                )}
+                {isAssurant && (
+                  <span className="text-[11px] text-cyan-300 font-mono font-semibold block">
+                    Incremento: {incrementSize} {incrementSize === 1 ? 'un.' : 'un.'}
                   </span>
                 )}
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {currency === 'USD' ? `≈ R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD`}
+                  {currency === 'USD'
+                    ? `≈ R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
+                    : `≈ $ ${displayPrimaryUsd.toLocaleString()} USD${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`}
                 </span>
               </div>
 
@@ -234,7 +256,9 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                   </span>
                 ) : hasRetailEstimate ? (
                   <>
-                    <span className="text-[10px] text-slate-400 block">Lucro Bruto Est.:</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      {isAssurant && lot.quantity > 1 ? 'Lucro Bruto Est. (/ un.):' : 'Lucro Bruto Est.:'}
+                    </span>
                     <span className="text-xs font-bold text-emerald-400 font-mono block">
                       + R$ {estimatedGrossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </span>

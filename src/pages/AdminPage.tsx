@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { getDeviceImageUrl, stripLotPrefix } from '../utils/deviceImages';
 import { fetchLivePtaxRate } from '../utils/ptaxService';
 import { isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc, sanitizeVerizonTitle, VERIZON_GRADES } from '../utils/verizonUtils';
+import { isAssurantLot, getEstimatedWholesalePrice } from '../utils/assurantUtils';
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -45,7 +46,7 @@ import {
 } from 'lucide-react';
 import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
-import { fetchAdminClients, updateAdminClientAccessType, updateAdminClientStatus } from '../services/authService';
+import { fetchAdminClients, updateAdminClientAccessType, updateAdminClientStatus, deleteAdminClient } from '../services/authService';
 
 interface AdminPageProps {
   auctions: AuctionLot[];
@@ -155,6 +156,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     color: string;
     grade: string;
     availableQuantity: number;
+    incrementsOf?: number;
     listPrice: number;
     currency: string;
     deviceType: 'iPhone' | 'iPad' | 'Apple Watch';
@@ -172,6 +174,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     grade: string;
     warehouse: string;
     totalQuantity: number;
+    incrementsOf: number;
     unitPriceUsd: number;
     calculatedStartingBidUsd: number;
     calculatedCurrentBidUsd: number;
@@ -582,19 +585,35 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
   const parsePrice = (rawVal: any): number => {
     if (typeof rawVal === 'number') {
-      if (rawVal > 10000 && Number.isInteger(rawVal)) {
-        return Math.round((rawVal / 100) * 100) / 100;
-      }
-      return rawVal;
+      return isNaN(rawVal) ? 0 : rawVal;
     }
     const str = String(rawVal || '').replace(/[^0-9.,]/g, '').trim();
     if (!str) return 0;
-    if (str.includes(',') && !str.includes('.')) {
-      const num = parseFloat(str.replace(',', '.'));
+    const hasComma = str.includes(',');
+    const hasDot = str.includes('.');
+    if (hasComma && hasDot) {
+      // Se a vírgula vem depois do ponto (ex: 1.081,00), formato europeu/BR: ponto é milhar e vírgula é decimal
+      const normalized =
+        str.lastIndexOf(',') > str.lastIndexOf('.')
+          ? str.replace(/\./g, '').replace(',', '.')
+          : str.replace(/,/g, '');
+      const num = parseFloat(normalized);
       return isNaN(num) ? 0 : num;
     }
-    if (str.includes(',') && str.includes('.')) {
-      const num = parseFloat(str.replace(/,/g, ''));
+    if (hasComma) {
+      // Ex: "1,200" (milhar) vs "213,00" (decimal)
+      const normalized = /^\d{1,3}(,\d{3})+$/.test(str)
+        ? str.replace(/,/g, '')
+        : str.replace(',', '.');
+      const num = parseFloat(normalized);
+      return isNaN(num) ? 0 : num;
+    }
+    if (hasDot) {
+      // Ex: "1.200" (milhar) vs "213.50" (decimal)
+      const normalized = /^\d{1,3}(\.\d{3})+$/.test(str)
+        ? str.replace(/\./g, '')
+        : str;
+      const num = parseFloat(normalized);
       return isNaN(num) ? 0 : num;
     }
     const num = parseFloat(str);
@@ -1161,12 +1180,61 @@ $285.00
       const color = normalizeField(row, 'Color', 'color', 'Cor') || 'Space Gray';
       const grade = normalizeField(row, 'Grade', 'grade', 'Condicao') || 'DLS A';
       
-      const qtyRaw = normalizeField(row, 'Available Quantity', 'AvailableQuantity', 'Quantity Available', 'QuantityAvailable', 'Quantity', 'qty', 'Quantidade') || '1';
+      const qtyRaw = normalizeField(
+        row,
+        'Available Quantity',
+        'AvailableQuantity',
+        'Quantity Available',
+        'QuantityAvailable',
+        'Quantity Total',
+        'QuantityTotal',
+        'Qty Available',
+        'Quantity',
+        'Qty',
+        'qty',
+        'Quantidade'
+      ) || '1';
       const availableQuantity = Math.max(1, parseInt(String(qtyRaw).replace(/[^0-9]/g, '') || '1', 10) || 1);
-      
-      const priceRaw = normalizeField(row, 'List Price', 'ListPrice', 'list_price', 'Price', 'price', 'Preco') || '0';
-      const listPrice = parsePrice(priceRaw);
-      const currency = normalizeField(row, 'Currency', 'currency', 'Moeda') || 'USD';
+
+      const incRaw = normalizeField(
+        row,
+        'Increments Of',
+        'IncrementsOf',
+        'increments_of',
+        'Increment Size',
+        'IncrementSize',
+        'increment_size',
+        'Incremento',
+        'incremento',
+        'Increment',
+        'increment'
+      ) || '1';
+      const incrementsOf = Math.max(1, parseInt(String(incRaw).replace(/[^0-9]/g, '') || '1', 10) || 1);
+
+      const priceRaw = normalizeField(
+        row,
+        'List Price',
+        'ListPrice',
+        'list_price',
+        'Unit Start Price',
+        'UnitStartPrice',
+        'Unit Price',
+        'UnitPrice',
+        'Selling Price',
+        'Starting Price',
+        'Current Bid',
+        'Price',
+        'price',
+        'Preco'
+      ) || '0';
+      const currencyRaw = normalizeField(row, 'Currency', 'currency', 'Moeda') || '';
+      const isCad = /\bCAD\b|C\$/i.test(currencyRaw) || /C\$/i.test(String(priceRaw));
+      let parsedPrice = parsePrice(priceRaw);
+      if (isCad && parsedPrice > 0) {
+        parsedPrice = Math.round(parsedPrice * 0.72 * 100) / 100;
+      }
+      const listPrice = parsedPrice;
+      const currency = 'USD';
 
       // 1. BRAND CHECK: Must be Apple unless allowAllBrands (Assurant) is active
       const isAppleMake = allowAllBrands ||
@@ -1314,6 +1382,8 @@ $285.00
         }
       }
 
+      const resolvedUnitPrice = listPrice > 0 ? listPrice : getEstimatedWholesalePrice(model, capacity, grade);
+
       // Approved as UNLOCKED!
       if (deviceType === 'iPhone') approvedIPhones++;
       else if (deviceType === 'iPad') approvedIPads++;
@@ -1335,7 +1405,8 @@ $285.00
         color,
         grade,
         availableQuantity,
-        listPrice,
+        incrementsOf,
+        listPrice: resolvedUnitPrice,
         currency,
         deviceType,
         status: 'APPROVED'
@@ -1396,8 +1467,10 @@ $285.00
     });
 
     const groupedLots: StockAppleGroupedLot[] = Array.from(groupsMap.values()).map((g, idx) => {
-      const avgUnitPrice = g.totalQuantity > 0 ? Math.round(g.unitPriceSum / g.totalQuantity) : 250;
-      const totalCurrentBidUsd = Math.round(avgUnitPrice);
+      const avgUnitPrice = g.totalQuantity > 0
+        ? Math.round(g.unitPriceSum / g.totalQuantity)
+        : getEstimatedWholesalePrice(g.modelFamily, g.capacity, g.grade);
+      const totalCurrentBidUsd = Math.round(g.unitPriceSum > 0 ? g.unitPriceSum : avgUnitPrice * g.totalQuantity);
       const calculatedStartingBidUsd = Math.round(totalCurrentBidUsd * (1 - stockAppleDiscountPercent / 100));
       const calculatedRetailBrl = Math.round(totalCurrentBidUsd * usdRate * (1 + stockAppleMarginPercent / 100));
 
@@ -1425,6 +1498,10 @@ $285.00
         qty: it.availableQuantity
       }));
 
+      const totalQuantityGroup = g.totalQuantity;
+      const firstInc = g.items[0]?.incrementsOf || 1;
+      const incrementsOfGroup = totalQuantityGroup >= firstInc ? firstInc : 1;
+
       return {
         groupKey: g.groupKey,
         lotNumber,
@@ -1435,6 +1512,7 @@ $285.00
         grade: g.grade,
         warehouse: g.warehouse,
         totalQuantity: g.totalQuantity,
+        incrementsOf: incrementsOfGroup,
         unitPriceUsd: avgUnitPrice,
         calculatedStartingBidUsd,
         calculatedCurrentBidUsd: Math.round(g.unitPriceSum),
@@ -1572,60 +1650,74 @@ $285.00
       let newLots: AuctionLot[] = [];
 
       if (stockAppleGroupMode === 'grouped' && stockAppleGroupedLots.length > 0) {
-        newLots = stockAppleGroupedLots.map((g, idx) => ({
-          id: `${meta.prefix.toLowerCase()}-lot-grp-${Date.now()}-${idx}`,
-          lotNumber: `${meta.prefix}-${g.lotNumber.replace(/^(UF-|ASR-)/, '')}`,
-          title: cleanLotTitle(g.title),
-          modelFamily: cleanLotTitle(g.modelFamily) || g.modelFamily,
-          oemBrand: 'Apple',
-          quantity: g.totalQuantity,
-          grade: g.grade as GradeType,
-          primaryStorage: g.capacity,
-          colorHighlights: g.colorHighlights.length > 0 ? g.colorHighlights : ['Prata', 'Preto Espacial'],
-          batteryHealthRange: '88% - 100% (Verificado Apple)',
-          carrierStatus: '100% Factory Unlocked (Desbloqueado Global)',
-          imeiStatus: 'Clean ESN / 100% Verificado',
-          auctionHouse: presetFormat === 'STOCK_APPLE' ? `USAFAST Stock Hub (${g.warehouse})` : meta.house,
-          location: presetFormat === 'STOCK_APPLE' ? (g.warehouse.includes('W23') ? 'Miami Hub - Armazém W23' : 'Miami Hub - Armazém W12') : meta.loc,
-          startingBidUsd: Math.round(g.calculatedStartingBidUsd + markupPerUnit),
-          currentBidUsd: Math.round(g.calculatedCurrentBidUsd + markupPerUnit),
-          reservePriceMet: true,
-          estimatedBrazilRetailBrl: g.calculatedRetailBrl,
-          totalBidsCount: Math.floor(Math.random() * 12) + 2,
-          endTime: presetFormat === 'ASSURANT'
-            ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 10).toISOString()
-            : new Date(Date.now() + 1000 * 60 * 60 * 72).toISOString(),
-          imageUrl: g.imageUrl,
-          galleryImages: [
-            g.imageUrl,
-            '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-            '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
-          ],
-          description: `Lote oficial de atacado Apple Desbloqueado contendo ${g.totalQuantity} aparelho(s) (${g.modelFamily} ${g.capacity}). Classificação técnica ${g.grade}. 100% desbloqueado de fábrica e auditado pelo hub USAFAST.`,
-          diagnosticReport: {
-            faceId: true,
-            trueTone: true,
-            camerasPassed: true,
-            batteryTested: true,
-            cleanEsn: true,
-            mdmFree: true
-          },
-          manifest: g.manifest,
-          bidsHistory: [
-            {
-              id: `bid-apl-init-${idx}`,
-              bidderName: 'Licitante Inicial Hub',
-              amountUsd: g.calculatedCurrentBidUsd,
-              timestamp: 'Início do Leilão'
-            }
-          ],
-          sourceType: (isStockFeedFormat(presetFormat) ? presetFormat : 'STOCK_APPLE') as AuctionLot['sourceType']
-        }));
+        newLots = stockAppleGroupedLots.map((g, idx) => {
+          const baseUnitUsd = g.unitPriceUsd > 0 ? g.unitPriceUsd : getEstimatedWholesalePrice(g.modelFamily, g.capacity, g.grade);
+          const unitPriceWithMarkup = baseUnitUsd + markupPerUnit;
+          // No leilão ASSURANT o valor cadastrado já é unitário; nos demais estoques, total do lote
+          const groupCurrentBidUsd = isAssurant
+            ? Math.round(unitPriceWithMarkup)
+            : Math.round(unitPriceWithMarkup * g.totalQuantity);
+          const groupStartingBidUsd = Math.round(groupCurrentBidUsd * (1 - stockAppleDiscountPercent / 100));
+          const groupRetailBrl = Math.round(groupCurrentBidUsd * usdRate * (1 + stockAppleMarginPercent / 100));
+
+          return {
+            id: `${meta.prefix.toLowerCase()}-lot-grp-${Date.now()}-${idx}`,
+            lotNumber: `${meta.prefix}-${g.lotNumber.replace(/^(UF-|ASR-)/, '')}`,
+            title: cleanLotTitle(g.title),
+            modelFamily: cleanLotTitle(g.modelFamily) || g.modelFamily,
+            oemBrand: 'Apple',
+            quantity: g.totalQuantity,
+            incrementSize: g.incrementsOf || 1,
+            grade: g.grade as GradeType,
+            primaryStorage: g.capacity,
+            colorHighlights: g.colorHighlights.length > 0 ? g.colorHighlights : ['Prata', 'Preto Espacial'],
+            batteryHealthRange: '88% - 100% (Verificado Apple)',
+            carrierStatus: '100% Factory Unlocked (Desbloqueado Global)',
+            imeiStatus: 'Clean ESN / 100% Verificado',
+            auctionHouse: presetFormat === 'STOCK_APPLE' ? `USAFAST Stock Hub (${g.warehouse})` : meta.house,
+            location: presetFormat === 'STOCK_APPLE' ? (g.warehouse.includes('W23') ? 'Miami Hub - Armazém W23' : 'Miami Hub - Armazém W12') : meta.loc,
+            startingBidUsd: groupStartingBidUsd,
+            currentBidUsd: groupCurrentBidUsd,
+            reservePriceMet: true,
+            estimatedBrazilRetailBrl: groupRetailBrl,
+            totalBidsCount: Math.floor(Math.random() * 12) + 2,
+            endTime: presetFormat === 'ASSURANT'
+              ? new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 10).toISOString()
+              : new Date(Date.now() + 1000 * 60 * 60 * 72).toISOString(),
+            imageUrl: g.imageUrl,
+            galleryImages: [
+              g.imageUrl,
+              '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
+              '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+            ],
+            description: `Lote oficial de atacado Apple Desbloqueado contendo ${g.totalQuantity} aparelho(s) (${g.modelFamily} ${g.capacity}). Classificação técnica ${g.grade}. 100% desbloqueado de fábrica e auditado pelo hub USAFAST.`,
+            diagnosticReport: {
+              faceId: true,
+              trueTone: true,
+              camerasPassed: true,
+              batteryTested: true,
+              cleanEsn: true,
+              mdmFree: true
+            },
+            manifest: g.manifest,
+            bidsHistory: [
+              {
+                id: `bid-apl-init-${idx}`,
+                bidderName: 'Licitante Inicial Hub',
+                amountUsd: groupCurrentBidUsd,
+                timestamp: 'Início do Leilão'
+              }
+            ],
+            sourceType: (isStockFeedFormat(presetFormat) ? presetFormat : 'STOCK_APPLE') as AuctionLot['sourceType']
+          };
+        });
       } else {
         // Individual item mode
         newLots = approvedItems.map((it, idx) => {
-          const unitPriceWithMarkup = it.listPrice + markupPerUnit;
-          const totalCurrentBidUsd = presetFormat === 'ASSURANT'
+          const baseUnitUsd = it.listPrice > 0 ? it.listPrice : getEstimatedWholesalePrice(it.model, it.capacity, it.grade);
+          const unitPriceWithMarkup = baseUnitUsd + markupPerUnit;
+          // No leilão ASSURANT o valor já é unitário (mesmo com quantidade > 1); nos demais estoques, total do lote
+          const totalCurrentBidUsd = isAssurant
             ? Math.round(unitPriceWithMarkup)
             : Math.round(unitPriceWithMarkup * it.availableQuantity);
           const startingBidUsd = Math.round(totalCurrentBidUsd * (1 - stockAppleDiscountPercent / 100));
@@ -1644,6 +1736,7 @@ $285.00
             modelFamily: cleanModel || it.model,
             oemBrand: presetFormat !== 'STOCK_APPLE' ? (it.make || 'Apple') : 'Apple',
             quantity: it.availableQuantity,
+            incrementSize: it.incrementsOf || 1,
             grade: it.grade as GradeType,
             primaryStorage: it.capacity,
             colorHighlights: [it.color],
@@ -2577,10 +2670,13 @@ $285.00
         const rawGradeStr = String(row[columnMapping.grade] || (isVzRow ? 'DNC' : 'Grade A'));
         const grade = isVzRow ? mapVerizonGradeStrict(rawGradeStr) : mapGrade(rawGradeStr);
         const finalTitle = isVzRow ? sanitizeVerizonTitle(title) : title;
-        const quantity = Math.max(1, parseInt(String(row[columnMapping.quantity] || '1'), 10) || 1);
-        const currentBidUsd = isVzRow ? 0 : Math.max(100, parseFloat(String(row[columnMapping.currentBidUsd] || '500')) || 500);
-        const startingBidUsd = isVzRow ? 0 : Math.max(50, parseFloat(String(row[columnMapping.startingBidUsd] || String(currentBidUsd * 0.8))) || currentBidUsd * 0.8);
-        const estimatedBrazilRetailBrl = isVzRow ? 0 : (parseFloat(String(row[columnMapping.estimatedRetailBrl] || String(currentBidUsd * usdRate * 1.5))) || (currentBidUsd * usdRate * 1.5));
+        const quantity = Math.max(1, parseInt(String(row[columnMapping.quantity] || '1').replace(/[^0-9]/g, ''), 10) || 1);
+        const parsedCurrent = parsePrice(row[columnMapping.currentBidUsd]);
+        const currentBidUsd = isVzRow ? 0 : (parsedCurrent > 0 ? Math.round(parsedCurrent) : 500);
+        const parsedStart = parsePrice(row[columnMapping.startingBidUsd]);
+        const startingBidUsd = isVzRow ? 0 : (parsedStart > 0 ? Math.round(parsedStart) : Math.round(currentBidUsd * 0.8));
+        const parsedRetail = parsePrice(row[columnMapping.estimatedRetailBrl]);
+        const estimatedBrazilRetailBrl = isVzRow ? 0 : (parsedRetail > 0 ? Math.round(parsedRetail) : Math.round(currentBidUsd * usdRate * 1.5));
 
         return {
           id: `lot-imported-${Date.now()}-${idx}`,
@@ -2891,6 +2987,8 @@ $285.00
   // ----------------------------------------------------
   const [clientsList, setClientsList] = useState<SystemUser[]>([]);
   const [pendingUserTypeMap, setPendingUserTypeMap] = useState<Record<string, UserAccessType>>({});
+  const [confirmDeleteClientKey, setConfirmDeleteClientKey] = useState<string | null>(null);
+  const [deletingClientKey, setDeletingClientKey] = useState<string | null>(null);
 
   const getUserTypeLabel = (ut?: UserAccessType) => {
     if (ut === 'admin_geral') return 'Admin Geral';
@@ -2999,6 +3097,28 @@ $285.00
     } else {
       handleApproveClient(idx);
     }
+  };
+
+  const handleDeleteClient = async (client: SystemUser) => {
+    if (!isAdminGeral) {
+      showNotice('Apenas o Admin Geral pode excluir usuários.', 'error');
+      return;
+    }
+    const clientKey = client.id || client.email;
+    setDeletingClientKey(clientKey);
+    const res = await deleteAdminClient(client.id, client.email);
+    setDeletingClientKey(null);
+    setConfirmDeleteClientKey(null);
+
+    if (!res.ok) {
+      showNotice(res.error || 'Erro ao excluir usuário do sistema.', 'error');
+      return;
+    }
+
+    setClientsList(prev =>
+      prev.filter(c => !((client.id && c.id === client.id) || c.email === client.email))
+    );
+    showNotice(`🗑️ Usuário ${client.name || client.email} excluído com sucesso.`, 'success');
   };
 
   // Filtering and pagination for Stock Apple preview table
@@ -4194,6 +4314,7 @@ $285.00
                         <th className="py-2.5 px-3">Grade</th>
                         <th className="py-2.5 px-3 text-center">Status Bloqueio</th>
                         <th className="py-2.5 px-3 text-right">Qtd</th>
+                        <th className="py-2.5 px-3 text-right">Incremento</th>
                         <th className="py-2.5 px-3 text-right">Preço Unit.</th>
                         <th className="py-2.5 px-3">Armazém</th>
                         <th className="py-2.5 px-3 text-center">Filtro</th>
@@ -4246,6 +4367,9 @@ $285.00
                             <td className="py-2 px-3 text-right font-mono font-bold text-white">
                               {item.availableQuantity}x
                             </td>
+                            <td className="py-2 px-3 text-right font-mono font-semibold text-cyan-300">
+                              {item.incrementsOf || 1} un.
+                            </td>
                             <td className="py-2 px-3 text-right font-mono font-bold text-emerald-400">
                               ${item.listPrice.toFixed(2)}
                             </td>
@@ -4268,7 +4392,7 @@ $285.00
                       })}
                       {paginatedStockItems.length === 0 && (
                         <tr>
-                          <td colSpan={10} className="py-8 text-center text-slate-500">
+                          <td colSpan={11} className="py-8 text-center text-slate-500">
                             Nenhum item encontrado para este filtro ou busca.
                           </td>
                         </tr>
@@ -4847,7 +4971,12 @@ $285.00
                           <span className="font-semibold text-white block truncate max-w-[240px]">{lot.title}</span>
                           <span className="text-[10px] text-slate-400">{lot.modelFamily} · {lot.primaryStorage}</span>
                         </td>
-                        <td className="py-3 px-3 font-mono">{lot.quantity} un</td>
+                        <td className="py-3 px-3 font-mono">
+                          <span>{lot.quantity} un</span>
+                          {isAssurantLot(lot) && (
+                            <span className="block text-[10px] text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
+                          )}
+                        </td>
                         <td className="py-3 px-3">
                           {isEditing ? (
                             <select
@@ -4893,13 +5022,16 @@ $285.00
                           ) : (
                             <span className="font-mono font-bold text-emerald-400">
                               ${lot.currentBidUsd.toLocaleString()} USD
+                              {isAssurantLot(lot) && lot.quantity > 1 && (
+                                <span className="text-[10px] font-normal text-slate-400"> / un.</span>
+                              )}
                             </span>
                           )}
                         </td>
                         <td className="py-3 px-3 font-mono text-slate-300">
                           {isVerizonLot(lot) && lot.estimatedBrazilRetailBrl === 0
                             ? <span className="text-slate-500">Valor Livre</span>
-                            : `R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}`}
+                            : `R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}${isAssurantLot(lot) && lot.quantity > 1 ? ' / un.' : ''}`}
                         </td>
                         <td className="py-3 px-3 text-slate-400 truncate max-w-[120px]">
                           {lot.location}
@@ -5140,6 +5272,9 @@ $285.00
                     </td>
                     <td className="py-3 px-3 font-mono text-emerald-400">
                       +$25 USD
+                      {lot && isAssurantLot(lot) && (
+                        <span className="block text-[10px] text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
+                      )}
                     </td>
                     <td className="py-3 px-3">
                       <span className="font-semibold text-white block">{offer.clientName}</span>
@@ -5465,21 +5600,67 @@ $285.00
                         </span>
                       </td>
                       <td className="py-3 px-3 text-right">
-                        {isApproved ? (
-                          <button
-                            onClick={() => handleRejectClient(client.email)}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium transition-colors"
-                          >
-                            Suspender
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleApproveClient(client.email, effectiveDisplayType)}
-                            className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-[11px] font-bold transition-colors shadow-sm"
-                          >
-                            Aprovar Cadastro
-                          </button>
-                        )}
+                        {(() => {
+                          const clientKey = client.id || client.email;
+                          const isSelf =
+                            Boolean(currentUser?.email) &&
+                            client.email.toLowerCase() === currentUser.email.toLowerCase();
+                          const isConfirming = confirmDeleteClientKey === clientKey;
+                          const isDeleting = deletingClientKey === clientKey;
+
+                          return (
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              {isApproved ? (
+                                <button
+                                  onClick={() => handleRejectClient(client.email)}
+                                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium transition-colors"
+                                >
+                                  Suspender
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleApproveClient(client.email, effectiveDisplayType)}
+                                  className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded text-[11px] font-bold transition-colors shadow-sm"
+                                >
+                                  Aprovar Cadastro
+                                </button>
+                              )}
+
+                              {!isSelf && (
+                                isConfirming ? (
+                                  <div className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-500/40 rounded px-1.5 py-0.5">
+                                    <button
+                                      type="button"
+                                      disabled={isDeleting}
+                                      onClick={() => handleDeleteClient(client)}
+                                      className="px-2 py-0.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white rounded text-[11px] font-bold transition-colors"
+                                    >
+                                      {isDeleting ? 'Excluindo...' : 'Confirmar'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isDeleting}
+                                      onClick={() => setConfirmDeleteClientKey(null)}
+                                      className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium transition-colors"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirmDeleteClientKey(clientKey)}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded text-[11px] font-semibold transition-colors"
+                                    title="Excluir usuário permanentemente"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Excluir</span>
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                     </tr>
                     );
