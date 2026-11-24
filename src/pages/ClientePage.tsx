@@ -290,7 +290,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Painel do Arrematante Cadastrado
+                  Painel do Cliente Cadastrado
                 </h1>
                 <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px] font-mono font-bold">
                   ● HABILITADO
