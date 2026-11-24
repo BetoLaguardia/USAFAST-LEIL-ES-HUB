@@ -32,11 +32,23 @@ export function isMarketplaceLot(lot: Partial<AuctionLot> | null | undefined): b
 }
 
 /**
+ * Retorna true para itens de Estoque Pronta Entrega (Compra Direta com preço fixo).
+ */
+export function isProntaEntregaLot(lot: Partial<AuctionLot> | null | undefined): boolean {
+  if (!lot) return false;
+  return (
+    lot.sourceType === 'STOCK_APPLE' ||
+    /pronta entrega|usafast stock hub|stock hub/i.test(`${lot.auctionHouse || ''} ${lot.location || ''}`)
+  );
+}
+
+/**
  * Retorna true para leilões que aceitam ofertas abaixo do valor atual (-$5, -$10, -$15, -$25):
  * Assurant e Marketplace 1, 2, 3 e 4.
  */
 export function isDiscountBidAuction(lot: Partial<AuctionLot> | null | undefined): boolean {
   if (!lot) return false;
+  if (isProntaEntregaLot(lot)) return false;
   return isAssurantLot(lot as AuctionLot) || isMarketplaceLot(lot);
 }
 
@@ -70,6 +82,19 @@ export function getLotTotalPriceUsd(lot: AuctionLot | null | undefined): number 
     return Math.round(raw * qty);
   }
   return Math.round(raw);
+}
+
+/**
+ * Calcula o valor total fixo em USD para uma quantidade específica em Compra Direta (Pronta Entrega).
+ */
+export function getLotFixedTotalForQtyUsd(lot: AuctionLot | null | undefined, selectedQty: number): number {
+  if (!lot) return 0;
+  const maxQty = Math.max(1, Number(lot.quantity) || 1);
+  const clampedQty = Math.max(1, Math.min(maxQty, Math.round(Number(selectedQty) || 1)));
+  if (clampedQty >= maxQty) {
+    return getLotTotalPriceUsd(lot);
+  }
+  return Math.max(1, Math.round(getLotUnitPriceUsd(lot) * clampedQty));
 }
 
 /**

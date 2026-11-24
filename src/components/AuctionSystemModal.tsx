@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock, FileSpreadsheet, FileText } from 'lucide-react';
+import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock, FileSpreadsheet, FileText, ShoppingBag } from 'lucide-react';
 import { AuctionLot, SystemUser, UserAccessType } from '../types/auction';
-import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotIncrementSize } from '../utils/assurantUtils';
+import { isAssurantLot, isProntaEntregaLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotIncrementSize, getLotUnitPriceUsd, getLotFixedTotalForQtyUsd } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
 import { registerClientWithSupabase } from '../services/authService';
 import { exportClientBidsXlsx, exportClientBidsPdf } from '../utils/styledExports';
@@ -12,7 +12,7 @@ interface AuctionSystemModalProps {
   initialTab?: 'terminal' | 'register';
   auctions: AuctionLot[];
   userBids: { lotId: string; lotTitle: string; amountUsd: number; timestamp: string; status: 'vencendo' | 'superado' }[];
-  onPlaceQuickBid: (lotId: string, customAmount: number) => void;
+  onPlaceQuickBid: (lotId: string, customAmount: number, selectedQuantity?: number) => void;
   currentUser: SystemUser;
   onUpdateUser: (user: SystemUser) => void;
   usdRate: number;
@@ -51,6 +51,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
   // Quick bid selector
   const [selectedLotId, setSelectedLotId] = useState<string>(auctions[0]?.id || '');
   const [customBidAmount, setCustomBidAmount] = useState<number>(0);
+  const [selectedQuantity, setSelectedQuantity] = useState<number>(auctions[0]?.quantity || 1);
   const [bidSuccessNotice, setBidSuccessNotice] = useState<string | null>(null);
 
   // Sniper setting
@@ -61,9 +62,15 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
 
   const currentSelectedLot = auctions.find(a => a.id === selectedLotId) || auctions[0];
   const isVerizonSelected = isVerizonLot(currentSelectedLot);
+  const isProntaEntregaSelected = isProntaEntregaLot(currentSelectedLot);
   const isDiscountSelected = isDiscountBidAuction(currentSelectedLot);
+  const clampedQtySelected = currentSelectedLot
+    ? Math.max(1, Math.min(Math.max(1, currentSelectedLot.quantity), selectedQuantity || 1))
+    : 1;
+  const fixedUnitUsdSelected = getLotUnitPriceUsd(currentSelectedLot);
+  const fixedTotalUsdSelected = getLotFixedTotalForQtyUsd(currentSelectedLot, clampedQtySelected);
   const minRequiredBid = currentSelectedLot
-    ? (isVerizonSelected || isDiscountSelected ? 1 : Math.max(1, currentSelectedLot.currentBidUsd))
+    ? (isProntaEntregaSelected ? fixedTotalUsdSelected : isVerizonSelected || isDiscountSelected ? 1 : Math.max(1, currentSelectedLot.currentBidUsd))
     : 100;
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -108,6 +115,12 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
   };
 
   const handleExecuteBid = () => {
+    if (isProntaEntregaSelected) {
+      onPlaceQuickBid(currentSelectedLot.id, fixedTotalUsdSelected, clampedQtySelected);
+      setBidSuccessNotice(`Compra Direta de $${fixedTotalUsdSelected.toLocaleString()} USD (${clampedQtySelected} un.) registrada com sucesso no lote ${currentSelectedLot.lotNumber}!`);
+      setTimeout(() => setBidSuccessNotice(null), 3500);
+      return;
+    }
     const amountToBid = customBidAmount > 0 ? customBidAmount : minRequiredBid;
     onPlaceQuickBid(currentSelectedLot.id, amountToBid);
     setBidSuccessNotice(`Lance de $${amountToBid.toLocaleString()} USD registrado com sucesso no lote ${currentSelectedLot.lotNumber}!`);
@@ -257,12 +270,15 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         setSelectedLotId(e.target.value);
                         const lot = auctions.find(a => a.id === e.target.value);
                         if (lot) {
+                          setSelectedQuantity(Math.max(1, lot.quantity || 1));
                           setCustomBidAmount(
-                            isVerizonLot(lot)
-                              ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 500)
-                              : isDiscountBidAuction(lot)
-                                ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 100)
-                                : lot.currentBidUsd + 5
+                            isProntaEntregaLot(lot)
+                              ? lot.currentBidUsd
+                              : isVerizonLot(lot)
+                                ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 500)
+                                : isDiscountBidAuction(lot)
+                                  ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 100)
+                                  : lot.currentBidUsd + 5
                           );
                         }
                       }}
@@ -270,7 +286,12 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                     >
                       {auctions.map(lot => {
                         const vz = isVerizonLot(lot);
-                        const priceTag = vz && lot.currentBidUsd === 0 ? 'Sem Preço Fixo' : `$${lot.currentBidUsd} USD`;
+                        const pronta = isProntaEntregaLot(lot);
+                        const priceTag = vz && lot.currentBidUsd === 0
+                          ? 'Sem Preço Fixo'
+                          : pronta
+                            ? `Compra Direta $${getLotUnitPriceUsd(lot)}/un`
+                            : `$${lot.currentBidUsd} USD`;
                         return (
                           <option key={lot.id} value={lot.id}>
                             {lot.lotNumber} - {lot.title.slice(0, 48)}... ({priceTag})
@@ -285,12 +306,18 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                           <span className="text-slate-400">
                             {isVerizonSelected
                               ? 'Modelo de Preço (Verizon):'
-                              : isAssurantLot(currentSelectedLot) && currentSelectedLot.quantity > 1
-                                ? 'Valor Unitário (Assurant):'
-                                : 'Lance Atual no Leilão:'}
+                              : isProntaEntregaSelected
+                                ? 'Preço Unitário Fixo (Pronta Entrega):'
+                                : isAssurantLot(currentSelectedLot) && currentSelectedLot.quantity > 1
+                                  ? 'Valor Unitário (Assurant):'
+                                  : 'Lance Atual no Leilão:'}
                           </span>
                           {isVerizonSelected && currentSelectedLot.currentBidUsd === 0 ? (
                             <span className="font-bold text-emerald-400">Sem Preço Fixo (Cliente Escolhe)</span>
+                          ) : isProntaEntregaSelected ? (
+                            <span className="font-mono font-bold text-emerald-400">
+                              ${fixedUnitUsdSelected.toLocaleString()} USD / un.
+                            </span>
                           ) : (
                             <span className="font-mono font-bold text-white">
                               ${currentSelectedLot.currentBidUsd.toLocaleString()} USD
@@ -302,6 +329,11 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                           <div className="flex justify-between items-center font-medium">
                             <span className="text-red-300">Quantidade (Lote Fechado):</span>
                             <span className="font-mono font-bold text-white">{currentSelectedLot.quantity} unidade(s) fixas</span>
+                          </div>
+                        ) : isProntaEntregaSelected ? (
+                          <div className="flex justify-between items-center font-medium">
+                            <span className="text-emerald-300">Modalidade:</span>
+                            <span className="font-bold text-emerald-300">Compra Direta (Preço Fixo)</span>
                           </div>
                         ) : isAssurantLot(currentSelectedLot) ? (
                           <>
@@ -333,33 +365,88 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                   </div>
 
                   <div className="flex flex-col justify-between">
-                    <div>
-                      <label className="text-xs font-medium text-slate-300 block mb-1">
-                        {isVerizonSelected ? 'Informe o Valor da Sua Oferta (USD):' : 'Seu Lance em Dólar (USD):'}
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5 text-slate-500 font-mono font-bold">$</span>
-                        <input
-                          type="number"
-                          min={minRequiredBid}
-                          step="any"
-                          value={customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)}
-                          onChange={e => setCustomBidAmount(Number(e.target.value))}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
-                        />
+                    {isProntaEntregaSelected && currentSelectedLot ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs font-medium text-slate-300 block mb-1">
+                            Quantidade para Compra Direta (Máx: {currentSelectedLot.quantity}):
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedQuantity(q => Math.max(1, q - 1))}
+                              disabled={clampedQtySelected <= 1}
+                              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold rounded-lg text-xs"
+                            >
+                              -
+                            </button>
+                            <input
+                              type="number"
+                              min={1}
+                              max={Math.max(1, currentSelectedLot.quantity)}
+                              value={clampedQtySelected}
+                              onChange={e => setSelectedQuantity(Math.max(1, Math.min(Math.max(1, currentSelectedLot.quantity), Number(e.target.value) || 1)))}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-center text-emerald-300 focus:outline-none focus:border-emerald-400"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setSelectedQuantity(q => Math.min(Math.max(1, currentSelectedLot.quantity), q + 1))}
+                              disabled={clampedQtySelected >= currentSelectedLot.quantity}
+                              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold rounded-lg text-xs"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-slate-950 border border-emerald-500/30 rounded-lg">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400 flex items-center gap-1">
+                              <Lock className="w-3 h-3 text-emerald-400" />
+                              Total Fixo ({clampedQtySelected} un.):
+                            </span>
+                            <span className="font-mono font-black text-emerald-400 text-sm">
+                              ${fixedTotalUsdSelected.toLocaleString()} USD
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-400 block mt-1">
+                            aprox. R$ {(fixedTotalUsdSelected * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[11px] text-slate-400 block mt-1">
-                        Valor aproximado em Reais: aprox. R$ {(((customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)) * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
+                    ) : (
+                      <div>
+                        <label className="text-xs font-medium text-slate-300 block mb-1">
+                          {isVerizonSelected ? 'Informe o Valor da Sua Oferta (USD):' : 'Seu Lance em Dólar (USD):'}
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2.5 text-slate-500 font-mono font-bold">$</span>
+                          <input
+                            type="number"
+                            min={minRequiredBid}
+                            step="any"
+                            value={customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)}
+                            onChange={e => setCustomBidAmount(Number(e.target.value))}
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <span className="text-[11px] text-slate-400 block mt-1">
+                          Valor aproximado em Reais: aprox. R$ {(((customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)) * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="pt-4 flex items-center gap-2">
                       <button
                         onClick={handleExecuteBid}
-                        className="flex-1 py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-2 shadow-md shadow-amber-500/10"
+                        className={`flex-1 py-2.5 px-4 font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-2 shadow-md ${
+                          isProntaEntregaSelected
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/15'
+                            : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/10'
+                        }`}
                       >
-                        <Gavel className="w-4 h-4" />
-                        <span>Confirmar Lance no Sistema</span>
+                        {isProntaEntregaSelected ? <ShoppingBag className="w-4 h-4" /> : <Gavel className="w-4 h-4" />}
+                        <span>{isProntaEntregaSelected ? 'Confirmar Compra Direta' : 'Confirmar Lance no Sistema'}</span>
                       </button>
                     </div>
                   </div>

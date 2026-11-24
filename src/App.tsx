@@ -12,6 +12,7 @@ import { GradeamentoPage } from './pages/GradeamentoPage';
 import { AdminPage } from './pages/AdminPage';
 import { ClientePage } from './pages/ClientePage';
 import { AdminLoginGate, ClientLoginGate } from './components/AuthGates';
+import { OfflineIndicator } from './components/PWAInstallButton';
 import { INITIAL_AUCTIONS, DEFAULT_PTAX_USD_BRL, GRADE_EXPLANATIONS } from './data/auctionsData';
 import { AuctionLot, GradeType, SystemUser, AdminOffer } from './types/auction';
 import { apiService } from './services/apiService';
@@ -26,7 +27,7 @@ import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
-import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './utils/assurantUtils';
+import { isAssurantLot, isProntaEntregaLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotFixedTotalForQtyUsd, getLotIncrementSize } from './utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
 import { exportAuctionsCatalogXlsx, exportAuctionsCatalogPdf } from './utils/styledExports';
 import { 
@@ -320,43 +321,72 @@ export default function App() {
     }
   };
 
+  const buildByteBudgetedBatches = (lots: AuctionLot[], maxLotsPerBatch = 250, maxBytesPerBatch = 1_200_000): AuctionLot[][] => {
+    const batches: AuctionLot[][] = [];
+    let currentBatch: AuctionLot[] = [];
+    let currentBytes = 64;
+
+    for (const lot of lots) {
+      const lotBytes = JSON.stringify(lot).length + 2;
+      if (
+        currentBatch.length > 0 &&
+        (currentBatch.length >= maxLotsPerBatch || currentBytes + lotBytes > maxBytesPerBatch)
+      ) {
+        batches.push(currentBatch);
+        currentBatch = [];
+        currentBytes = 64;
+      }
+      currentBatch.push(lot);
+      currentBytes += lotBytes;
+    }
+
+    if (currentBatch.length > 0) {
+      batches.push(currentBatch);
+    }
+    return batches;
+  };
+
   const postAuctionsToBackend = async (lots: AuctionLot[]): Promise<boolean> => {
+    const postWithRetry = async (payload: { auctions: AuctionLot[]; mode: 'replace' | 'append' | 'clear' }) => {
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await fetch('/api/auctions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          if (!data || !data.ok) {
+            throw new Error(data?.error || 'Falha ao salvar lote');
+          }
+          return;
+        } catch (err) {
+          lastError = err;
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+          }
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error('Falha ao sincronizar com o servidor');
+    };
+
     try {
       if (lots.length === 0) {
-        const res = await fetch('/api/auctions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auctions: [], mode: 'clear' })
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        if (!data || !data.ok) {
-          throw new Error(data?.error || 'Falha ao limpar lotes');
-        }
+        await postWithRetry({ auctions: [], mode: 'clear' });
         console.log('[App.tsx] Backend /api/auctions POST cleared all lots');
         return true;
       }
 
-      const chunkSize = 1000;
-      for (let i = 0; i < lots.length; i += chunkSize) {
-        const chunk = lots.slice(i, i + chunkSize);
-        const mode = i === 0 ? 'replace' : 'append';
-        const res = await fetch('/api/auctions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ auctions: chunk, mode })
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        if (!data || !data.ok) {
-          throw new Error(data?.error || 'Falha ao salvar lote');
-        }
+      const batches = buildByteBudgetedBatches(lots);
+      for (let i = 0; i < batches.length; i++) {
+        const mode: 'replace' | 'append' = i === 0 ? 'replace' : 'append';
+        await postWithRetry({ auctions: batches[i], mode });
       }
-      console.log(`[App.tsx] Backend /api/auctions POST synced ${lots.length} lots`);
+      console.log(`[App.tsx] Backend /api/auctions POST synced ${lots.length} lots in ${batches.length} batch(es)`);
       return true;
     } catch (err) {
       console.warn('[App.tsx] Backend /api/auctions POST failed, trying direct Supabase fallback:', err);
@@ -395,7 +425,7 @@ export default function App() {
   };
 
   // Helper to persist auctions (safe localStorage cache + backend /api/auctions for cross-device sync)
-  const handleUpdateAuctions = (newAuctions: AuctionLot[]) => {
+  const handleUpdateAuctions = async (newAuctions: AuctionLot[]): Promise<boolean> => {
     hasLocalUpdateRef.current = true;
     setAuctions(newAuctions);
     const cachedLocally = saveAuctionsLocalCache(newAuctions);
@@ -406,13 +436,15 @@ export default function App() {
       } catch {}
     }
 
-    postAuctionsToBackend(newAuctions).then(synced => {
-      if (synced) {
-        try {
-          localStorage.removeItem(UNSYNCED_FLAG_KEY);
-        } catch {}
-      }
-    });
+    const synced = await postAuctionsToBackend(newAuctions);
+    if (synced) {
+      try {
+        localStorage.removeItem(UNSYNCED_FLAG_KEY);
+      } catch {}
+    } else {
+      showToast('⚠️ Falha ao salvar no banco de dados. Verifique sua conexão e tente novamente.');
+    }
+    return synced;
   };
 
   useEffect(() => {
@@ -443,14 +475,21 @@ export default function App() {
             break;
           }
           backendLoadedOk = true;
-          if (data.auctions.length === 0) {
+          if (data.auctions.length === 0 && !data.hasMore) {
             break;
           }
           collected.push(...data.auctions);
           if (!data.hasMore) {
             break;
           }
-          offset += data.auctions.length;
+          const nextOffset =
+            typeof data.nextOffset === 'number' && data.nextOffset > offset
+              ? data.nextOffset
+              : offset + (typeof data.rawCount === 'number' && data.rawCount > 0 ? data.rawCount : data.auctions.length);
+          if (nextOffset <= offset) {
+            break;
+          }
+          offset = nextOffset;
         }
 
         if (collected.length > 0) {
@@ -554,14 +593,19 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Place a Bid Handler (Connected to PHP API / Simulated Bridge)
+  // Place a Bid / Direct Purchase Handler
   const handlePlaceBid = (lotId: string, amountUsd: number, selectedQuantity?: number) => {
     const targetLot = auctions.find(a => a.id === lotId);
+    const isProntaEntrega = targetLot ? isProntaEntregaLot(targetLot) : false;
     const bidQty = targetLot
       ? (isVerizonLot(targetLot)
           ? targetLot.quantity
           : Math.max(1, Math.min(Math.max(1, targetLot.quantity), selectedQuantity || targetLot.quantity)))
       : (selectedQuantity || 1);
+
+    const effectiveAmountUsd = isProntaEntrega && targetLot
+      ? getLotFixedTotalForQtyUsd(targetLot, bidQty)
+      : amountUsd;
 
     const baseBidderName = currentUser.name ? `${currentUser.name} (Você)` : 'Arrematante Autorizado (Você)';
     const bidderLabel = targetLot && bidQty < targetLot.quantity
@@ -569,7 +613,7 @@ export default function App() {
       : baseBidderName;
 
     // Trigger API / Backend submission
-    apiService.submitBid(lotId, amountUsd, bidderLabel).catch(err => {
+    apiService.submitBid(lotId, effectiveAmountUsd, bidderLabel).catch(err => {
       console.warn('Falha no envio da API PHP, operando localmente:', err);
     });
 
@@ -578,17 +622,18 @@ export default function App() {
         const newBidHistory = [
           {
             id: `bid-${Date.now()}`,
-            bidderName: bidderLabel,
-            amountUsd,
+            bidderName: isProntaEntrega ? `${bidderLabel} · Compra Direta` : bidderLabel,
+            amountUsd: effectiveAmountUsd,
             timestamp: 'Agora'
           },
           ...lot.bidsHistory
         ];
         const shouldUpdateLotCurrentBid =
-          lot.currentBidUsd === 0 || (bidQty >= lot.quantity && amountUsd > lot.currentBidUsd) || amountUsd > lot.currentBidUsd;
+          !isProntaEntrega &&
+          (lot.currentBidUsd === 0 || (bidQty >= lot.quantity && effectiveAmountUsd > lot.currentBidUsd) || effectiveAmountUsd > lot.currentBidUsd);
         return {
           ...lot,
-          currentBidUsd: shouldUpdateLotCurrentBid ? amountUsd : lot.currentBidUsd,
+          currentBidUsd: shouldUpdateLotCurrentBid ? effectiveAmountUsd : lot.currentBidUsd,
           totalBidsCount: lot.totalBidsCount + 1,
           bidsHistory: newBidHistory
         };
@@ -602,12 +647,14 @@ export default function App() {
       const lotTitleWithQty = bidQty < targetLot.quantity
         ? `${targetLot.title} (${bidQty} de ${targetLot.quantity} un.)`
         : targetLot.title;
+      const recordedTitle = isProntaEntrega ? `[COMPRA DIRETA] ${lotTitleWithQty}` : lotTitleWithQty;
+      const nowLabel = new Date().toLocaleString('pt-BR');
 
       const updatedBids = [
         {
           lotId,
-          lotTitle: lotTitleWithQty,
-          amountUsd,
+          lotTitle: recordedTitle,
+          amountUsd: effectiveAmountUsd,
           timestamp: 'Agora mesmo',
           status: 'vencendo' as const
         },
@@ -626,21 +673,56 @@ export default function App() {
           id: `off-${Date.now()}`,
           lotId,
           lotNumber: targetLot.lotNumber || `US-${lotId.slice(-5)}`,
-          lotTitle: lotTitleWithQty,
+          lotTitle: recordedTitle,
           clientName: currentUser.name || 'Arrematante Autorizado',
           clientEmail: currentUser.email || 'cliente@usafastleiloes.com',
-          amountUsd,
-          amountBrl: Math.round(amountUsd * usdRate),
+          clientPhone: currentUser.phone || undefined,
+          clientWhatsapp: currentUser.whatsapp || currentUser.phone || undefined,
+          amountUsd: effectiveAmountUsd,
+          amountBrl: Math.round(effectiveAmountUsd * usdRate),
           timestamp: 'Agora mesmo',
-          status: 'Vencendo',
+          status: isProntaEntrega ? 'Aceita' : 'Vencendo',
           isAutoSniper: false
         };
-        const nextAdminOffers = [newAdminOffer, ...curOffers.filter(o => o.lotId !== lotId)];
+        const nextAdminOffers = isProntaEntrega
+          ? [newAdminOffer, ...curOffers]
+          : [newAdminOffer, ...curOffers.filter(o => o.lotId !== lotId)];
         localStorage.setItem('us_admin_offers_v1', JSON.stringify(nextAdminOffers));
+        window.dispatchEvent(new Event('offers_updated'));
       } catch (e) {}
+
+      // Dispatch email notification to registered Admin emails via server API
+      fetch('/api/notify-offer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'notify-offer',
+          offer: {
+            lotId,
+            lotNumber: targetLot.lotNumber || `US-${lotId.slice(-5)}`,
+            lotTitle: targetLot.title,
+            auctionHouse: targetLot.auctionHouse,
+            quantity: bidQty,
+            unitPriceUsd: getLotUnitPriceUsd(targetLot),
+            amountUsd: effectiveAmountUsd,
+            amountBrl: Math.round(effectiveAmountUsd * usdRate),
+            clientName: currentUser.name || 'Arrematante Autorizado',
+            clientEmail: currentUser.email || 'Não informado',
+            clientPhone: currentUser.whatsapp || currentUser.phone || '',
+            isDirectPurchase: isProntaEntrega,
+            timestamp: nowLabel,
+          },
+        }),
+      }).catch(err => {
+        console.warn('Falha ao disparar notificação de e-mail:', err);
+      });
     }
 
-    showToast(`⚡ Lance de $${amountUsd.toLocaleString()} USD (${bidQty} un.) computado com sucesso!`);
+    showToast(
+      isProntaEntrega
+        ? `🛒 Compra Direta de $${effectiveAmountUsd.toLocaleString()} USD (${bidQty} un.) computada com sucesso!`
+        : `⚡ Lance de $${effectiveAmountUsd.toLocaleString()} USD (${bidQty} un.) computado com sucesso!`
+    );
   };
 
   const handleOpenSystem = (tab: 'terminal' | 'register' = 'terminal') => {
@@ -1228,7 +1310,7 @@ export default function App() {
                             : 'text-slate-300 hover:text-white hover:bg-slate-900'
                         }`}
                       >
-                        {t.allAuctionsFilter}
+                        {t.allAuctionsFilter} ({auctions.length.toLocaleString('pt-BR')})
                       </button>
 
                       <button
@@ -1247,7 +1329,7 @@ export default function App() {
                             : 'text-red-300 hover:bg-red-500/15'
                         }`}
                       >
-                        {t.verizonBadge}
+                        {t.verizonBadge} ({auctions.filter(isVerizonLot).length.toLocaleString('pt-BR')})
                       </button>
 
                       <button
@@ -1262,7 +1344,7 @@ export default function App() {
                             : 'text-blue-300 hover:bg-blue-500/15'
                         }`}
                       >
-                        {t.assurantBadge}
+                        {t.assurantBadge} ({auctions.filter(a => a.sourceType === 'ASSURANT' || /assurant/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')})
                       </button>
 
                       <button
@@ -1277,12 +1359,13 @@ export default function App() {
                             : 'text-fuchsia-300 hover:bg-fuchsia-500/15'
                         }`}
                       >
-                        T-MOBILE
+                        T-MOBILE ({auctions.filter(isTMobileLot).length.toLocaleString('pt-BR')})
                       </button>
 
                       {(['MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3', ...(auctions.some(a => getMarketplaceNumber(a) === 4) ? (['MARKETPLACE_4'] as const) : [])] as const).map((mktKey) => {
-                        const num = mktKey.replace('MARKETPLACE_', '');
-                        const label = `Marketplace ${num}`;
+                        const num = Number(mktKey.replace('MARKETPLACE_', ''));
+                        const mktCount = auctions.filter(a => getMarketplaceNumber(a) === num).length;
+                        const label = `Marketplace ${num} (${mktCount.toLocaleString('pt-BR')})`;
                         return (
                           <button
                             key={mktKey}
@@ -1315,7 +1398,7 @@ export default function App() {
                               : 'text-emerald-300 hover:bg-emerald-500/15'
                           }`}
                         >
-                          Pronta Entrega
+                          Pronta Entrega ({auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')})
                         </button>
                       )}
 
@@ -1332,7 +1415,7 @@ export default function App() {
                               : 'text-purple-300 hover:bg-purple-500/15'
                           }`}
                         >
-                          MacBooks
+                          MacBooks ({auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')})
                         </button>
                       )}
 
@@ -1647,8 +1730,10 @@ export default function App() {
                         const isMixExpanded = !!expandedMixLotIds[lot.id];
                         const cleanTitle = stripLotPrefix(lot.title);
                         const isVerizon = isVerizonLot(lot);
+                        const isProntaEntrega = isProntaEntregaLot(lot);
                         const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[isVerizon ? 'DNC' : 'Grade A'];
-                        const currentBrl = lot.currentBidUsd * usdRate;
+                        const unitPriceUsd = getLotUnitPriceUsd(lot);
+                        const currentBrl = (isProntaEntrega ? unitPriceUsd : lot.currentBidUsd) * usdRate;
                         const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
 
                         return (
@@ -1692,6 +1777,11 @@ export default function App() {
                                   {isAssurant && (
                                     <span className="px-1.5 py-0.5 rounded bg-blue-600 text-white font-black text-[9px] uppercase tracking-wider">
                                       ASSURANT
+                                    </span>
+                                  )}
+                                  {isProntaEntrega && (
+                                    <span className="px-1.5 py-0.5 rounded bg-emerald-600 text-white font-black text-[9px] uppercase tracking-wider">
+                                      PRONTA ENTREGA
                                     </span>
                                   )}
                                   {isTMobileLot(lot) && (
@@ -1739,10 +1829,10 @@ export default function App() {
                               ) : (
                                 <div>
                                   <span className="text-[10px] text-slate-400 block">
-                                    {isVerizon ? 'Última Oferta (Valor Livre):' : isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual:'}
+                                    {isProntaEntrega ? 'Preço Fixo (Pronta Entrega):' : isVerizon ? 'Última Oferta (Valor Livre):' : isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual:'}
                                   </span>
-                                  <span className="font-mono font-bold text-amber-400 text-sm">
-                                    ${lot.currentBidUsd.toLocaleString()} USD{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
+                                  <span className={`font-mono font-bold text-sm ${isProntaEntrega ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                    ${(isProntaEntrega ? unitPriceUsd : lot.currentBidUsd).toLocaleString()} USD{(isProntaEntrega || (isAssurant && lot.quantity > 1)) ? ' / un.' : ''}
                                   </span>
                                   <span className="text-[10px] text-slate-400 font-mono ml-1.5">
                                     (aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
@@ -1765,9 +1855,13 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={() => setSelectedLotForDetail(lot)}
-                                  className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-xl text-xs transition-colors"
+                                  className={`px-3.5 py-1.5 font-black rounded-xl text-xs transition-colors ${
+                                    isProntaEntrega
+                                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                                      : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                                  }`}
                                 >
-                                  {isVerizon ? 'Escolher Valor' : 'Dar Lance'}
+                                  {isProntaEntrega ? 'Comprar Direto' : isVerizon ? 'Escolher Valor' : 'Dar Lance'}
                                 </button>
                               </div>
                             </div>
@@ -1812,8 +1906,10 @@ export default function App() {
                             const mixSummary = getLotMixSummary(lot);
                             const cleanTitle = stripLotPrefix(lot.title);
                             const isVerizon = isVerizonLot(lot);
+                            const isProntaEntrega = isProntaEntregaLot(lot);
                             const gradeInfo = GRADE_EXPLANATIONS[lot.grade] || GRADE_EXPLANATIONS[isVerizon ? 'DNC' : 'Grade A'];
-                            const currentBrl = lot.currentBidUsd * usdRate;
+                            const unitPriceUsd = getLotUnitPriceUsd(lot);
+                            const currentBrl = (isProntaEntrega ? unitPriceUsd : lot.currentBidUsd) * usdRate;
                             const isAssurant = lot.sourceType === 'ASSURANT' || /assurant/i.test(lot.auctionHouse);
 
                             return (
@@ -1885,6 +1981,10 @@ export default function App() {
                                       <span className="px-2 py-1 rounded bg-red-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
                                         VERIZON
                                       </span>
+                                    ) : isProntaEntrega ? (
+                                      <span className="px-2 py-1 rounded bg-emerald-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
+                                        PRONTA ENTREGA
+                                      </span>
                                     ) : isAssurant ? (
                                       <span className="px-2 py-1 rounded bg-blue-600/90 text-white font-black text-[10px] uppercase tracking-wider inline-block">
                                         ASSURANT
@@ -1943,7 +2043,7 @@ export default function App() {
                                     </div>
                                   </td>
 
-                                  {/* Current Bid */}
+                                  {/* Current Bid / Fixed Price */}
                                   <td className="p-3.5">
                                     {isVerizon && lot.currentBidUsd === 0 ? (
                                       <div>
@@ -1952,6 +2052,18 @@ export default function App() {
                                         </span>
                                         <span className="text-[10px] text-amber-300 font-semibold block">
                                           Cliente escolhe o valor
+                                        </span>
+                                      </div>
+                                    ) : isProntaEntrega ? (
+                                      <div>
+                                        <span className="font-mono font-bold text-emerald-400 text-sm block">
+                                          ${unitPriceUsd.toLocaleString()} USD / un.
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-mono block">
+                                          aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
+                                        </span>
+                                        <span className="text-[10px] text-emerald-300/80 font-semibold block">
+                                          Compra Direta · Preço Fixo
                                         </span>
                                       </div>
                                     ) : (
@@ -1964,7 +2076,7 @@ export default function App() {
                                         </span>
                                         {!isAssurant && (
                                           <span className="text-[10px] text-slate-500 block">
-                                            {`($${getLotUnitPriceUsd(lot).toLocaleString()}/un)${isVerizon ? ' · Livre' : ''}`}
+                                            {`($${unitPriceUsd.toLocaleString()}/un)${isVerizon ? ' · Livre' : ''}`}
                                           </span>
                                         )}
                                       </div>
@@ -1985,9 +2097,13 @@ export default function App() {
                                       <button
                                         type="button"
                                         onClick={() => setSelectedLotForDetail(lot)}
-                                        className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black rounded-lg text-xs transition-colors"
+                                        className={`px-3 py-1.5 font-black rounded-lg text-xs transition-colors ${
+                                          isProntaEntrega
+                                            ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                                            : 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+                                        }`}
                                       >
-                                        {isVerizon ? 'Escolher Valor' : 'Dar Lance'}
+                                        {isProntaEntrega ? 'Comprar Direto' : isVerizon ? 'Escolher Valor' : 'Dar Lance'}
                                       </button>
                                     </div>
                                   </td>
@@ -2256,6 +2372,8 @@ export default function App() {
         initialLotPriceUsd={calculatorInitData.priceUsd}
         initialLotUnits={calculatorInitData.units}
       />
+
+      <OfflineIndicator />
     </div>
   );
 }

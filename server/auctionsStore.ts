@@ -141,6 +141,8 @@ export async function getAuctionsFromStore(options?: {
 }): Promise<{
   ok: boolean;
   count: number;
+  rawCount?: number;
+  nextOffset?: number;
   total: number;
   hasMore: boolean;
   auctions: any[];
@@ -153,10 +155,42 @@ export async function getAuctionsFromStore(options?: {
 
   let auctionsData: any[] | null = null;
   let storage: 'supabase' | 'local' = 'local';
+  const hasFilters = Boolean(q) || (Boolean(source) && source !== 'ALL');
 
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
+      // Fast path: paged fetch without filters — fetch only the requested slice from Supabase
+      if (limit > 0 && !hasFilters) {
+        const { data: rows, count, error } = await supabase
+          .from('leiloes_importados')
+          .select('data', { count: 'exact' })
+          .order('id', { ascending: true })
+          .range(offset, offset + limit - 1);
+
+        if (!error && rows) {
+          const rawList = rows.map((r: any) => r?.data).filter(Boolean);
+          const sanitizedPage = sanitizeAuctions(rawList);
+          const totalRows = typeof count === 'number' ? count : offset + rows.length;
+          const nextOffset = offset + rows.length;
+          const hasMore = typeof count === 'number' ? nextOffset < count : rows.length === limit;
+
+          return {
+            ok: true,
+            count: sanitizedPage.length,
+            rawCount: rows.length,
+            nextOffset,
+            total: totalRows,
+            hasMore,
+            auctions: sanitizedPage,
+            storage: 'supabase',
+          };
+        }
+        if (error) {
+          console.error('[Supabase Error] Falha na consulta paginada, tentando fallback:', error);
+        }
+      }
+
       const pageSize = 1000;
       let from = 0;
       const allRows: any[] = [];
@@ -233,6 +267,8 @@ export async function getAuctionsFromStore(options?: {
   return {
     ok: true,
     count: paged.length,
+    rawCount: paged.length,
+    nextOffset: offset + paged.length,
     total,
     hasMore,
     auctions: paged,

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Gavel, ShieldCheck, DollarSign, Layers, Users, Lock, Menu, X, UserCheck, Globe } from 'lucide-react';
 import { Language, TRANSLATIONS } from '../utils/i18n';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type AppPage = 'home' | 'leiloes' | 'gradeamento' | 'quem-somos' | 'cliente' | 'admin';
 
@@ -275,6 +276,8 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="font-semibold">{currency === 'USD' ? '$' : 'R$'}</span>
           </button>
 
+          <PWAInstallButton compact />
+
           <button
             onClick={() => handleNavClick('cliente')}
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap shadow-sm shadow-amber-500/10"
@@ -334,6 +337,9 @@ export const Header: React.FC<HeaderProps> = ({
             <Lock className="w-3.5 h-3.5" />
             <span>{t.adminPanel}</span>
           </button>
+          <div className="pt-1">
+            <PWAInstallButton fullWidth />
+          </div>
         </div>
       )}
     </header>

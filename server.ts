@@ -17,6 +17,14 @@ import {
   updateClientAccessType,
   updateClientApprovalStatus,
 } from './server/authService.ts';
+import {
+  detectMailProvider,
+  getConfiguredNotificationEmails,
+  requireAdminForEmailConfig,
+  saveConfiguredNotificationEmails,
+  sendOfferNotificationEmail,
+  sendTestNotificationEmail,
+} from './server/emailNotificationService.ts';
 
 dotenv.config();
 
@@ -122,6 +130,79 @@ async function startServer() {
     if (action === 'me') {
       const result = await getAuthenticatedProfile(authHeader);
       return res.status(result.status).json(result);
+    }
+
+    return res.status(400).json({ ok: false, error: 'Ação inválida.' });
+  });
+
+  app.get('/api/notify-offer', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    const authHeader = req.headers.authorization;
+    const authCheck = await requireAdminForEmailConfig(authHeader);
+    if (!authCheck.ok) {
+      return res.status(authCheck.status).json({ ok: false, error: authCheck.error });
+    }
+    const config = await getConfiguredNotificationEmails();
+    const provider = detectMailProvider();
+    return res.json({
+      ok: true,
+      emails: config.emails,
+      initialized: config.initialized,
+      provider: provider.provider,
+      configured: provider.configured,
+      providerSummary: provider.summary,
+    });
+  });
+
+  app.post('/api/notify-offer', async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    const authHeader = req.headers.authorization;
+    const body = req.body || {};
+    const action = String(body.action || 'notify-offer');
+
+    if (action === 'save-config') {
+      const authCheck = await requireAdminForEmailConfig(authHeader);
+      if (!authCheck.ok) {
+        return res.status(authCheck.status).json({ ok: false, error: authCheck.error });
+      }
+      const saved = await saveConfiguredNotificationEmails(body.emails);
+      const provider = detectMailProvider();
+      return res.json({
+        ok: saved.ok,
+        emails: saved.emails,
+        provider: provider.provider,
+        configured: provider.configured,
+        providerSummary: provider.summary,
+      });
+    }
+
+    if (action === 'send-test') {
+      const authCheck = await requireAdminForEmailConfig(authHeader);
+      if (!authCheck.ok) {
+        return res.status(authCheck.status).json({ ok: false, error: authCheck.error });
+      }
+      const result = await sendTestNotificationEmail();
+      return res.json(result);
+    }
+
+    if (action === 'notify-offer') {
+      const offer = body.offer || body;
+      const result = await sendOfferNotificationEmail({
+        lotId: offer?.lotId,
+        lotNumber: offer?.lotNumber,
+        lotTitle: offer?.lotTitle,
+        auctionHouse: offer?.auctionHouse,
+        quantity: Number(offer?.quantity || 1),
+        unitPriceUsd: offer?.unitPriceUsd !== undefined ? Number(offer.unitPriceUsd) : undefined,
+        amountUsd: Number(offer?.amountUsd || 0),
+        amountBrl: Number(offer?.amountBrl || 0),
+        clientName: offer?.clientName,
+        clientEmail: offer?.clientEmail,
+        clientPhone: offer?.clientPhone,
+        isDirectPurchase: Boolean(offer?.isDirectPurchase),
+        timestamp: offer?.timestamp,
+      });
+      return res.json(result);
     }
 
     return res.status(400).json({ ok: false, error: 'Ação inválida.' });

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Gavel, Clock, MapPin, Battery, Smartphone, ShieldCheck, ArrowUpRight, Lock } from 'lucide-react';
+import { Gavel, Clock, MapPin, Battery, Smartphone, ShieldCheck, ArrowUpRight, Lock, ShoppingBag } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict } from '../utils/verizonUtils';
-import { isAssurantLot, getLotUnitPriceUsd, getLotIncrementSize } from '../utils/assurantUtils';
+import { isAssurantLot, isProntaEntregaLot, getLotUnitPriceUsd, getLotIncrementSize } from '../utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
 
 interface AuctionCardProps {
@@ -58,6 +58,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
   const tMobile = isTMobileLot(lot);
   const mktNum = getMarketplaceNumber(lot);
   const isAssurant = isAssurantLot(lot);
+  const isProntaEntrega = isProntaEntregaLot(lot);
   const cleanGrade = verizon
     ? mapVerizonGradeStrict(lot.grade || 'DNC')
     : ((lot.grade || '').replace(/\(T\)/gi, '').trim() || 'Grade A');
@@ -67,7 +68,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
   const unitPriceUsd = getLotUnitPriceUsd(lot);
   const incrementSize = getLotIncrementSize(lot);
-  const displayPrimaryUsd = isAssurant ? unitPriceUsd : lot.currentBidUsd;
+  const displayPrimaryUsd = isAssurant || isProntaEntrega ? unitPriceUsd : lot.currentBidUsd;
 
   const formattedCurrentPrice = currency === 'USD'
     ? `$ ${displayPrimaryUsd.toLocaleString()} USD`
@@ -242,19 +243,26 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                 <span className="text-[11px] text-slate-400 block">
                   {verizon
                     ? 'Última Oferta (Valor Livre):'
-                    : isAssurant && lot.quantity > 1
-                      ? 'Valor Unitário (Assurant):'
-                      : lot.quantity > 1
-                        ? 'Lance Atual (Total Lote):'
-                        : 'Lance Atual:'}
+                    : isProntaEntrega
+                      ? 'Preço Fixo (Pronta Entrega):'
+                      : isAssurant && lot.quantity > 1
+                        ? 'Valor Unitário (Assurant):'
+                        : lot.quantity > 1
+                          ? 'Lance Atual (Total Lote):'
+                          : 'Lance Atual:'}
                 </span>
-                <span className="text-xl sm:text-2xl font-black text-amber-400 font-mono tracking-tight block">
+                <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight block ${isProntaEntrega ? 'text-emerald-400' : 'text-amber-400'}`}>
                   {formattedCurrentPrice}
-                  {isAssurant && lot.quantity > 1 && (
+                  {(isAssurant || isProntaEntrega) && lot.quantity > 1 && (
                     <span className="text-xs font-normal text-slate-400"> / un.</span>
                   )}
                 </span>
-                {!isAssurant && lot.quantity > 1 && (
+                {isProntaEntrega && lot.quantity > 1 && (
+                  <span className="text-[11px] text-emerald-300/90 font-mono block">
+                    {`Estoque total (${lot.quantity} un.): $ ${lot.currentBidUsd.toLocaleString()} USD`}
+                  </span>
+                )}
+                {!isAssurant && !isProntaEntrega && lot.quantity > 1 && (
                   <span className="text-[11px] text-amber-300 font-mono block">
                     {`($ ${unitPriceUsd.toLocaleString()} USD / un.)`}
                   </span>
@@ -266,8 +274,8 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                 )}
                 <span className="text-[10px] text-slate-400 font-mono">
                   {currency === 'USD'
-                    ? `aprox. R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
-                    : `≈ $ ${displayPrimaryUsd.toLocaleString()} USD${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`}
+                    ? `aprox. R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${(isAssurant || isProntaEntrega) && lot.quantity > 1 ? ' / un.' : ''}`
+                    : `≈ $ ${displayPrimaryUsd.toLocaleString()} USD${(isAssurant || isProntaEntrega) && lot.quantity > 1 ? ' / un.' : ''}`}
                 </span>
               </div>
 
@@ -275,6 +283,10 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                 {verizon ? (
                   <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-300 inline-block mb-1">
                     Qtd Fixa: {lot.quantity} un.
+                  </span>
+                ) : isProntaEntrega ? (
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/35 text-[10px] font-bold text-emerald-300 inline-block mb-1">
+                    Compra Direta · Preço Fixo
                   </span>
                 ) : hasRetailEstimate ? (
                   <>
@@ -287,7 +299,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                   </>
                 ) : null}
                 <span className="text-[10px] text-slate-400 font-mono block">
-                  {lot.totalBidsCount} lances dados
+                  {isProntaEntrega ? `${lot.quantity} un. em estoque` : `${lot.totalBidsCount} lances dados`}
                 </span>
               </div>
             </div>
@@ -305,10 +317,14 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
             <button
               onClick={() => onQuickBid(lot)}
-              className="py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm shadow-amber-500/10"
+              className={`py-2 px-3 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm ${
+                isProntaEntrega
+                  ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/15'
+                  : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/10'
+              }`}
             >
-              <Gavel className="w-3.5 h-3.5" />
-              <span>{verizon ? 'Escolher Valor' : 'Dar Lance'}</span>
+              {isProntaEntrega ? <ShoppingBag className="w-3.5 h-3.5" /> : <Gavel className="w-3.5 h-3.5" />}
+              <span>{isProntaEntrega ? 'Comprar Direto' : verizon ? 'Escolher Valor' : 'Dar Lance'}</span>
             </button>
           </div>
         </div>

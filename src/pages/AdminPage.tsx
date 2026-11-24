@@ -45,7 +45,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Receipt,
-  Laptop
+  Laptop,
+  Mail,
+  Send
 } from 'lucide-react';
 import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
@@ -1069,8 +1071,17 @@ $285.00
   };
 
   // ----------------------------------------------------
-  // MACBOOKS TEXT PARSER (WITH MARGIN SELECTION OPTION)
+  // MACBOOKS TEXT PARSER (ONLY M1+ APPLE SILICON, WITH MARGIN OPTION)
   // ----------------------------------------------------
+  const isMacbookM1OrNewer = (desc: string): boolean => {
+    const cleaned = desc.trim();
+    if (!cleaned) return false;
+    if (/\b(?:ipad|iphone|watch)\b/i.test(cleaned) && !/\bmacbook\b/i.test(cleaned)) {
+      return false;
+    }
+    return /\bM(?:[1-9]|1[0-9])(?:\s*(?:Pro|Max|Ultra))?\b/i.test(cleaned);
+  };
+
   const parseMacbooksText = (text: string, applyMargin: boolean = false): StockAppleItem[] => {
     const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const items: StockAppleItem[] = [];
@@ -1085,10 +1096,13 @@ $285.00
         const priceRaw = parsePrice(line);
         if (priceRaw <= 0) continue;
 
-        const finalPrice = computeMacbookPriceWithMargin(priceRaw, applyMargin);
-
-        const descLine = i > 0 ? rawLines[i - 1] : `Apple MacBook Item ${items.length + 1}`;
+        const descLine = i > 0 ? rawLines[i - 1] : '';
         if (descLine && !/^\$\s*[\d,.]+$/i.test(descLine)) {
+          // Strict filter: ONLY MacBooks with Apple Silicon M1 or newer (M1, M2, M3, M4+)
+          if (!isMacbookM1OrNewer(descLine)) continue;
+
+          const finalPrice = computeMacbookPriceWithMargin(priceRaw, applyMargin);
+
           // Extract SSD storage (prioritize "... SSD" so RAM like 32GB is not picked over 512GB SSD)
           const ssdMatch = descLine.match(/(\d+\s*(?:GB|TB))\s*(?:SSD|NVMe|Flash)/i);
           let capacity = ssdMatch ? `${ssdMatch[1].replace(/\s+/g, '').toUpperCase()} SSD` : '';
@@ -1138,8 +1152,24 @@ $285.00
   };
 
   // ----------------------------------------------------
-  // PRONTA ENTREGA TEXT PARSER (PRICE > 0, HAVE > 0, ONLY GRADES A, AB, B)
+  // PRONTA ENTREGA TEXT PARSER (ONLY IPHONES, PRICE > 0, HAVE > 0, ONLY GRADES A, AB, B)
   // ----------------------------------------------------
+  const isProntaEntregaIphone = (make: string, modelName: string, category: string): boolean => {
+    const combined = `${make} ${modelName} ${category}`.trim();
+    if (!/\biphone/i.test(modelName)) return false;
+    if (
+      /\b(?:ipad|watch|macbook|imac|airpods|samsung|galaxy|pixel|motorola|xiaomi|huawei|oneplus|tablet|laptop|case|cover|capa|pelicula|screen\s*protector|tempered|cable|cabo|charger|carregador|adapter|box\s*only|empty\s*box)\b/i.test(
+        combined
+      )
+    ) {
+      return false;
+    }
+    if (category && /accessor|tablet|watch|laptop|macbook|computer|audio/i.test(category)) {
+      return false;
+    }
+    return true;
+  };
+
   const extractProntaEntregaAllowedGrade = (name: string): 'A' | 'AB' | 'B' | null => {
     const cleaned = name.trim();
     if (!cleaned) return null;
@@ -1176,7 +1206,7 @@ $285.00
         const cols = line.split('\t').map(c => c.trim());
         if (cols.length >= 6) {
           const make = cols[0] || 'Apple';
-          const modelName = cols[1] || 'iPhone';
+          const modelName = cols[1] || '';
           const sku = cols[2] || '';
           const category = cols[3] || 'Phone';
           const price = parsePrice(cols[4]);
@@ -1188,19 +1218,9 @@ $285.00
             : parseInt(qtyParts[0].replace(/[^\d]/g, ''), 10) || 0;
 
           const allowedGrade = extractProntaEntregaAllowedGrade(modelName);
-          if (price > 0 && haveQty > 0 && allowedGrade) {
+          if (price > 0 && haveQty > 0 && allowedGrade && isProntaEntregaIphone(make, modelName, category)) {
             const capMatch = modelName.match(/\b(\d+\s*(GB|TB))\b/i);
             const capacity = capMatch ? capMatch[1].replace(/\s+/g, '').toUpperCase() : '128GB';
-
-            const catLow = category.toLowerCase();
-            const devType: StockAppleItem['deviceType'] =
-              /macbook|laptop/i.test(`${modelName} ${catLow}`)
-                ? 'MacBook'
-                : /ipad|tablet/i.test(`${modelName} ${catLow}`)
-                ? 'iPad'
-                : /watch/i.test(`${modelName} ${catLow}`)
-                ? 'Apple Watch'
-                : 'iPhone';
 
             items.push({
               id: `pronta-entrega-${Date.now()}-${idx}`,
@@ -1220,7 +1240,7 @@ $285.00
               listPrice: price,
               baseListPrice: price,
               currency: 'USD',
-              deviceType: devType,
+              deviceType: 'iPhone',
               status: 'APPROVED'
             });
           }
@@ -1247,19 +1267,9 @@ $285.00
         const price = parsePrice(priceLine);
         const allowedGrade = extractProntaEntregaAllowedGrade(nameLine);
 
-        if (price > 0 && haveQty > 0 && nameLine && allowedGrade) {
+        if (price > 0 && haveQty > 0 && nameLine && allowedGrade && isProntaEntregaIphone(makeLine, nameLine, catLine)) {
           const capMatch = nameLine.match(/\b(\d+\s*(GB|TB))\b/i);
           const capacity = capMatch ? capMatch[1].replace(/\s+/g, '').toUpperCase() : '128GB';
-
-          const catLow = catLine.toLowerCase();
-          const devType: StockAppleItem['deviceType'] =
-            /macbook|laptop/i.test(`${nameLine} ${catLow}`)
-              ? 'MacBook'
-              : /ipad|tablet/i.test(`${nameLine} ${catLow}`)
-              ? 'iPad'
-              : /watch/i.test(`${nameLine} ${catLow}`)
-              ? 'Apple Watch'
-              : 'iPhone';
 
           items.push({
             id: `pronta-entrega-${Date.now()}-${items.length}`,
@@ -1279,7 +1289,7 @@ $285.00
             listPrice: price,
             baseListPrice: price,
             currency: 'USD',
-            deviceType: devType,
+            deviceType: 'iPhone',
             status: 'APPROVED'
           });
         }
@@ -1452,6 +1462,69 @@ $285.00
           discardReason: 'Categoria não é iPhone, iPad ou Apple Watch'
         });
         return;
+      }
+
+      // 2b. STRICT CATEGORY/PROCESSOR FILTERS FOR PRONTA ENTREGA (iPhones only, Grades A/AB/B) & MACBOOKS (M1+)
+      const isProntaEntregaRow = presetFormat === 'STOCK_APPLE' || /pronta entrega/i.test(warehouse);
+      if (isProntaEntregaRow) {
+        const gradeToken = extractProntaEntregaAllowedGrade(grade) || extractProntaEntregaAllowedGrade(model);
+        if (deviceType !== 'iPhone' || !isProntaEntregaIphone(make, model, category) || !gradeToken) {
+          discardedNonAppleCount++;
+          processedItems.push({
+            id: `stock-item-${idx}`,
+            itemNumber,
+            warehouse,
+            category,
+            make,
+            model,
+            modelNumber,
+            capacity,
+            description,
+            carrier,
+            lockStatus,
+            color,
+            grade,
+            availableQuantity,
+            listPrice,
+            currency,
+            deviceType,
+            status: 'DISCARDED_NON_APPLE',
+            discardReason:
+              deviceType !== 'iPhone' || !isProntaEntregaIphone(make, model, category)
+                ? 'Pronta Entrega aceita apenas iPhones'
+                : `Grade "${grade}" fora do filtro (apenas A, AB e B)`
+          });
+          return;
+        }
+      }
+
+      const isMacbookRow = presetFormat === 'MACBOOKS' || /apple macbooks/i.test(warehouse);
+      if (isMacbookRow) {
+        if (deviceType !== 'MacBook' || !isMacbookM1OrNewer(`${model} ${description}`)) {
+          discardedNonAppleCount++;
+          processedItems.push({
+            id: `stock-item-${idx}`,
+            itemNumber,
+            warehouse,
+            category,
+            make,
+            model,
+            modelNumber,
+            capacity,
+            description,
+            carrier,
+            lockStatus,
+            color,
+            grade,
+            availableQuantity,
+            listPrice,
+            currency,
+            deviceType,
+            status: 'DISCARDED_NON_APPLE',
+            discardReason: 'Leilão Macbooks aceita apenas processador Apple M1 ou superior'
+          });
+          return;
+        }
       }
 
       // 3. LOCK STATUS CHECK: ONLY UNLOCKED! (Applies strictly to ALL auction formats)
@@ -2534,11 +2607,19 @@ $285.00
       return;
     }
 
-    // 1. MACBOOKS PASTE IMPORTER (when selected or auto-detected, excluding XML)
-    if (!trimmedPaste.startsWith('<') && (presetFormat === 'MACBOOKS' || /MacBook\s+(?:Pro|Air)/i.test(trimmedPaste))) {
+    // Check Pronta Entrega pattern first so mixed inventories containing MacBooks don't trigger MacBook mode
+    const looksLikeProntaEntrega =
+      /Need\/Have\/OnPO|Manage Products|\d+\s*\/\s*\d+\s*\/\s*\d+/i.test(trimmedPaste) &&
+      !trimmedPaste.startsWith('<');
+
+    // 1. MACBOOKS PASTE IMPORTER (when selected or auto-detected, excluding XML and Pronta Entrega)
+    if (
+      !trimmedPaste.startsWith('<') &&
+      (presetFormat === 'MACBOOKS' || (!looksLikeProntaEntrega && presetFormat !== 'STOCK_APPLE' && /MacBook\s+(?:Pro|Air)/i.test(trimmedPaste)))
+    ) {
       const macbookItems = parseMacbooksText(trimmedPaste, macbookMarginActive);
       if (macbookItems.length === 0) {
-        showNotice('Nenhum MacBook reconhecido no texto colado. Verifique o formato (Título na 1ª linha e Preço $ na 2ª linha).', 'error');
+        showNotice('Nenhum MacBook com processador M1 ou superior (M1, M2, M3, M4+) foi reconhecido no texto colado.', 'error');
         return;
       }
       setPresetFormat('MACBOOKS');
@@ -2564,20 +2645,17 @@ $285.00
         'Currency': it.currency
       })), true);
       showNotice(
-        `💻 ${macbookItems.length} MacBooks processados! ${macbookMarginActive ? 'Margem ativa (<= $500: +$25 | > $500: +$40).' : 'Valor original mantido — clique no botão de margem se desejar acrescentar (+$25 / +$40).'}`,
+        `💻 ${macbookItems.length} MacBooks M1+ processados! ${macbookMarginActive ? 'Margem ativa (<= $500: +$25 | > $500: +$40).' : 'Valor original mantido — clique no botão de margem se desejar acrescentar (+$25 / +$40).'}`,
         'success'
       );
       return;
     }
 
-    // 2. PRONTA ENTREGA PASTE IMPORTER (when selected or auto-detected, excluding XML and standard CSV)
-    const looksLikeProntaEntrega =
-      /Need\/Have\/OnPO|Manage Products|\d+\s*\/\s*\d+\s*\/\s*\d+/i.test(trimmedPaste) &&
-      !trimmedPaste.startsWith('<');
+    // 2. PRONTA ENTREGA PASTE IMPORTER (ONLY iPhones, Grades A, AB, B, price > $0, have > 0)
     if (looksLikeProntaEntrega || (presetFormat === 'STOCK_APPLE' && !trimmedPaste.startsWith('<') && !/Item\s*#|Warehouse|Lock\s*Status/i.test(trimmedPaste.split(/\r?\n/)[0] || ''))) {
       const prontaItems = parseProntaEntregaText(trimmedPaste);
       if (prontaItems.length === 0) {
-        showNotice('Nenhum produto das Grades A, AB ou B com preço > $0.00 e estoque positivo foi encontrado no texto colado.', 'error');
+        showNotice('Nenhum iPhone das Grades A, AB ou B com preço > $0.00 e estoque positivo foi encontrado no texto colado.', 'error');
         return;
       }
       setPresetFormat('STOCK_APPLE');
@@ -2602,7 +2680,7 @@ $285.00
         '_baseListPrice': it.baseListPrice,
         'Currency': it.currency
       })), true);
-      showNotice(`📦 ${prontaItems.length} itens de Pronta Entrega (Grades A, AB e B com preço > $0 e estoque > 0) prontos para publicar!`, 'success');
+      showNotice(`📦 ${prontaItems.length} iPhones de Pronta Entrega (Grades A, AB e B com preço > $0 e estoque > 0) prontos para publicar!`, 'success');
       return;
     }
 
@@ -3156,6 +3234,9 @@ $285.00
     }
   });
   const [newNotificationEmail, setNewNotificationEmail] = useState<string>('');
+  const [mailProviderConfigured, setMailProviderConfigured] = useState<boolean | null>(null);
+  const [mailProviderSummary, setMailProviderSummary] = useState<string>('');
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState<boolean>(false);
   const [testWhatsappPhone, setTestWhatsappPhone] = useState<string>('5511999999999');
   const [testWhatsappStatus, setTestWhatsappStatus] = useState<AdminOffer['status']>('Aceita');
   const [autoSendWhatsapp, setAutoSendWhatsapp] = useState<boolean>(false);
@@ -3167,9 +3248,85 @@ $285.00
     }
   });
 
-  const handleAddNotificationEmail = () => {
+  const getAdminAuthHeaders = async (): Promise<Record<string, string>> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    try {
+      if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token;
+        if (token) headers.Authorization = `Bearer ${token}`;
+      }
+    } catch {}
+    return headers;
+  };
+
+  const syncNotificationEmailsToServer = async (emailsToSave: string[]) => {
+    try {
+      const headers = await getAdminAuthHeaders();
+      const resp = await fetch('/api/notify-offer', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action: 'save-config', emails: emailsToSave }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (json && typeof json.configured === 'boolean') {
+        setMailProviderConfigured(json.configured);
+        setMailProviderSummary(json.providerSummary || '');
+      }
+      return Boolean(resp.ok && json?.ok);
+    } catch {
+      return false;
+    }
+  };
+
+  React.useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const headers = await getAdminAuthHeaders();
+        const resp = await fetch('/api/notify-offer?action=config', {
+          method: 'GET',
+          headers,
+        });
+        const json = await resp.json().catch(() => null);
+        if (!active || !resp.ok || !json?.ok) return;
+
+        setMailProviderConfigured(Boolean(json.configured));
+        setMailProviderSummary(String(json.providerSummary || ''));
+
+        const serverEmails: string[] = Array.isArray(json.emails) ? json.emails : [];
+        let localEmails: string[] = [];
+        try {
+          const saved = localStorage.getItem('us_admin_notification_emails_v1');
+          localEmails = saved ? JSON.parse(saved) : [];
+        } catch {}
+
+        // If the admin had already saved emails in localStorage before backend sync existed, push them up
+        const merged = Array.from(new Set([...serverEmails, ...localEmails]));
+        if (merged.length > 0 && (!json.initialized || merged.length > serverEmails.length)) {
+          setNotificationEmails(merged);
+          try {
+            localStorage.setItem('us_admin_notification_emails_v1', JSON.stringify(merged));
+          } catch {}
+          await syncNotificationEmailsToServer(merged);
+        } else if (serverEmails.length > 0) {
+          setNotificationEmails(serverEmails);
+          try {
+            localStorage.setItem('us_admin_notification_emails_v1', JSON.stringify(serverEmails));
+          } catch {}
+        }
+      } catch {
+        // silent fallback
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleAddNotificationEmail = async () => {
     const email = newNotificationEmail.trim().toLowerCase();
-    if (!email || !email.includes('@')) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showNotice('Informe um e-mail válido.', 'error');
       return;
     }
@@ -3183,16 +3340,57 @@ $285.00
     try {
       localStorage.setItem('us_admin_notification_emails_v1', JSON.stringify(updated));
     } catch (e) {}
-    showNotice(`E-mail ${email} cadastrado para receber novas ofertas!`, 'success');
+    const synced = await syncNotificationEmailsToServer(updated);
+    if (synced) {
+      showNotice(
+        mailProviderConfigured === false
+          ? `E-mail ${email} salvo no servidor! Configure RESEND_API_KEY ou SMTP para iniciar os disparos.`
+          : `E-mail ${email} cadastrado e sincronizado no servidor para receber novas ofertas!`,
+        'success'
+      );
+    } else {
+      showNotice(`E-mail ${email} salvo localmente (falha ao sincronizar com o servidor).`, 'error');
+    }
   };
 
-  const handleRemoveNotificationEmail = (email: string) => {
+  const handleRemoveNotificationEmail = async (email: string) => {
     const updated = notificationEmails.filter(e => e !== email);
     setNotificationEmails(updated);
     try {
       localStorage.setItem('us_admin_notification_emails_v1', JSON.stringify(updated));
     } catch (e) {}
+    await syncNotificationEmailsToServer(updated);
     showNotice(`E-mail ${email} removido.`);
+  };
+
+  const handleSendTestEmail = async () => {
+    if (notificationEmails.length === 0) {
+      showNotice('Cadastre pelo menos um e-mail de destino antes de testar.', 'error');
+      return;
+    }
+    setIsSendingTestEmail(true);
+    try {
+      await syncNotificationEmailsToServer(notificationEmails);
+      const headers = await getAdminAuthHeaders();
+      const resp = await fetch('/api/notify-offer', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ action: 'send-test' }),
+      });
+      const json = await resp.json().catch(() => null);
+      if (json && typeof json.configured === 'boolean') {
+        setMailProviderConfigured(json.configured);
+      }
+      if (json?.ok) {
+        showNotice(`✅ E-mail de teste enviado para: ${(json.sentTo || notificationEmails).join(', ')}!`, 'success');
+      } else {
+        showNotice(json?.error || 'Não foi possível enviar o e-mail de teste.', 'error');
+      }
+    } catch (err: any) {
+      showNotice(err?.message || 'Erro de rede ao testar envio de e-mail.', 'error');
+    } finally {
+      setIsSendingTestEmail(false);
+    }
   };
 
   const handleUpdateOfferStatus = (
@@ -4469,7 +4667,7 @@ $285.00
                         LEILÃO MACBOOKS
                       </span>
                       <span className="text-xs text-purple-200 font-medium">
-                        Regra de Margem: Valor &le; $500 acrescenta <strong className="text-white">+$25</strong> · Valor &gt; $500 acrescenta <strong className="text-white">+$40</strong>
+                        Filtro ativo: <strong className="text-white">Apenas Processador M1 ou superior (M1, M2, M3, M4+)</strong> · Margem: &le; $500 acrescenta <strong className="text-white">+$25</strong> · &gt; $500 acrescenta <strong className="text-white">+$40</strong>
                       </span>
                     </div>
                     <button
@@ -4498,7 +4696,7 @@ $285.00
                         PRONTA ENTREGA
                       </span>
                       <span>
-                        Filtro automático ativo: apenas <strong className="text-white">Grades A, AB e B</strong> com preço &gt; $0.00 e estoque positivo em Need/Have/OnPO (demais grades como DEF, BLQ, C, etc. são excluídas mesmo com quantidade).
+                        Filtro automático ativo: apenas <strong className="text-white">iPhones</strong> nas <strong className="text-white">Grades A, AB e B</strong> com preço &gt; $0.00 e estoque positivo em Need/Have/OnPO (demais aparelhos e grades DEF, BLQ, C, etc. são excluídos).
                       </span>
                     </div>
                   </div>
@@ -4640,9 +4838,9 @@ $285.00
                     </span>
                     <span className="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
                       {presetFormat === 'MACBOOKS'
-                        ? 'Apple MacBook Pro / Air • Specs & Bateria Verificados'
+                        ? 'Apple Silicon M1 ou Superior (M1, M2, M3, M4+)'
                         : presetFormat === 'STOCK_APPLE'
-                        ? 'Apenas Grades A, AB e B • Preço > $0 e Estoque Positivo'
+                        ? 'Apenas iPhones • Grades A, AB e B • Preço > $0 e Estoque Positivo'
                         : 'Apple, Samsung & Google Desbloqueados (Sem LOCKED)'}
                     </span>
                   </div>
@@ -4657,16 +4855,16 @@ $285.00
                         : presetFormat === 'ASSURANT'
                         ? `Assurant: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
                         : presetFormat === 'MACBOOKS'
-                        ? `Leilão Macbooks: ${stockAppleAudit.approvedCount.toLocaleString()} MacBooks Prontos`
-                        : `Pronta Entrega / Estoque Apple: ${stockAppleAudit.approvedCount.toLocaleString()} Itens Aprovados`}
+                        ? `Leilão Macbooks M1+: ${stockAppleAudit.approvedCount.toLocaleString()} MacBooks Prontos`
+                        : `Pronta Entrega (iPhones): ${stockAppleAudit.approvedCount.toLocaleString()} iPhones Aprovados`}
                     </span>
                     <span className="text-slate-400 text-sm font-normal">({stockAppleAudit.totalApprovedUnits.toLocaleString()} Unidades)</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
                     {presetFormat === 'MACBOOKS'
-                      ? <>MacBooks importados via texto com especificação completa de processador, memória, SSD e modelo Axxxx. Use o botão acima para acrescentar ou remover a margem (+$25 / +$40).</>
+                      ? <>MacBooks filtrados apenas para <span className="text-purple-300 font-semibold">Apple Silicon M1 ou superior (M1, M2, M3, M4+)</span>, com specs completos e opção de margem (+$25 / +$40).</>
                       : presetFormat === 'STOCK_APPLE'
-                      ? <>Itens de Pronta Entrega filtrados estritamente para <span className="text-emerald-300 font-semibold">Grades A, AB e B</span> com preço maior que $0.00 e estoque positivo em Need/Have/OnPO.</>
+                      ? <>Itens de Pronta Entrega filtrados estritamente para <span className="text-emerald-300 font-semibold">apenas iPhones nas Grades A, AB e B</span> com preço maior que $0.00 e estoque positivo em Need/Have/OnPO.</>
                       : <>Critério de seleção aplicado: Apenas smartphones, tablets e wearables desbloqueados (<span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>). Todos os aparelhos bloqueados (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) e acessórios foram automaticamente descartados.</>}
                   </p>
                 </div>
@@ -5993,10 +6191,38 @@ $285.00
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Cadastro de E-mails */}
             <div className="p-4 bg-slate-900/70 border border-slate-800 rounded-2xl space-y-3">
-              <div>
-                <h3 className="text-xs font-bold text-white">E-mails para Receber Novas Ofertas</h3>
-                <p className="text-[11px] text-slate-400">Cadastre os e-mails que serão notificados quando clientes enviarem novas ofertas.</p>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-amber-400" />
+                    <span>E-mails para Receber Novas Ofertas & Compras Diretas</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Cadastre os e-mails sincronizados no servidor para alerta automático.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSendTestEmail}
+                  disabled={isSendingTestEmail || notificationEmails.length === 0}
+                  className="px-2.5 py-1 bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 text-cyan-300 border border-cyan-500/35 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                  title="Enviar um e-mail de teste agora"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>{isSendingTestEmail ? 'Enviando...' : 'Testar Envio de E-mail'}</span>
+                </button>
               </div>
+              {mailProviderConfigured === false && (
+                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 leading-relaxed">
+                  <strong>Atenção (Servidor de E-mail):</strong> Defina <code className="font-mono text-amber-300">RESEND_API_KEY</code> ou{' '}
+                  <code className="font-mono text-amber-300">SMTP_HOST</code> / <code className="font-mono text-amber-300">SMTP_USER</code> / <code className="font-mono text-amber-300">SMTP_PASS</code>{' '}
+                  (ou <code className="font-mono text-amber-300">GMAIL_USER</code> / <code className="font-mono text-amber-300">GMAIL_APP_PASSWORD</code>) nas variáveis de ambiente para efetivar o disparo.
+                </div>
+              )}
+              {mailProviderConfigured === true && mailProviderSummary && (
+                <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>{mailProviderSummary}</span>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <input
                   type="email"
