@@ -444,7 +444,28 @@ export function exportLotManifestXlsx(
   }
 
   const safeLotCode = String(lot.lotNumber || lot.id).replace(/[^a-zA-Z0-9_-]/g, '_');
-  XLSX.writeFile(wb, `USAFAST_LEILOES_Lote_${safeLotCode}.xlsx`);
+  const auctionSlug = resolveManifestAuctionSlug(lot);
+  XLSX.writeFile(wb, `USAFAST_Manifesto_${auctionSlug}_Lote_${safeLotCode}.xlsx`);
+}
+
+function resolveManifestAuctionSlug(lot: AuctionLot): string {
+  let raw = lot.auctionHouse || 'Leilao';
+  if (isVerizonLot(lot)) raw = 'VERIZON';
+  else if (/t-?mobile/i.test(raw)) raw = 'T-MOBILE';
+  else if (isAssurantLot(lot)) raw = 'ASSURANT';
+  else if (lot.sourceType === 'MARKETPLACE_1') raw = 'MARKETPLACE_1';
+  else if (lot.sourceType === 'MARKETPLACE_2') raw = 'MARKETPLACE_2';
+  else if (lot.sourceType === 'MARKETPLACE_3') raw = 'MARKETPLACE_3';
+  else if (lot.sourceType === 'MARKETPLACE_4') raw = 'MARKETPLACE_4';
+  else if (lot.sourceType === 'MACBOOKS') raw = 'MACBOOKS';
+  else if (lot.sourceType === 'STOCK_APPLE') raw = 'ESTOQUE_APPLE';
+
+  const cleaned = String(raw)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return cleaned.slice(0, 32) || 'Leilao';
 }
 
 export function exportLotManifestPdf(
@@ -532,13 +553,15 @@ export function exportLotManifestPdf(
 
   const exportedAt = new Date().toLocaleString('pt-BR');
   const safeLotCode = String(lot.lotNumber || lot.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+  const auctionSlug = resolveManifestAuctionSlug(lot);
+  const pdfManifestTitle = `USAFAST_Manifesto_${auctionSlug}_Lote_${safeLotCode}`;
 
   const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8" />
-      <title>Manifesto Oficial - Lote ${escapeHtml(lot.lotNumber)}</title>
+      <title>${escapeHtml(pdfManifestTitle)}</title>
       <style>
         @page { size: A4 landscape; margin: 10mm; }
         @media print {
@@ -734,6 +757,6 @@ export function exportLotManifestPdf(
     </html>
   `;
 
-  printHtmlToPdf(html, `USAFAST_Manifesto_Lote_${safeLotCode}`);
+  printHtmlToPdf(html, pdfManifestTitle);
 }
 

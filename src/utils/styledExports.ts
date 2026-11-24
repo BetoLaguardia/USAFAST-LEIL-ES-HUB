@@ -105,13 +105,40 @@ function getOfferStatusPillStyle(status: string): string {
   return 'background:#f1f5f9;color:#334155;border:1px solid #cbd5e1;';
 }
 
+function sanitizeFileSlug(value: string, maxLen = 48): string {
+  const cleaned = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!cleaned) return 'Arquivo';
+  return cleaned.slice(0, maxLen).replace(/_+$/g, '') || 'Arquivo';
+}
+
+function buildAuctionNameSlug(lots: AuctionLot[], explicitAuctionName?: string): string {
+  if (explicitAuctionName && explicitAuctionName !== 'all') {
+    return sanitizeFileSlug(explicitAuctionName);
+  }
+  const uniqueOrigins = Array.from(new Set(lots.map(resolveAuctionOriginLabel).filter(Boolean)));
+  if (uniqueOrigins.length === 1) {
+    return sanitizeFileSlug(uniqueOrigins[0]);
+  }
+  if (uniqueOrigins.length >= 2 && uniqueOrigins.length <= 3) {
+    return sanitizeFileSlug(uniqueOrigins.join('_'), 64);
+  }
+  if (uniqueOrigins.length > 3) {
+    return 'Todos_Leiloes';
+  }
+  return 'Leiloes';
+}
+
 // ============================================================================
 // 1. EXPORTAÇÃO DE TODOS OS LEILÕES IMPORTADOS (EXCEL & PDF)
 // ============================================================================
 export function exportAuctionsCatalogXlsx(
   lots: AuctionLot[],
   usdRate: number,
-  options?: { filterLabel?: string; filename?: string }
+  options?: { filterLabel?: string; auctionName?: string; filename?: string }
 ) {
   const safeRate = usdRate > 0 ? usdRate : 5.75;
   const totalLots = lots.length;
@@ -367,13 +394,14 @@ export function exportAuctionsCatalogXlsx(
   XLSX.utils.book_append_sheet(wb, wsOrigin, 'Resumo por Origem');
 
   const dateSlug = new Date().toISOString().slice(0, 10);
-  XLSX.writeFile(wb, options?.filename || `USAFAST_Catalogo_Leiloes_${dateSlug}.xlsx`);
+  const auctionSlug = buildAuctionNameSlug(lots, options?.auctionName);
+  XLSX.writeFile(wb, options?.filename || `USAFAST_Leilao_${auctionSlug}_${dateSlug}.xlsx`);
 }
 
 export function exportAuctionsCatalogPdf(
   lots: AuctionLot[],
   usdRate: number,
-  options?: { filterLabel?: string }
+  options?: { filterLabel?: string; auctionName?: string }
 ) {
   const safeRate = usdRate > 0 ? usdRate : 5.75;
   const totalLots = lots.length;
@@ -428,12 +456,16 @@ export function exportAuctionsCatalogPdf(
     })
     .join('');
 
+  const dateSlug = new Date().toISOString().slice(0, 10);
+  const auctionSlug = buildAuctionNameSlug(lots, options?.auctionName);
+  const pdfFileTitle = `USAFAST_Leilao_${auctionSlug}_${dateSlug}`;
+
   const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8" />
-      <title>Catálogo Oficial de Leilões USAFAST</title>
+      <title>${escapeHtml(pdfFileTitle)}</title>
       <style>
         @page { size: A4 landscape; margin: 10mm; }
         @media print {
@@ -547,7 +579,7 @@ export function exportAuctionsCatalogPdf(
     </html>
   `;
 
-  printHtmlToPdf(html, `USAFAST_Catalogo_Leiloes_${new Date().toISOString().slice(0, 10)}`);
+  printHtmlToPdf(html, pdfFileTitle);
 }
 
 // ============================================================================
@@ -755,7 +787,7 @@ export function exportClientBidsXlsx(params: {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Meus Lances Ativos');
-  const safeClient = (params.currentUser.name || 'Cliente').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeClient = sanitizeFileSlug(params.currentUser.name || params.currentUser.email || 'Cliente');
   XLSX.writeFile(wb, `USAFAST_Lances_Ativos_${safeClient}.xlsx`);
 }
 
@@ -789,12 +821,15 @@ export function exportClientBidsPdf(params: {
     )
     .join('');
 
+  const safeClient = sanitizeFileSlug(params.currentUser.name || params.currentUser.email || 'Cliente');
+  const pdfBidsTitle = `USAFAST_Lances_Ativos_${safeClient}`;
+
   const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8" />
-      <title>Meus Lances Ativos - ${escapeHtml(params.currentUser.name)}</title>
+      <title>${escapeHtml(pdfBidsTitle)}</title>
       <style>
         @page { size: A4 landscape; margin: 11mm; }
         @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } body { margin: 0; padding: 0; background: #fff !important; } }
@@ -882,7 +917,7 @@ export function exportClientBidsPdf(params: {
     </html>
   `;
 
-  printHtmlToPdf(html, `USAFAST_Lances_Ativos_${(params.currentUser.name || 'Cliente').replace(/[^a-zA-Z0-9_-]/g, '_')}`);
+  printHtmlToPdf(html, pdfBidsTitle);
 }
 
 // ============================================================================
@@ -1231,11 +1266,15 @@ export function exportAdminOffersXlsx(params: {
   XLSX.utils.book_append_sheet(wb, ws, 'Ofertas Computadas');
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Resumo por Cliente');
 
-  const fileSlug =
-    filterKey === 'all'
-      ? 'Todos_Clientes'
-      : (selectedClientObj?.name || enriched[0]?.clientName || 'Cliente').replace(/[^a-zA-Z0-9_-]/g, '_');
-  XLSX.writeFile(wb, `USAFAST_Ofertas_${fileSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const clientSlug =
+    filterKey !== 'all'
+      ? sanitizeFileSlug(selectedClientObj?.name || enriched[0]?.clientName || params.selectedClientEmail || 'Cliente')
+      : clientSummaries.length === 1
+        ? sanitizeFileSlug(clientSummaries[0].clientName)
+        : clientSummaries.length >= 2 && clientSummaries.length <= 3
+          ? sanitizeFileSlug(clientSummaries.map(cs => cs.clientName).join('_'), 64)
+          : 'Todos_Clientes';
+  XLSX.writeFile(wb, `USAFAST_Ofertas_${clientSlug}_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
 export function exportAdminOffersPdf(params: {
@@ -1317,12 +1356,22 @@ export function exportAdminOffersPdf(params: {
     )
     .join('');
 
+  const dateSlug = new Date().toISOString().slice(0, 10);
+  const clientSlug = isSingleClient
+    ? sanitizeFileSlug(selectedClientObj?.name || enriched[0]?.clientName || params.selectedClientEmail || 'Cliente')
+    : clientSummaries.length === 1
+      ? sanitizeFileSlug(clientSummaries[0].clientName)
+      : clientSummaries.length >= 2 && clientSummaries.length <= 3
+        ? sanitizeFileSlug(clientSummaries.map(cs => cs.clientName).join('_'), 64)
+        : 'Todos_Clientes';
+  const pdfOffersTitle = `USAFAST_Ofertas_${clientSlug}_${dateSlug}`;
+
   const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8" />
-      <title>Ofertas Computadas USAFAST</title>
+      <title>${escapeHtml(pdfOffersTitle)}</title>
       <style>
         @page { size: A4 landscape; margin: 10mm; }
         @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } body { margin: 0; padding: 0; background: #fff !important; } }
@@ -1418,10 +1467,7 @@ export function exportAdminOffersPdf(params: {
     </html>
   `;
 
-  const fileSlug = isSingleClient
-    ? (selectedClientObj?.name || enriched[0]?.clientName || 'Cliente').replace(/[^a-zA-Z0-9_-]/g, '_')
-    : 'Todos_Clientes';
-  printHtmlToPdf(html, `USAFAST_Ofertas_${fileSlug}`);
+  printHtmlToPdf(html, pdfOffersTitle);
 }
 
 // ============================================================================

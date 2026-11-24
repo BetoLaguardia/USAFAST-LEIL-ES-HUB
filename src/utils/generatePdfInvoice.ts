@@ -34,12 +34,25 @@ export interface ClientInvoiceData {
   notes?: string;
 }
 
+function sanitizeFileSlug(value: string, maxLen = 48): string {
+  const cleaned = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!cleaned) return 'Cliente';
+  return cleaned.slice(0, maxLen).replace(/_+$/g, '') || 'Cliente';
+}
+
 export const downloadClientInvoicePdf = (data: ClientInvoiceData) => {
   const safeRate = data.usdRate > 0 ? data.usdRate : 5.75;
   const items = data.items.length > 0 ? data.items : [];
   const totalUsd = items.reduce((acc, item) => acc + (Number(item.totalUsd) || 0), 0);
   const totalUnits = items.reduce((acc, item) => acc + Math.max(1, Number(item.quantity) || 1), 0);
   const totalBrl = totalUsd * safeRate;
+  const clientSlug = sanitizeFileSlug(data.user.name || data.user.email || 'Cliente');
+  const safeInvoiceNum = sanitizeFileSlug(data.invoiceNumber, 36);
+  const pdfInvoiceTitle = `Invoice_${clientSlug}_${safeInvoiceNum}`;
 
   const authCode = `${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now()}`;
 
@@ -69,7 +82,7 @@ export const downloadClientInvoicePdf = (data: ClientInvoiceData) => {
     <html lang="pt-BR">
     <head>
       <meta charset="UTF-8" />
-      <title>Invoice Oficial - ${escapeHtml(data.invoiceNumber)}</title>
+      <title>${escapeHtml(pdfInvoiceTitle)}</title>
       <style>
         @page { size: A4 portrait; margin: 12mm; }
         @media print {
@@ -348,7 +361,7 @@ export const downloadClientInvoicePdf = (data: ClientInvoiceData) => {
     </html>
   `;
 
-  printHtmlToPdf(htmlContent, `Invoice_${data.invoiceNumber}`);
+  printHtmlToPdf(htmlContent, pdfInvoiceTitle);
 };
 
 export const downloadOfficialInvoicePdf = (data: InvoiceData) => {

@@ -550,7 +550,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      exportAuctionsCatalogXlsx(clientFilteredLots.length > 0 ? clientFilteredLots : auctions, usdRate, {
+                      const targetLots = clientFilteredLots.length > 0 ? clientFilteredLots : auctions;
+                      const activeAuctionName = selectedAuctionSystemFilter !== 'all' ? selectedAuctionSystemFilter : undefined;
+                      exportAuctionsCatalogXlsx(targetLots, usdRate, {
+                        auctionName: activeAuctionName,
                         filterLabel: clientFilteredLots.length < auctions.length
                           ? `Filtro do Cliente (${clientFilteredLots.length} de ${auctions.length} lotes)`
                           : `Todos os Leilões (${auctions.length} lotes)`
@@ -565,7 +568,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <button
                     type="button"
                     onClick={() => {
-                      exportAuctionsCatalogPdf(clientFilteredLots.length > 0 ? clientFilteredLots : auctions, usdRate, {
+                      const targetLots = clientFilteredLots.length > 0 ? clientFilteredLots : auctions;
+                      const activeAuctionName = selectedAuctionSystemFilter !== 'all' ? selectedAuctionSystemFilter : undefined;
+                      exportAuctionsCatalogPdf(targetLots, usdRate, {
+                        auctionName: activeAuctionName,
                         filterLabel: clientFilteredLots.length < auctions.length
                           ? `Filtro do Cliente (${clientFilteredLots.length} de ${auctions.length} lotes)`
                           : `Todos os Leilões (${auctions.length} lotes)`

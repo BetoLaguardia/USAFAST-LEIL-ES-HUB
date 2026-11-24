@@ -121,6 +121,16 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                 MARKETPLACE {mktNum}
               </span>
             )}
+            {(lot.sourceType === 'MACBOOKS' || /macbook/i.test(lot.auctionHouse || '')) && (
+              <span className="px-2 py-0.5 rounded bg-purple-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                MACBOOKS
+              </span>
+            )}
+            {(lot.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(lot.auctionHouse || '')) && (
+              <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-[10px] tracking-wider uppercase shadow-md">
+                PRONTA ENTREGA
+              </span>
+            )}
           </div>
 
           <span className="px-2.5 py-1 rounded bg-slate-950/80 backdrop-blur-md border border-slate-800 text-slate-200 text-[11px] font-mono flex items-center gap-1.5 shadow-sm">

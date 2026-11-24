@@ -44,7 +44,8 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Receipt
+  Receipt,
+  Laptop
 } from 'lucide-react';
 import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
@@ -125,7 +126,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   // ----------------------------------------------------
   // MACBOOK MARGIN OPTION (<= $500: +$25 | > $500: +$40)
   // ----------------------------------------------------
-  const [macbookMarginActive, setMacbookMarginActive] = useState<boolean>(true);
+  const [macbookMarginActive, setMacbookMarginActive] = useState<boolean>(false);
 
   interface VerizonGroupedLot {
     lotNumber: string;
@@ -171,8 +172,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     availableQuantity: number;
     incrementsOf?: number;
     listPrice: number;
+    baseListPrice?: number;
     currency: string;
-    deviceType: 'iPhone' | 'iPad' | 'Apple Watch';
+    deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | 'MacBook';
     status: 'APPROVED' | 'DISCARDED_LOCKED' | 'DISCARDED_NON_APPLE';
     discardReason?: string;
   }
@@ -181,7 +183,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     groupKey: string;
     lotNumber: string;
     title: string;
-    deviceType: 'iPhone' | 'iPad' | 'Apple Watch';
+    deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | 'MacBook';
     modelFamily: string;
     capacity: string;
     grade: string;
@@ -203,6 +205,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     approvedIPhones: number;
     approvedIPads: number;
     approvedWatches: number;
+    approvedMacBooks: number;
     totalApprovedUnits: number;
     discardedLockedCount: number;
     discardedNonAppleCount: number;
@@ -216,12 +219,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     approvedIPhones: 0,
     approvedIPads: 0,
     approvedWatches: 0,
+    approvedMacBooks: 0,
     totalApprovedUnits: 0,
     discardedLockedCount: 0,
     discardedNonAppleCount: 0
   });
   const [stockAppleGroupMode, setStockAppleGroupMode] = useState<'grouped' | 'individual'>('individual');
-  const [stockAppleFilterType, setStockAppleFilterType] = useState<'ALL' | 'IPHONE' | 'IPAD' | 'WATCH' | 'DISCARDED_LOCKED'>('ALL');
+  const [stockAppleFilterType, setStockAppleFilterType] = useState<'ALL' | 'IPHONE' | 'IPAD' | 'WATCH' | 'MACBOOK' | 'DISCARDED_LOCKED'>('ALL');
   const [stockAppleSearch, setStockAppleSearch] = useState('');
   const [stockApplePage, setStockApplePage] = useState(1);
   const [stockAppleDiscountPercent, setStockAppleDiscountPercent] = useState<number>(15);
@@ -977,73 +981,80 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   </Item>
 </StockList>`;
 
-  const SAMPLE_MACBOOKS_TEXT = `2021 Apple M1 Pro MacBook Pro 16" 90%+ Battery 3.20GHz/16GB/512GB SSD (Silver) A2485
-$989.00
+  const SAMPLE_MACBOOKS_TEXT = `2021 Britain Apple M1 Pro MacBook Pro 14.2" 3.20GHz/32GB/512GB SSD (Space Gray) - A2442
+$846.00
 
-2020 Apple M1 MacBook Air 13" 90%+ Battery 8GB/128GB SSD (Gray) A2337
-$509.00
 
-2021 Apple M1 Pro MacBook Pro 16.2" 90%+ Battery 3.20GHz/16GB/512GB SSD (Gray) A2485
-$989.00
+2023 Britain Apple M3 MacBook Pro 14.2" 90%+ Battery 4.05GHz/8GB/1TB SSD (Space Gray) A2918
+$1,536.00
 
-2019 Apple MacBook Pro 13.3" i7 2.80GHz/8GB/512GB SSD (Space Gray) - A1989
-$413.01
 
-2023 Apple M3 Pro MacBook Pro 14" 90%+ Battery 4.05GHz/18GB/512GB SSD (Black) A2992
-$1,389.00
+2022 Apple M2 MacBook Pro 13" 90%+ Battery 3.49GHz/8GB/256GB SSD (Space Gray) A2338
+$746.67
+
+
+2022 Apple M2 MacBook Pro 13.3" 90%+ Battery 3.49GHz/8GB/512GB SSD (Space Gray) A2338
+$891.00
+
+
+2021 Apple M1 Max MacBook Pro 16.2" 3.20GHz/64GB/1TB SSD 24-Core GPU (Space Gray) - A2485
+$1,479.00
+
 
 2019 Apple MacBook Pro 13" 90%+ Battery i5 2.40GHz/16GB/256GB SSD (Silver) A1989
 $387.83`;
 
-  const SAMPLE_PRONTA_ENTREGA_TEXT = `Apple
+  const SAMPLE_PRONTA_ENTREGA_TEXT = `Manage Products
+
+Available
+
+All Manufacturers
+
+All Categories
+Search Products
+Manufacturer Name\tProduct Name\tSKU/Barcode\tCategory Name\tSelling Price\tNeed/Have/OnPO
+Apple
 Iphone 11 Pro Max 64 GB BLQ
 1560145
 Phone
 $0.00
 0 / 5 / 0 
-
 Apple
 Iphone 11 Pro Max 64 GB DEF
 1560144
 Phone
 $156.00
 0 / 1 / 0 
-
 Apple
 Iphone 12 64 GB BLQ
 1554311
 Phone
 $0.00
 0 / 1 / 0 
-
 Apple
 Iphone 12 MINI 128 GB DEF
 1560158
 Phone
 $132.00
 0 / 1 / 0 
-
 Apple
 Iphone 12 Pro 512GB A
 1490759
 Phone
 $280.00
 0 / 1 / 0 
-
 Apple
 Iphone 12 Pro Max 128GB A
 1725947
 Phone
 $295.00
 0 / 7 / 0 
-
 Apple
 Iphone 12 Pro Max 256GB A
 1720852
 Phone
 $315.00
 0 / 3 / 0 
-
 Apple
 IPhone 12 ProMax 128GB AB
 1726460
@@ -1051,61 +1062,73 @@ Phone
 $285.00
 0 / 4 / 0 `;
 
+  const computeMacbookPriceWithMargin = (baseUsd: number, applyMargin: boolean): number => {
+    if (!applyMargin) return Math.round(baseUsd * 100) / 100;
+    const margin = baseUsd <= 500 ? 25 : 40;
+    return Math.round((baseUsd + margin) * 100) / 100;
+  };
+
   // ----------------------------------------------------
   // MACBOOKS TEXT PARSER (WITH MARGIN SELECTION OPTION)
   // ----------------------------------------------------
-  const parseMacbooksText = (text: string, applyMargin: boolean = true): StockAppleItem[] => {
+  const parseMacbooksText = (text: string, applyMargin: boolean = false): StockAppleItem[] => {
     const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const items: StockAppleItem[] = [];
 
     for (let i = 0; i < rawLines.length; i++) {
       const line = rawLines[i];
-      // Price line: starts with $ or numeric with price format
-      if (/^\$?\d+([.,]\d{2})?$/i.test(line) || (/^\$/i.test(line) && !line.includes('Apple'))) {
+      const isPriceLine =
+        /^\$\s*\d{1,3}(?:,\d{3})*(?:\.\d{1,2})?(?:\s*USD)?$/i.test(line) ||
+        /^\$?\s*\d+(?:[.,]\d{2})?(?:\s*USD)?$/i.test(line);
+
+      if (isPriceLine && !/apple|macbook/i.test(line)) {
         const priceRaw = parsePrice(line);
         if (priceRaw <= 0) continue;
 
-        let finalPrice = priceRaw;
-        if (applyMargin) {
-          if (priceRaw <= 500) {
-            finalPrice = priceRaw + 25;
-          } else {
-            finalPrice = priceRaw + 40;
-          }
-        }
+        const finalPrice = computeMacbookPriceWithMargin(priceRaw, applyMargin);
 
         const descLine = i > 0 ? rawLines[i - 1] : `Apple MacBook Item ${items.length + 1}`;
-        if (descLine && !/^\$?\d+/i.test(descLine)) {
-          const modelMatch = descLine.match(/MacBook\s+(Pro|Air)\s*(\d+(\.\d+)?"?)?/i);
-          const modelName = modelMatch ? modelMatch[0] : 'MacBook Pro';
+        if (descLine && !/^\$\s*[\d,.]+$/i.test(descLine)) {
+          // Extract SSD storage (prioritize "... SSD" so RAM like 32GB is not picked over 512GB SSD)
+          const ssdMatch = descLine.match(/(\d+\s*(?:GB|TB))\s*(?:SSD|NVMe|Flash)/i);
+          let capacity = ssdMatch ? `${ssdMatch[1].replace(/\s+/g, '').toUpperCase()} SSD` : '';
+          if (!capacity) {
+            const allGbMatches = Array.from(descLine.matchAll(/\b(\d+\s*(?:GB|TB))\b/gi));
+            if (allGbMatches.length > 0) {
+              capacity = allGbMatches[allGbMatches.length - 1][1].replace(/\s+/g, '').toUpperCase();
+            } else {
+              capacity = '512GB SSD';
+            }
+          }
 
-          const capMatch = descLine.match(/\b(\d+(GB|TB))\s*(SSD)?\b/i);
-          const capacity = capMatch ? capMatch[0] : '512GB SSD';
-
-          const colorMatch = descLine.match(/\((Silver|Space Gray|Gray|Black|Midnight|Starlight|Gold)\)/i);
+          const colorMatch = descLine.match(/\((Silver|Space Gray|Space Black|Gray|Black|Midnight|Starlight|Gold|Rose Gold|Sky Blue)\)/i);
           const color = colorMatch ? colorMatch[1] : 'Space Gray';
 
-          const aNumMatch = descLine.match(/\bA\d{4}\b/i);
-          const modelNumber = aNumMatch ? aNumMatch[0] : '';
+          const aNumMatch = descLine.match(/\b(A\d{4})\b/i);
+          const modelNumber = aNumMatch ? aNumMatch[1].toUpperCase() : '';
+
+          const batMatch = descLine.match(/(\d{2,3}%\+?\s*Battery)/i);
+          const cleanModelLabel = descLine.replace(/\s+/g, ' ').trim();
 
           items.push({
             id: `macbook-${Date.now()}-${items.length}`,
-            itemNumber: modelNumber || `MAC-${1000 + items.length}`,
+            itemNumber: modelNumber ? `${modelNumber}-${items.length + 1}` : `MAC-${1000 + items.length}`,
             warehouse: 'Miami Hub - Apple Macbooks',
-            category: 'Laptop',
+            category: 'MacBook',
             make: 'Apple',
-            model: descLine.length > 55 ? descLine.slice(0, 55) + '...' : descLine,
+            model: cleanModelLabel,
             modelNumber,
             capacity,
-            description: descLine,
+            description: batMatch ? `${cleanModelLabel}` : descLine,
             carrier: 'UNLOCKED',
             lockStatus: 'UNLOCKED',
             color,
             grade: 'Grade A+',
             availableQuantity: 1,
             listPrice: finalPrice,
+            baseListPrice: priceRaw,
             currency: 'USD',
-            deviceType: 'iPhone',
+            deviceType: 'MacBook',
             status: 'APPROVED'
           });
         }
@@ -1119,16 +1142,23 @@ $285.00
   // ----------------------------------------------------
   const parseProntaEntregaText = (text: string): StockAppleItem[] => {
     const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-    const filteredLines = rawLines.filter(l => 
-      !/^(Manage Products|Available|All Manufacturers|All Categories|Search Products|Manufacturer Name|Product Name|SKU\/Barcode|Category Name|Selling Price|Need\/Have\/OnPO)$/i.test(l)
-    );
+    const filteredLines = rawLines.filter(l => {
+      // Strip single-line headers/labels AND tab-separated header lines
+      if (/^(Manage Products|Available|All Manufacturers|All Categories|Search Products|Manufacturer Name|Product Name|SKU\/Barcode|Category Name|Selling Price|Need\/Have\/OnPO)$/i.test(l)) {
+        return false;
+      }
+      if (/manufacturer\s*name.*product\s*name/i.test(l) || /selling\s*price.*need\/have/i.test(l)) {
+        return false;
+      }
+      return true;
+    });
 
     const items: StockAppleItem[] = [];
 
-    // Check if tab-separated line
-    const tabLines = filteredLines.filter(l => l.includes('\t'));
-    if (tabLines.length > 0) {
-      tabLines.forEach((line, idx) => {
+    // Check if data lines themselves are tab-separated (ignoring any stripped header lines)
+    const tabDataLines = filteredLines.filter(l => l.includes('\t') && l.split('\t').filter(Boolean).length >= 5);
+    if (tabDataLines.length > 0) {
+      tabDataLines.forEach((line, idx) => {
         const cols = line.split('\t').map(c => c.trim());
         if (cols.length >= 6) {
           const make = cols[0] || 'Apple';
@@ -1139,14 +1169,26 @@ $285.00
           const needHaveOnPO = cols[5] || '';
 
           const qtyParts = needHaveOnPO.split('/').map(p => p.trim());
-          const haveQty = qtyParts.length >= 2 ? parseInt(qtyParts[1], 10) || 0 : parseInt(qtyParts[0], 10) || 0;
+          const haveQty = qtyParts.length >= 2
+            ? parseInt(qtyParts[1].replace(/[^\d]/g, ''), 10) || 0
+            : parseInt(qtyParts[0].replace(/[^\d]/g, ''), 10) || 0;
 
           if (price > 0 && haveQty > 0) {
             const capMatch = modelName.match(/\b(\d+\s*(GB|TB))\b/i);
-            const capacity = capMatch ? capMatch[0] : '128GB';
+            const capacity = capMatch ? capMatch[1].replace(/\s+/g, '').toUpperCase() : '128GB';
 
-            const gradeMatch = modelName.match(/\b(BLQ|DEF|A\+|A|B|C|AB)\b/i);
-            const grade = gradeMatch ? gradeMatch[0] : 'Grade A';
+            const gradeMatch = modelName.match(/\b(BLQ|DEF|A\+|AB|A|B|C)\b/i);
+            const grade = gradeMatch ? gradeMatch[1].toUpperCase() : 'Grade A';
+
+            const catLow = category.toLowerCase();
+            const devType: StockAppleItem['deviceType'] =
+              /macbook|laptop/i.test(`${modelName} ${catLow}`)
+                ? 'MacBook'
+                : /ipad|tablet/i.test(`${modelName} ${catLow}`)
+                ? 'iPad'
+                : /watch/i.test(`${modelName} ${catLow}`)
+                ? 'Apple Watch'
+                : 'iPhone';
 
             items.push({
               id: `pronta-entrega-${Date.now()}-${idx}`,
@@ -1164,57 +1206,72 @@ $285.00
               grade,
               availableQuantity: haveQty,
               listPrice: price,
+              baseListPrice: price,
               currency: 'USD',
-              deviceType: /ipad/i.test(modelName) ? 'iPad' : /watch/i.test(modelName) ? 'Apple Watch' : 'iPhone',
+              deviceType: devType,
               status: 'APPROVED'
             });
           }
         }
       });
-    } else {
-      // Chunks by line containing Need/Have/OnPO format: "0 / 5 / 0"
-      for (let i = 0; i < filteredLines.length; i++) {
-        const line = filteredLines[i];
-        if (/^\d+\s*\/\s*\d+\s*\/\s*\d+$/.test(line)) {
-          const qtyParts = line.split('/').map(p => p.trim());
-          const haveQty = qtyParts.length >= 2 ? parseInt(qtyParts[1], 10) || 0 : 0;
+    }
 
-          const priceLine = i >= 1 ? filteredLines[i - 1] : '';
-          const catLine = i >= 2 ? filteredLines[i - 2] : 'Phone';
-          const skuLine = i >= 3 ? filteredLines[i - 3] : '';
-          const nameLine = i >= 4 ? filteredLines[i - 4] : '';
-          const makeLine = i >= 5 ? filteredLines[i - 5] : 'Apple';
+    // Parse 6-line vertical blocks anchored by "Need / Have / OnPO" (e.g., "0 / 1 / 0")
+    const nonTabLines = filteredLines.filter(l => !l.includes('\t'));
+    for (let i = 0; i < nonTabLines.length; i++) {
+      const line = nonTabLines[i];
+      if (/^[\d,]+\s*\/\s*[\d,]+\s*\/\s*[\d,]+$/.test(line)) {
+        const qtyParts = line.split('/').map(p => p.trim());
+        const haveQty = qtyParts.length >= 2
+          ? parseInt(qtyParts[1].replace(/[^\d]/g, ''), 10) || 0
+          : 0;
 
-          const price = parsePrice(priceLine);
+        const priceLine = i >= 1 ? nonTabLines[i - 1] : '';
+        const catLine = i >= 2 ? nonTabLines[i - 2] : 'Phone';
+        const skuLine = i >= 3 ? nonTabLines[i - 3] : '';
+        const nameLine = i >= 4 ? nonTabLines[i - 4] : '';
+        const makeLine = i >= 5 ? nonTabLines[i - 5] : 'Apple';
 
-          if (price > 0 && haveQty > 0 && nameLine) {
-            const capMatch = nameLine.match(/\b(\d+\s*(GB|TB))\b/i);
-            const capacity = capMatch ? capMatch[0] : '128GB';
+        const price = parsePrice(priceLine);
 
-            const gradeMatch = nameLine.match(/\b(BLQ|DEF|A\+|A|B|C|AB)\b/i);
-            const grade = gradeMatch ? gradeMatch[0] : 'Grade A';
+        if (price > 0 && haveQty > 0 && nameLine) {
+          const capMatch = nameLine.match(/\b(\d+\s*(GB|TB))\b/i);
+          const capacity = capMatch ? capMatch[1].replace(/\s+/g, '').toUpperCase() : '128GB';
 
-            items.push({
-              id: `pronta-entrega-${Date.now()}-${items.length}`,
-              itemNumber: skuLine || `PE-${1000 + items.length}`,
-              warehouse: 'Miami Hub - Pronta Entrega',
-              category: catLine,
-              make: makeLine,
-              model: nameLine,
-              modelNumber: skuLine,
-              capacity,
-              description: `${makeLine} ${nameLine} - SKU ${skuLine}`,
-              carrier: 'UNLOCKED',
-              lockStatus: 'UNLOCKED',
-              color: 'Mixed',
-              grade,
-              availableQuantity: haveQty,
-              listPrice: price,
-              currency: 'USD',
-              deviceType: /ipad/i.test(nameLine) ? 'iPad' : /watch/i.test(nameLine) ? 'Apple Watch' : 'iPhone',
-              status: 'APPROVED'
-            });
-          }
+          const gradeMatch = nameLine.match(/\b(BLQ|DEF|A\+|AB|A|B|C)\b/i);
+          const grade = gradeMatch ? gradeMatch[1].toUpperCase() : 'Grade A';
+
+          const catLow = catLine.toLowerCase();
+          const devType: StockAppleItem['deviceType'] =
+            /macbook|laptop/i.test(`${nameLine} ${catLow}`)
+              ? 'MacBook'
+              : /ipad|tablet/i.test(`${nameLine} ${catLow}`)
+              ? 'iPad'
+              : /watch/i.test(`${nameLine} ${catLow}`)
+              ? 'Apple Watch'
+              : 'iPhone';
+
+          items.push({
+            id: `pronta-entrega-${Date.now()}-${items.length}`,
+            itemNumber: skuLine || `PE-${1000 + items.length}`,
+            warehouse: 'Miami Hub - Pronta Entrega',
+            category: catLine,
+            make: makeLine,
+            model: nameLine,
+            modelNumber: skuLine,
+            capacity,
+            description: `${makeLine} ${nameLine} - SKU ${skuLine}`,
+            carrier: 'UNLOCKED',
+            lockStatus: 'UNLOCKED',
+            color: 'Mixed',
+            grade,
+            availableQuantity: haveQty,
+            listPrice: price,
+            baseListPrice: price,
+            currency: 'USD',
+            deviceType: devType,
+            status: 'APPROVED'
+          });
         }
       }
     }
@@ -1223,13 +1280,14 @@ $285.00
   };
 
   // ----------------------------------------------------
-  // PROCESS STOCK APPLE ROWS (STRICT FILTER: ONLY UNLOCKED IPHONES, IPADS & WATCHES)
+  // PROCESS STOCK APPLE ROWS (STRICT FILTER: ONLY UNLOCKED IPHONES, IPADS, WATCHES & MACBOOKS)
   // ----------------------------------------------------
   const processStockAppleRows = (rawRows: any[], allowAllBrands = false) => {
     console.log(`[XLSX/Stock Import] processStockAppleRows started with ${rawRows.length} raw rows. allowAllBrands=${allowAllBrands}`);
     let approvedIPhones = 0;
     let approvedIPads = 0;
     let approvedWatches = 0;
+    let approvedMacBooks = 0;
     let discardedLockedCount = 0;
     let discardedNonAppleCount = 0;
     let totalApprovedUnits = 0;
@@ -1341,18 +1399,20 @@ $285.00
         return;
       }
 
-      // 2. DEVICE CLASSIFICATION: iPhone, iPad, Apple Watch ONLY (exclude Accessories)
-      let deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | null = null;
+      // 2. DEVICE CLASSIFICATION: iPhone, iPad, Apple Watch, MacBook ONLY (exclude Accessories)
+      let deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | 'MacBook' | null = null;
       const catLower = category.trim().toLowerCase();
       const modelLower = model.trim().toLowerCase();
 
       if (catLower === 'accessory' || catLower === 'accessories') {
         deviceType = null;
-      } else if (modelLower.includes('iphone') || catLower === 'phones') {
+      } else if (modelLower.includes('macbook') || catLower === 'macbook' || catLower === 'laptop' || catLower === 'laptops') {
+        deviceType = 'MacBook';
+      } else if (modelLower.includes('iphone') || catLower === 'phone' || catLower === 'phones') {
         deviceType = 'iPhone';
       } else if (modelLower.includes('ipad') || modelLower.includes('galaxy tab') || catLower === 'tablet' || catLower === 'tablets') {
         deviceType = 'iPad';
-      } else if (modelLower.includes('watch') || catLower === 'wearables') {
+      } else if (modelLower.includes('watch') || catLower === 'wearable' || catLower === 'wearables' || catLower === 'watch') {
         deviceType = 'Apple Watch';
       } else if (allowAllBrands) {
         deviceType = 'iPhone';
@@ -1469,11 +1529,15 @@ $285.00
       }
 
       const resolvedUnitPrice = listPrice > 0 ? listPrice : getEstimatedWholesalePrice(model, capacity, grade);
+      const baseListPrice = typeof row._baseListPrice === 'number' && row._baseListPrice > 0
+        ? row._baseListPrice
+        : resolvedUnitPrice;
 
       // Approved as UNLOCKED!
       if (deviceType === 'iPhone') approvedIPhones++;
       else if (deviceType === 'iPad') approvedIPads++;
       else if (deviceType === 'Apple Watch') approvedWatches++;
+      else if (deviceType === 'MacBook') approvedMacBooks++;
       totalApprovedUnits += availableQuantity;
 
       processedItems.push({
@@ -1493,6 +1557,7 @@ $285.00
         availableQuantity,
         incrementsOf,
         listPrice: resolvedUnitPrice,
+        baseListPrice,
         currency,
         deviceType,
         status: 'APPROVED'
@@ -1501,10 +1566,11 @@ $285.00
 
     const audit: StockAppleAuditStats = {
       totalRead: rawRows.length,
-      approvedCount: approvedIPhones + approvedIPads + approvedWatches,
+      approvedCount: approvedIPhones + approvedIPads + approvedWatches + approvedMacBooks,
       approvedIPhones,
       approvedIPads,
       approvedWatches,
+      approvedMacBooks,
       totalApprovedUnits,
       discardedLockedCount,
       discardedNonAppleCount
@@ -1518,7 +1584,7 @@ $285.00
     const approvedOnly = processedItems.filter(i => i.status === 'APPROVED');
     const groupsMap = new Map<string, {
       groupKey: string;
-      deviceType: 'iPhone' | 'iPad' | 'Apple Watch';
+      deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | 'MacBook';
       modelFamily: string;
       capacity: string;
       grade: string;
@@ -1694,6 +1760,7 @@ $285.00
         approvedIPhones: 0,
         approvedIPads: 0,
         approvedWatches: 0,
+        approvedMacBooks: 0,
         totalApprovedUnits: 0,
         discardedLockedCount: 0,
         discardedNonAppleCount: 0
@@ -1813,7 +1880,14 @@ $285.00
 
           const imageUrl = getDeviceImageUrl(it.make, it.model, it.deviceType);
           const cleanModel = cleanLotTitle(it.model);
-          const rawItemTitle = `${it.make || 'Apple'} ${cleanModel} ${it.capacity} ${it.color} - Grade ${it.grade}`;
+          const isMacbookFormat = presetFormat === 'MACBOOKS' || it.deviceType === 'MacBook';
+          const shortMacModelMatch = cleanModel.match(/MacBook\s+(?:Pro|Air)(?:\s+\d+(?:\.\d+)?["”]?)?/i);
+          const resolvedModelFamily = isMacbookFormat
+            ? (shortMacModelMatch ? shortMacModelMatch[0].trim() : 'MacBook Pro')
+            : (cleanModel || it.model);
+          const rawItemTitle = isMacbookFormat
+            ? cleanModel
+            : `${it.make || 'Apple'} ${cleanModel} ${it.capacity} ${it.color} - Grade ${it.grade}`;
           const finalItemTitle = cleanLotTitle(rawItemTitle);
           const isWifiOnly = it.carrier && it.carrier.trim().toUpperCase() === 'WIFI';
 
@@ -1821,18 +1895,18 @@ $285.00
             id: `${meta.prefix.toLowerCase()}-lot-ind-${Date.now()}-${idx}`,
             lotNumber: `${meta.prefix}-${it.itemNumber}`,
             title: finalItemTitle,
-            modelFamily: cleanModel || it.model,
+            modelFamily: resolvedModelFamily,
             oemBrand: presetFormat !== 'STOCK_APPLE' ? (it.make || 'Apple') : 'Apple',
             quantity: it.availableQuantity,
             incrementSize: it.incrementsOf || 1,
             grade: it.grade as GradeType,
             primaryStorage: it.capacity,
             colorHighlights: [it.color],
-            batteryHealthRange: '88% - 100% (Verificado)',
+            batteryHealthRange: isMacbookFormat && /90%\+\s*Battery/i.test(cleanModel) ? '90%+ Battery (Verificado Apple)' : '88% - 100% (Verificado)',
             carrierStatus: isWifiOnly ? 'Wi-Fi Only (Desbloqueado)' : '100% Factory Unlocked (Desbloqueado Global)',
             imeiStatus: 'Clean ESN / 100% Verificado',
             auctionHouse: presetFormat === 'STOCK_APPLE' ? `USAFAST Stock Hub (${it.warehouse})` : meta.house,
-            location: presetFormat === 'STOCK_APPLE' ? (it.warehouse.includes('W23') ? 'Miami Hub - Armazém W23' : 'Miami Hub - Armazém W12') : meta.loc,
+            location: presetFormat === 'STOCK_APPLE' ? (it.warehouse.includes('W23') ? 'Miami Hub - Armazém W23' : 'Miami Hub - Pronta Entrega') : meta.loc,
             startingBidUsd,
             currentBidUsd: totalCurrentBidUsd,
             reservePriceMet: true,
@@ -2406,21 +2480,60 @@ $285.00
     reader.readAsArrayBuffer(file);
   };
 
+  const handleToggleMacbookMargin = () => {
+    const nextActive = !macbookMarginActive;
+    setMacbookMarginActive(nextActive);
+
+    if (presetFormat === 'MACBOOKS' && stockAppleItems.length > 0) {
+      const updatedRows = stockAppleItems.map(it => {
+        const base = typeof it.baseListPrice === 'number' && it.baseListPrice > 0 ? it.baseListPrice : it.listPrice;
+        const recalculated = computeMacbookPriceWithMargin(base, nextActive);
+        return {
+          'Item #': it.itemNumber,
+          'Warehouse': it.warehouse,
+          'Category': it.category,
+          'Make': it.make,
+          'Model': it.model,
+          'Model Number': it.modelNumber,
+          'Capacity': it.capacity,
+          'Description': it.description,
+          'Carrier': it.carrier,
+          'Lock Status': it.lockStatus,
+          'Color': it.color,
+          'Grade': it.grade,
+          'Available Quantity': it.availableQuantity,
+          'List Price': recalculated,
+          '_baseListPrice': base,
+          'Currency': it.currency
+        };
+      });
+      processStockAppleRows(updatedRows, true);
+      showNotice(
+        nextActive
+          ? '✅ Margem Macbooks aplicada nos itens! (<= $500: +$25 USD | > $500: +$40 USD)'
+          : '↩️ Margem Macbooks removida: valores originais restaurados.',
+        'success'
+      );
+    }
+  };
+
   const handleProcessPastedText = () => {
-    if (!pasteText.trim()) {
+    const trimmedPaste = pasteText.trim();
+    if (!trimmedPaste) {
       showNotice('Cole o texto para importação primeiro.', 'error');
       return;
     }
 
-    // 1. MACBOOKS PASTE IMPORTER
-    if (presetFormat === 'MACBOOKS' || /MacBook|A2485|A2337|A2992|A1989/i.test(pasteText)) {
-      const macbookItems = parseMacbooksText(pasteText, macbookMarginActive);
+    // 1. MACBOOKS PASTE IMPORTER (when selected or auto-detected, excluding XML)
+    if (!trimmedPaste.startsWith('<') && (presetFormat === 'MACBOOKS' || /MacBook\s+(?:Pro|Air)/i.test(trimmedPaste))) {
+      const macbookItems = parseMacbooksText(trimmedPaste, macbookMarginActive);
       if (macbookItems.length === 0) {
         showNotice('Nenhum MacBook reconhecido no texto colado. Verifique o formato (Título na 1ª linha e Preço $ na 2ª linha).', 'error');
         return;
       }
       setPresetFormat('MACBOOKS');
       setStockAppleGroupMode('individual');
+      setStockAppleFilterType('ALL');
       setUploadedFileName('MacBooks (Texto Colado)');
       processStockAppleRows(macbookItems.map(it => ({
         'Item #': it.itemNumber,
@@ -2428,6 +2541,7 @@ $285.00
         'Category': it.category,
         'Make': it.make,
         'Model': it.model,
+        'Model Number': it.modelNumber,
         'Capacity': it.capacity,
         'Description': it.description,
         'Carrier': it.carrier,
@@ -2436,21 +2550,29 @@ $285.00
         'Grade': it.grade,
         'Available Quantity': it.availableQuantity,
         'List Price': it.listPrice,
+        '_baseListPrice': it.baseListPrice,
         'Currency': it.currency
       })), true);
-      showNotice(`🔥 ${macbookItems.length} MacBooks processados com sucesso! Margem (${macbookMarginActive ? '<=$500 (+$25) / >$500 (+$40)' : 'Sem Margem'}) aplicada!`, 'success');
+      showNotice(
+        `💻 ${macbookItems.length} MacBooks processados! ${macbookMarginActive ? 'Margem ativa (<= $500: +$25 | > $500: +$40).' : 'Valor original mantido — clique no botão de margem se desejar acrescentar (+$25 / +$40).'}`,
+        'success'
+      );
       return;
     }
 
-    // 2. PRONTA ENTREGA PASTE IMPORTER
-    if (presetFormat === 'STOCK_APPLE' || /Need\/Have\/OnPO|Manage Products|Iphone 11 Pro Max/i.test(pasteText)) {
-      const prontaItems = parseProntaEntregaText(pasteText);
+    // 2. PRONTA ENTREGA PASTE IMPORTER (when selected or auto-detected, excluding XML and standard CSV)
+    const looksLikeProntaEntrega =
+      /Need\/Have\/OnPO|Manage Products|\d+\s*\/\s*\d+\s*\/\s*\d+/i.test(trimmedPaste) &&
+      !trimmedPaste.startsWith('<');
+    if (looksLikeProntaEntrega || (presetFormat === 'STOCK_APPLE' && !trimmedPaste.startsWith('<') && !/Item\s*#|Warehouse|Lock\s*Status/i.test(trimmedPaste.split(/\r?\n/)[0] || ''))) {
+      const prontaItems = parseProntaEntregaText(trimmedPaste);
       if (prontaItems.length === 0) {
-        showNotice('Nenhum produto com valor (> $0) e estoque positivo encontrado no texto colado.', 'error');
+        showNotice('Nenhum produto com preço > $0.00 e estoque positivo (Need/Have/OnPO) encontrado no texto colado.', 'error');
         return;
       }
       setPresetFormat('STOCK_APPLE');
       setStockAppleGroupMode('individual');
+      setStockAppleFilterType('ALL');
       setUploadedFileName('Estoque Pronta Entrega (Texto Colado)');
       processStockAppleRows(prontaItems.map(it => ({
         'Item #': it.itemNumber,
@@ -2458,6 +2580,7 @@ $285.00
         'Category': it.category,
         'Make': it.make,
         'Model': it.model,
+        'Model Number': it.modelNumber,
         'Capacity': it.capacity,
         'Description': it.description,
         'Carrier': it.carrier,
@@ -2466,9 +2589,10 @@ $285.00
         'Grade': it.grade,
         'Available Quantity': it.availableQuantity,
         'List Price': it.listPrice,
+        '_baseListPrice': it.baseListPrice,
         'Currency': it.currency
       })), true);
-      showNotice(`🍏 ${prontaItems.length} Aparelhos de Pronta Entrega (preço > $0 e estoque positivo) importados com sucesso!`, 'success');
+      showNotice(`📦 ${prontaItems.length} itens de Pronta Entrega (preço > $0 e estoque > 0) prontos para publicar!`, 'success');
       return;
     }
 
@@ -3416,6 +3540,7 @@ $285.00
     if (stockAppleFilterType === 'IPHONE' && (item.deviceType !== 'iPhone' || item.status !== 'APPROVED')) return false;
     if (stockAppleFilterType === 'IPAD' && (item.deviceType !== 'iPad' || item.status !== 'APPROVED')) return false;
     if (stockAppleFilterType === 'WATCH' && (item.deviceType !== 'Apple Watch' || item.status !== 'APPROVED')) return false;
+    if (stockAppleFilterType === 'MACBOOK' && (item.deviceType !== 'MacBook' || item.status !== 'APPROVED')) return false;
     if (stockAppleFilterType === 'DISCARDED_LOCKED' && item.status !== 'DISCARDED_LOCKED') return false;
     if (stockAppleFilterType === 'ALL' && item.status !== 'APPROVED') return false;
 
@@ -4165,14 +4290,34 @@ $285.00
 
                   <button
                     type="button"
-                    onClick={() => setPresetFormat('STOCK_APPLE')}
+                    onClick={() => {
+                      setPresetFormat('STOCK_APPLE');
+                      setStockAppleGroupMode('individual');
+                      setUploadMode('paste');
+                    }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'STOCK_APPLE'
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-400'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
-                    <span>Pronta Entrega / Stock Apple</span>
+                    <span>📦 Pronta Entrega (Caixa de Texto)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPresetFormat('MACBOOKS');
+                      setStockAppleGroupMode('individual');
+                      setUploadMode('paste');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      presetFormat === 'MACBOOKS'
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-1 ring-purple-400'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                    }`}
+                  >
+                    <span>💻 Leilão Macbooks (Caixa de Texto)</span>
                   </button>
 
                   <button
@@ -4271,7 +4416,15 @@ $285.00
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="text-xs text-slate-300 block font-medium">
-                    Cole abaixo o texto formatado do leilão ou inventário:
+                    Cole abaixo o texto formatado para{' '}
+                    <span className="font-bold text-white">
+                      {presetFormat === 'MACBOOKS'
+                        ? 'Leilão Macbooks'
+                        : presetFormat === 'STOCK_APPLE'
+                        ? 'Pronta Entrega'
+                        : 'Importação'}
+                    </span>
+                    :
                   </label>
                   <div className="flex flex-wrap items-center gap-3">
                     <button
@@ -4293,64 +4446,68 @@ $285.00
                       }}
                       className="text-emerald-400 hover:underline text-[11px] font-bold flex items-center gap-1"
                     >
-                      <span>🍏 Inserir Modelo Pronta Entrega</span>
+                      <span>📦 Inserir Modelo Pronta Entrega</span>
                     </button>
                   </div>
                 </div>
 
                 {/* MacBook Margin Selection Control Banner */}
                 {presetFormat === 'MACBOOKS' && (
-                  <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                  <div className="p-3.5 bg-purple-950/40 border border-purple-500/35 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="px-2 py-0.5 rounded bg-purple-600 text-white font-black text-[10px] uppercase">
-                        MARGEM DE LUCRO MACBOOKS
+                        LEILÃO MACBOOKS
                       </span>
-                      <span className="text-xs text-purple-200">
-                        Regra: Preço &lt;= $500 (+ $25 USD) e Preço &gt; $500 (+ $40 USD)
+                      <span className="text-xs text-purple-200 font-medium">
+                        Regra de Margem: Valor &le; $500 acrescenta <strong className="text-white">+$25</strong> · Valor &gt; $500 acrescenta <strong className="text-white">+$40</strong>
                       </span>
                     </div>
                     <button
                       type="button"
-                      onClick={() => setMacbookMarginActive(!macbookMarginActive)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      onClick={handleToggleMacbookMargin}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                         macbookMarginActive
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 ring-1 ring-emerald-300'
+                          : 'bg-purple-600 hover:bg-purple-500 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400'
                       }`}
                     >
-                      <span>{macbookMarginActive ? '✅ Margem Ativa (+$25 / +$40)' : '❌ Margem Desativada (Valor Original)'}</span>
+                      <span>
+                        {macbookMarginActive
+                          ? '✅ Margem Acrescentada (+$25 / +$40) — Clique p/ Remover'
+                          : '➕ Acrescentar Margem (+$25 <=$500 / +$40 >$500)'}
+                      </span>
                     </button>
                   </div>
                 )}
 
                 {/* Pronta Entrega Info Banner */}
                 {presetFormat === 'STOCK_APPLE' && (
-                  <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs text-emerald-200">
+                  <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-200">
                       <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-[10px] uppercase">
                         PRONTA ENTREGA
                       </span>
                       <span>
-                        Filtro automático: Apenas insere produtos com valor &gt; $0.00 e quantidade &gt; 0 (número do meio em Need/Have/OnPO).
+                        Processa cabeçalho &amp; linhas (Manufacturer, Product Name, SKU, Category, Selling Price, Need/Have/OnPO), filtrando automaticamente preço &gt; $0.00 e estoque positivo (número do meio).
                       </span>
                     </div>
                   </div>
                 )}
 
                 <textarea
-                  rows={8}
+                  rows={9}
                   value={pasteText}
                   onChange={e => setPasteText(e.target.value)}
                   placeholder={
                     presetFormat === 'MACBOOKS'
-                      ? "Cole aqui as linhas do leilão Macbooks:\n2021 Apple M1 Pro MacBook Pro 16\" 90%+ Battery 3.20GHz/16GB/512GB SSD (Silver) A2485\n$989.00"
+                      ? "Cole aqui o texto do Leilão Macbooks:\n2021 Britain Apple M1 Pro MacBook Pro 14.2\" 3.20GHz/32GB/512GB SSD (Space Gray) - A2442\n$846.00"
                       : presetFormat === 'STOCK_APPLE'
-                      ? "Cole aqui o texto do inventário Pronta Entrega:\nApple\nIphone 11 Pro Max 64 GB DEF\n1560144\nPhone\n$156.00\n0 / 1 / 0"
+                      ? "Cole aqui o texto do inventário Pronta Entrega:\nManage Products\n...\nManufacturer Name\tProduct Name\tSKU/Barcode\tCategory Name\tSelling Price\tNeed/Have/OnPO\nApple\nIphone 11 Pro Max 64 GB DEF\n1560144\nPhone\n$156.00\n0 / 1 / 0"
                       : "Cole aqui as linhas copiadas do Excel, CSV ou texto do leilão..."
                   }
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-red-400"
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={handleProcessPastedText}
@@ -4385,10 +4542,43 @@ $285.00
           </div>
 
           {/* ======================================================== */}
-          {/* STOCK APPLE / ASSURANT UNLOCKED (XML / CSV) CONSOLE      */}
+          {/* STOCK APPLE / ASSURANT / MACBOOKS / PRONTA ENTREGA CONSOLE */}
           {/* ======================================================== */}
           {isStockFeedFormat(presetFormat) && stockAppleItems.length > 0 && (
-            <div className={`space-y-6 p-6 bg-slate-900/90 border rounded-2xl shadow-2xl ${presetFormat === 'ASSURANT' ? 'border-indigo-500/40' : 'border-emerald-500/40'}`}>
+            <div className={`space-y-6 p-6 bg-slate-900/90 border rounded-2xl shadow-2xl ${
+              presetFormat === 'ASSURANT'
+                ? 'border-indigo-500/40'
+                : presetFormat === 'MACBOOKS'
+                ? 'border-purple-500/40'
+                : 'border-emerald-500/40'
+            }`}>
+              {presetFormat === 'MACBOOKS' && (
+                <div className="p-3.5 bg-purple-950/40 border border-purple-500/35 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="px-2 py-0.5 rounded bg-purple-600 text-white text-[10px] font-black uppercase">
+                      MARGEM MACBOOKS
+                    </span>
+                    <span className="text-xs text-purple-200 font-semibold">
+                      Até $500 USD acrescenta <strong className="text-white">+$25</strong> · Acima de $500 USD acrescenta <strong className="text-white">+$40</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleMacbookMargin}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                      macbookMarginActive
+                        ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/25'
+                        : 'bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400'
+                    }`}
+                  >
+                    <span>
+                      {macbookMarginActive
+                        ? '✅ Margem Aplicada (+$25 / +$40) — Remover'
+                        : '➕ Acrescentar Margem (+$25 / +$40)'}
+                    </span>
+                  </button>
+                </div>
+              )}
               {presetFormat === 'ASSURANT' && (
                 <div className="p-3.5 bg-indigo-950/40 border border-indigo-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
@@ -4419,6 +4609,8 @@ $285.00
                         ? 'bg-cyan-600'
                         : presetFormat === 'ASSURANT'
                         ? 'bg-indigo-600'
+                        : presetFormat === 'MACBOOKS'
+                        ? 'bg-purple-600'
                         : 'bg-emerald-600'
                     }`}>
                       <ShieldCheck className="w-3.5 h-3.5" />
@@ -4431,12 +4623,16 @@ $285.00
                           ? 'LEILÃO MARKETPLACE 3 • 100% UNLOCKED'
                           : presetFormat === 'ASSURANT'
                           ? 'LEILÃO ASSURANT • 100% UNLOCKED'
-                          : 'FILTRO RIGOROSO ATIVO: 100% APPLE UNLOCKED'}
+                          : presetFormat === 'MACBOOKS'
+                          ? 'LEILÃO MACBOOKS • CAIXA DE TEXTO'
+                          : 'PRONTA ENTREGA • 100% UNLOCKED'}
                       </span>
                     </span>
                     <span className="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
-                      {presetFormat === 'STOCK_APPLE'
-                        ? 'Apenas iPhones, iPads & Apple Watches Desbloqueados'
+                      {presetFormat === 'MACBOOKS'
+                        ? 'Apple MacBook Pro / Air • Specs & Bateria Verificados'
+                        : presetFormat === 'STOCK_APPLE'
+                        ? 'Pronta Entrega com Preço > $0 e Estoque Positivo'
                         : 'Apple, Samsung & Google Desbloqueados (Sem LOCKED)'}
                     </span>
                   </div>
@@ -4450,13 +4646,17 @@ $285.00
                         ? `Marketplace 3: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
                         : presetFormat === 'ASSURANT'
                         ? `Assurant: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
-                        : `Estoque Apple Desbloqueado: ${stockAppleAudit.approvedCount.toLocaleString()} Itens Aprovados`}
+                        : presetFormat === 'MACBOOKS'
+                        ? `Leilão Macbooks: ${stockAppleAudit.approvedCount.toLocaleString()} MacBooks Prontos`
+                        : `Pronta Entrega / Estoque Apple: ${stockAppleAudit.approvedCount.toLocaleString()} Itens Aprovados`}
                     </span>
-                    <span className="text-slate-400 text-sm font-normal">({stockAppleAudit.totalApprovedUnits.toLocaleString()} Aparelhos Físicos)</span>
+                    <span className="text-slate-400 text-sm font-normal">({stockAppleAudit.totalApprovedUnits.toLocaleString()} Unidades)</span>
                   </h3>
                   <p className="text-xs text-slate-400 mt-1">
-                    {presetFormat === 'STOCK_APPLE'
-                      ? <>Critério de seleção aplicado: Apenas modelos da Apple (<span className="text-emerald-300 font-semibold">iPhones</span>, <span className="text-emerald-300 font-semibold">iPads</span> e <span className="text-emerald-300 font-semibold">Apple Watches</span>) com status <span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>. Todos os aparelhos com bloqueio de operadora ou iCloud (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) foram automaticamente excluídos.</>
+                    {presetFormat === 'MACBOOKS'
+                      ? <>MacBooks importados via texto com especificação completa de processador, memória, SSD e modelo Axxxx. Use o botão acima para acrescentar ou remover a margem (+$25 / +$40).</>
+                      : presetFormat === 'STOCK_APPLE'
+                      ? <>Itens de Pronta Entrega / Stock Apple aprovados (preço maior que $0.00 e estoque disponível positivo em Need/Have/OnPO).</>
                       : <>Critério de seleção aplicado: Apenas smartphones, tablets e wearables desbloqueados (<span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>). Todos os aparelhos bloqueados (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) e acessórios foram automaticamente descartados.</>}
                   </p>
                 </div>
@@ -4492,6 +4692,11 @@ $285.00
                     <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-300">
                       ⌚ {stockAppleAudit.approvedWatches.toLocaleString()} Watches
                     </span>
+                    {stockAppleAudit.approvedMacBooks > 0 && (
+                      <span className="px-1.5 py-0.5 bg-purple-500/20 rounded text-purple-300">
+                        💻 {stockAppleAudit.approvedMacBooks.toLocaleString()} MacBooks
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -4600,7 +4805,7 @@ $285.00
                       onChange={e => setReplaceExistingLots(e.target.checked)}
                       className="accent-emerald-400 rounded w-4 h-4"
                     />
-                    <span>Substituir leilões atuais pelos novos lotes Apple</span>
+                    <span>Substituir apenas os lotes deste leilão (limpa anteriores deste formato)</span>
                   </label>
                   <span className="text-[10px] text-slate-500 block">
                     Cotação PTAX aplicada: R$ {usdRate.toFixed(2)} por USD.
@@ -4659,6 +4864,20 @@ $285.00
                       <Watch className="w-3.5 h-3.5" />
                       <span>Apple Watches ({stockAppleAudit.approvedWatches.toLocaleString()})</span>
                     </button>
+                    {stockAppleAudit.approvedMacBooks > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => { setStockAppleFilterType('MACBOOK'); setStockApplePage(1); }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
+                          stockAppleFilterType === 'MACBOOK'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        }`}
+                      >
+                        <Laptop className="w-3.5 h-3.5" />
+                        <span>MacBooks ({stockAppleAudit.approvedMacBooks.toLocaleString()})</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => { setStockAppleFilterType('DISCARDED_LOCKED'); setStockApplePage(1); }}
@@ -4721,6 +4940,7 @@ $285.00
                                 {item.deviceType === 'iPhone' && <Smartphone className="w-3 h-3 text-blue-400" />}
                                 {item.deviceType === 'iPad' && <Tablet className="w-3 h-3 text-emerald-400" />}
                                 {item.deviceType === 'Apple Watch' && <Watch className="w-3 h-3 text-amber-400" />}
+                                {item.deviceType === 'MacBook' && <Laptop className="w-3 h-3 text-purple-400" />}
                                 <span>{item.deviceType}</span>
                               </span>
                             </td>
@@ -4754,7 +4974,12 @@ $285.00
                               {item.incrementsOf || 1} un.
                             </td>
                             <td className="py-2 px-3 text-right font-mono font-bold text-emerald-400">
-                              ${item.listPrice.toFixed(2)}
+                              <div>${item.listPrice.toFixed(2)}</div>
+                              {typeof item.baseListPrice === 'number' && item.listPrice > item.baseListPrice && (
+                                <div className="text-[10px] text-purple-300 font-normal">
+                                  Base ${item.baseListPrice.toFixed(2)} (+${(item.listPrice - item.baseListPrice).toFixed(0)})
+                                </div>
+                              )}
                             </td>
                             <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">
                               {item.warehouse}

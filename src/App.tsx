@@ -678,7 +678,11 @@ export default function App() {
                   ? auctions.filter(a => getMarketplaceNumber(a) === 3)
                   : filterAuctionHouse === 'MARKETPLACE_4'
                     ? auctions.filter(a => getMarketplaceNumber(a) === 4)
-                    : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
+                    : filterAuctionHouse === 'STOCK_APPLE'
+                      ? auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || ''))
+                      : filterAuctionHouse === 'MACBOOKS'
+                        ? auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || ''))
+                        : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
 
     const modelMap = new Map<string, { model: string; count: number; totalUnits: number }>();
 
@@ -689,7 +693,7 @@ export default function App() {
       if (house.includes('copart') || title.includes('copart')) return;
       if (house.includes('liquidation.com') || title.includes('liquidation.com')) return;
       if (house.includes('apple certified') || title.includes('apple certified')) return;
-      if (house.includes('pronta entrega') || title.includes('pronta entrega')) return;
+      if ((house.includes('pronta entrega') || title.includes('pronta entrega')) && lot.sourceType !== 'STOCK_APPLE') return;
       if (!isLotUnlockedOnly(lot)) return;
 
       const m = (lot.modelFamily || 'Outros').trim();
@@ -712,7 +716,7 @@ export default function App() {
       if (house.includes('copart') || title.includes('copart')) return false;
       if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
       if (house.includes('apple certified') || title.includes('apple certified')) return false;
-      if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
+      if ((house.includes('pronta entrega') || title.includes('pronta entrega')) && lot.sourceType !== 'STOCK_APPLE') return false;
       if (!isLotUnlockedOnly(lot)) return false;
 
       if (filterAuctionHouse === 'VERIZON') {
@@ -729,6 +733,10 @@ export default function App() {
         if (getMarketplaceNumber(lot) !== 3) return false;
       } else if (filterAuctionHouse === 'MARKETPLACE_4') {
         if (getMarketplaceNumber(lot) !== 4) return false;
+      } else if (filterAuctionHouse === 'STOCK_APPLE') {
+        if (lot.sourceType !== 'STOCK_APPLE' && !/pronta entrega|stock hub/i.test(lot.auctionHouse || '')) return false;
+      } else if (filterAuctionHouse === 'MACBOOKS') {
+        if (lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse || '')) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) return false;
       }
@@ -808,7 +816,7 @@ export default function App() {
       if (house.includes('copart') || title.includes('copart')) return false;
       if (house.includes('liquidation.com') || title.includes('liquidation.com')) return false;
       if (house.includes('apple certified') || title.includes('apple certified')) return false;
-      if (house.includes('pronta entrega') || title.includes('pronta entrega')) return false;
+      if ((house.includes('pronta entrega') || title.includes('pronta entrega')) && lot.sourceType !== 'STOCK_APPLE') return false;
       if (!isLotUnlockedOnly(lot)) return false;
 
       // 1. Clean grade representation
@@ -878,6 +886,10 @@ export default function App() {
         if (getMarketplaceNumber(lot) !== 3) return false;
       } else if (filterAuctionHouse === 'MARKETPLACE_4') {
         if (getMarketplaceNumber(lot) !== 4) return false;
+      } else if (filterAuctionHouse === 'STOCK_APPLE') {
+        if (lot.sourceType !== 'STOCK_APPLE' && !/pronta entrega|stock hub/i.test(lot.auctionHouse || '')) return false;
+      } else if (filterAuctionHouse === 'MACBOOKS') {
+        if (lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse || '')) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) {
           return false;
@@ -1290,6 +1302,40 @@ export default function App() {
                         );
                       })}
 
+                      {auctions.some(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterAuctionHouse(filterAuctionHouse === 'STOCK_APPLE' ? 'all' : 'STOCK_APPLE');
+                            setFilterModel('all');
+                          }}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                            filterAuctionHouse === 'STOCK_APPLE'
+                              ? 'bg-emerald-600 text-white font-bold'
+                              : 'text-emerald-300 hover:bg-emerald-500/15'
+                          }`}
+                        >
+                          Pronta Entrega
+                        </button>
+                      )}
+
+                      {auctions.some(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFilterAuctionHouse(filterAuctionHouse === 'MACBOOKS' ? 'all' : 'MACBOOKS');
+                            setFilterModel('all');
+                          }}
+                          className={`px-2.5 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                            filterAuctionHouse === 'MACBOOKS'
+                              ? 'bg-purple-600 text-white font-bold'
+                              : 'text-purple-300 hover:bg-purple-500/15'
+                          }`}
+                        >
+                          MacBooks
+                        </button>
+                      )}
+
                       {Array.from(new Set(auctions.map(a => a.auctionHouse)))
                         .filter(h => h &&
                           !/verizon/i.test(h) &&
@@ -1299,7 +1345,8 @@ export default function App() {
                           !/apple certified/i.test(h) &&
                           !/marketplace/i.test(h) &&
                           !/pronta entrega/i.test(h) &&
-                          !/stock/i.test(h)
+                          !/stock/i.test(h) &&
+                          !/macbook/i.test(h)
                         )
                         .slice(0, 3)
                         .map(house => (
@@ -1327,7 +1374,7 @@ export default function App() {
                     <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
                       <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
                       <span>
-                        Modelo {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : filterAuctionHouse === 'T_MOBILE' ? '(T-Mobile)' : filterAuctionHouse === 'MARKETPLACE_1' ? '(Marketplace 1)' : filterAuctionHouse === 'MARKETPLACE_2' ? '(Marketplace 2)' : filterAuctionHouse === 'MARKETPLACE_3' ? '(Marketplace 3)' : ''}
+                        Modelo {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : filterAuctionHouse === 'T_MOBILE' ? '(T-Mobile)' : filterAuctionHouse === 'MARKETPLACE_1' ? '(Marketplace 1)' : filterAuctionHouse === 'MARKETPLACE_2' ? '(Marketplace 2)' : filterAuctionHouse === 'MARKETPLACE_3' ? '(Marketplace 3)' : filterAuctionHouse === 'STOCK_APPLE' ? '(Pronta Entrega)' : filterAuctionHouse === 'MACBOOKS' ? '(MacBooks)' : ''}
                       </span>
                     </label>
                     <select
@@ -1527,7 +1574,10 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        exportAuctionsCatalogXlsx(filteredAuctions.length > 0 ? filteredAuctions : auctions, usdRate, {
+                        const targetLots = filteredAuctions.length > 0 ? filteredAuctions : auctions;
+                        const activeAuctionName = filterAuctionHouse !== 'all' ? filterAuctionHouse : undefined;
+                        exportAuctionsCatalogXlsx(targetLots, usdRate, {
+                          auctionName: activeAuctionName,
                           filterLabel: filteredAuctions.length < auctions.length
                             ? `Filtro ativo (${filteredAuctions.length} de ${auctions.length} lotes)`
                             : `Todos os Leilões Importados (${auctions.length} lotes)`
@@ -1543,7 +1593,10 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => {
-                        exportAuctionsCatalogPdf(filteredAuctions.length > 0 ? filteredAuctions : auctions, usdRate, {
+                        const targetLots = filteredAuctions.length > 0 ? filteredAuctions : auctions;
+                        const activeAuctionName = filterAuctionHouse !== 'all' ? filterAuctionHouse : undefined;
+                        exportAuctionsCatalogPdf(targetLots, usdRate, {
+                          auctionName: activeAuctionName,
                           filterLabel: filteredAuctions.length < auctions.length
                             ? `Filtro ativo (${filteredAuctions.length} de ${auctions.length} lotes)`
                             : `Todos os Leilões Importados (${auctions.length} lotes)`
