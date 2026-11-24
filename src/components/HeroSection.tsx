@@ -34,7 +34,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
             {/* Main Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.15] text-balance">
-              Leilões Americanos de iPhones com <span className="text-amber-400">Gradeamento Oficial</span> e Lances Ao Vivo
+              Leilões Americanos de Eletrônicos com <span className="text-amber-400">Gradeamento Oficial</span> e Lances Ao Vivo
             </h1>
 
             {/* Subtitle */}
