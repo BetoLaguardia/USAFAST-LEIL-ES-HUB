@@ -74,7 +74,7 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
                 Painel Administrativo
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Importação de planilhas, controle de ofertas e gestão de leilões.
+                Controle de ofertas e gestão de leilões.
               </p>
             </div>
           </div>
