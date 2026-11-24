@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock } from 'lucide-react';
 import { AuctionLot, SystemUser, UserAccessType } from '../types/auction';
-import { isAssurantLot, getAssurantPreviousApprovedBid, getLotIncrementSize } from '../utils/assurantUtils';
+import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotIncrementSize } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
 import { registerClientWithSupabase } from '../services/authService';
 
@@ -60,8 +60,9 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
 
   const currentSelectedLot = auctions.find(a => a.id === selectedLotId) || auctions[0];
   const isVerizonSelected = isVerizonLot(currentSelectedLot);
+  const isDiscountSelected = isDiscountBidAuction(currentSelectedLot);
   const minRequiredBid = currentSelectedLot
-    ? (isVerizonSelected ? 1 : currentSelectedLot.currentBidUsd + 25)
+    ? (isVerizonSelected || isDiscountSelected ? 1 : Math.max(1, currentSelectedLot.currentBidUsd))
     : 100;
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
@@ -255,7 +256,13 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         setSelectedLotId(e.target.value);
                         const lot = auctions.find(a => a.id === e.target.value);
                         if (lot) {
-                          setCustomBidAmount(isVerizonLot(lot) ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 500) : lot.currentBidUsd + 25);
+                          setCustomBidAmount(
+                            isVerizonLot(lot)
+                              ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 500)
+                              : isDiscountBidAuction(lot)
+                                ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 100)
+                                : lot.currentBidUsd + 5
+                          );
                         }
                       }}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400"
@@ -334,7 +341,7 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         <input
                           type="number"
                           min={minRequiredBid}
-                          step={isVerizonSelected ? 'any' : '25'}
+                          step="any"
                           value={customBidAmount || (isVerizonSelected ? 500 : minRequiredBid)}
                           onChange={e => setCustomBidAmount(Number(e.target.value))}
                           className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"

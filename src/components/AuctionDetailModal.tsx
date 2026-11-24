@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Gavel, MapPin, Download, CheckCircle2, Battery, Smartphone, AlertTriangle, Lock, Layers, ChevronDown } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
-import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
+import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
 import { buildExpandedManifestUnits, exportLotManifestXlsx } from '../utils/manifestExport';
@@ -27,10 +27,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
   usdRate
 }) => {
   const verizon = isVerizonLot(lot);
+  const initialIsDiscount = isDiscountBidAuction(lot);
   const defaultBidValue = lot
     ? verizon
       ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 0)
-      : lot.currentBidUsd + 25
+      : initialIsDiscount
+        ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 0)
+        : (lot.currentBidUsd > 0 ? lot.currentBidUsd + 5 : 5)
     : 0;
 
   const [bidValue, setBidValue] = useState<string>(defaultBidValue > 0 ? String(defaultBidValue) : '');
@@ -44,7 +47,12 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
   useEffect(() => {
     if (lot) {
       const isVz = isVerizonLot(lot);
-      const nextVal = isVz ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : '') : String(lot.currentBidUsd + 25);
+      const isDiscount = isDiscountBidAuction(lot);
+      const nextVal = isVz
+        ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : '')
+        : isDiscount
+          ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : '')
+          : (lot.currentBidUsd > 0 ? lot.currentBidUsd + 5 : 5);
       setBidValue(nextVal === '' ? '' : String(nextVal));
       setBidQuantity(Math.max(1, lot.quantity || 1));
       setActiveImage(lot.imageUrl);
@@ -63,6 +71,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
   if (!isOpen || !lot) return null;
 
   const isAssurant = isAssurantLot(lot);
+  const isDiscountAuction = isDiscountBidAuction(lot);
   const tMobile = isTMobileLot(lot);
   const mktNum = getMarketplaceNumber(lot);
   const incrementSize = getLotIncrementSize(lot);
@@ -72,13 +81,17 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     : Math.max(qtyStep, Math.min(Math.max(1, lot.quantity), bidQuantity));
 
   const unitReferenceUsd = lot.currentBidUsd > 0 ? getLotUnitPriceUsd(lot) : 50;
-  const minBid = verizon
-    ? 1
+  const baseBidUsd = verizon
+    ? lot.currentBidUsd
     : isAssurant
-      ? lot.currentBidUsd + 25
+      ? lot.currentBidUsd
       : effectiveQty >= lot.quantity
-        ? lot.currentBidUsd + 25
-        : Math.max(25, Math.round(unitReferenceUsd * effectiveQty) + 25);
+        ? lot.currentBidUsd
+        : Math.max(1, Math.round(unitReferenceUsd * effectiveQty));
+
+  const minBid = verizon || isDiscountAuction
+    ? 1
+    : Math.max(1, baseBidUsd);
 
   const parsedBid = Number(bidValue);
   const mix = getLotMixSummary(lot);
@@ -100,12 +113,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     }
     setBidQuantity(clamped);
     setBidError(null);
-    const suggested = isAssurant
-      ? lot.currentBidUsd + 25
+    const nextBase = isAssurant
+      ? lot.currentBidUsd
       : clamped >= lot.quantity
-        ? lot.currentBidUsd + 25
-        : Math.max(25, Math.round(unitReferenceUsd * clamped) + 25);
-    setBidValue(String(suggested));
+        ? lot.currentBidUsd
+        : Math.max(1, Math.round(unitReferenceUsd * clamped));
+    const suggested = isDiscountAuction ? nextBase : nextBase + 5;
+    setBidValue(suggested > 0 ? String(suggested) : '');
   };
 
   const handleBidSubmit = (e: React.FormEvent) => {
@@ -113,7 +127,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     setBidError(null);
     if (!Number.isFinite(parsedBid) || parsedBid < minBid) {
       setBidError(
-        verizon
+        verizon || isDiscountAuction
           ? 'Informe um valor de oferta maior que $0 USD para enviar seu lance.'
           : `O lance mínimo para ${effectiveQty} ${effectiveQty === 1 ? 'unidade' : 'unidades'} precisa ser de $${minBid.toLocaleString()} USD.`
       );
@@ -438,7 +452,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                     <span>Regra Verizon: Escolha livremente o valor em USD para arrematar o lote completo.</span>
                     <span className="font-mono font-bold text-emerald-300">Sem mínimo obrigatório</span>
                   </div>
-                ) : isAssurantLot(lot) ? (
+                ) : isAssurant ? (
                   <div className="p-2.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-blue-200 font-semibold">Média lance aprovado arremate anterior:</span>
@@ -453,9 +467,14 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       </span>
                     </div>
                   </div>
+                ) : isDiscountAuction ? (
+                  <div className="p-2.5 bg-cyan-950/30 border border-cyan-500/30 rounded-lg text-[11px] text-cyan-200 flex flex-wrap items-center justify-between gap-2">
+                    <span>Oferta livre ({effectiveQty} un.): você pode enviar um preço menor para análise.</span>
+                    <span className="font-mono font-bold text-emerald-300">Valor atual: ${baseBidUsd.toLocaleString()} USD</span>
+                  </div>
                 ) : (
                   <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium px-1">
-                    <span>Lance Mínimo Requerido ({effectiveQty} un.):</span>
+                    <span>Valor Base / Mínimo ({effectiveQty} un.):</span>
                     <span className="text-amber-400 font-mono font-bold">${minBid.toLocaleString()} USD</span>
                   </div>
                 )}
@@ -521,14 +540,20 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       <input
                         type="number"
                         min={minBid}
-                        step={verizon ? 'any' : '25'}
+                        step="any"
                         value={bidValue}
                         onChange={e => {
                           setBidError(null);
                           setBidValue(e.target.value);
                         }}
                         className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
-                        placeholder={verizon ? 'Informe seu valor em USD (ex: 1200)' : `Mínimo $${minBid}`}
+                        placeholder={
+                          verizon
+                            ? 'Informe seu valor em USD (ex: 1200)'
+                            : isDiscountAuction
+                              ? `Informe seu valor em USD (ex: ${Math.max(1, baseBidUsd - 10)})`
+                              : `Mínimo $${minBid}`
+                        }
                       />
                     </div>
                     <button
@@ -557,47 +582,60 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
                   {/* Preset Bids */}
                   <div className="flex flex-wrap items-center gap-2">
-                    {verizon ? (
+                    {isDiscountAuction ? (
                       <>
-                        <span className="text-[11px] text-slate-400">Sugestões rápidas:</span>
-                        {(lot.currentBidUsd > 0
-                          ? [lot.currentBidUsd + 50, lot.currentBidUsd + 100, lot.currentBidUsd + 250]
-                          : [500, 1000, 2500]
-                        ).map((val) => (
-                          <button
-                            key={val}
-                            type="button"
-                            onClick={() => setBidValue(String(val))}
-                            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
-                          >
-                            ${val.toLocaleString()}
-                          </button>
-                        ))}
+                        <span className="text-[11px] text-slate-400">Sugestões:</span>
+                        {[5, 10, 15, 25].map((delta) => {
+                          const targetVal = Math.max(1, baseBidUsd - delta);
+                          const isActive = parsedBid === targetVal;
+                          return (
+                            <button
+                              key={delta}
+                              type="button"
+                              onClick={() => {
+                                setBidError(null);
+                                setBidValue(String(targetVal));
+                              }}
+                              className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors ${
+                                isActive
+                                  ? 'bg-amber-500 text-slate-950 font-bold'
+                                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                              }`}
+                              title={`Aplicar $${targetVal.toLocaleString()} USD`}
+                            >
+                              - ${delta}
+                            </button>
+                          );
+                        })}
                       </>
                     ) : (
                       <>
                         <span className="text-[11px] text-slate-400">Sugestões:</span>
-                        <button
-                          type="button"
-                          onClick={() => setBidValue(String(minBid))}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
-                        >
-                          Mín (${minBid.toLocaleString()})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBidValue(String(minBid + 50))}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
-                        >
-                          + $50
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setBidValue(String(minBid + 100))}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-[11px] font-mono text-slate-300"
-                        >
-                          + $100
-                        </button>
+                        {[5, 10, 15, 25].map((inc) => {
+                          const targetVal =
+                            baseBidUsd > 0
+                              ? baseBidUsd + inc
+                              : (Number.isFinite(parsedBid) && parsedBid > 0 ? parsedBid : 0) + inc;
+                          const isActive = baseBidUsd > 0 && parsedBid === targetVal;
+                          return (
+                            <button
+                              key={inc}
+                              type="button"
+                              onClick={() => {
+                                setBidError(null);
+                                setBidValue(String(targetVal));
+                              }}
+                              className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors ${
+                                isActive
+                                  ? 'bg-amber-500 text-slate-950 font-bold'
+                                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                              }`}
+                              title={`Aplicar $${targetVal.toLocaleString()} USD`}
+                            >
+                              +${inc}
+                            </button>
+                          );
+                        })}
                       </>
                     )}
                     <button

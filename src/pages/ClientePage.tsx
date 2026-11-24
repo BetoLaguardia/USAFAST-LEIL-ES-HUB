@@ -27,7 +27,7 @@ import {
 import { AuctionLot, GradeType, SystemUser } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
-import { isAssurantLot, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
+import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from '../components/LotMixExpandable';
@@ -146,7 +146,12 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     setQuickBidLot(lot);
     setQuickBidUnits(lot.quantity);
     const isVz = isVerizonLot(lot);
-    setQuickBidAmount(isVz ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 0) : lot.currentBidUsd + 25);
+    const isDiscount = isDiscountBidAuction(lot);
+    setQuickBidAmount(
+      isVz || isDiscount
+        ? (lot.currentBidUsd > 0 ? lot.currentBidUsd : 0)
+        : (lot.currentBidUsd > 0 ? lot.currentBidUsd + 5 : 5)
+    );
   };
 
   const handleConfirmBid = () => {
@@ -1707,6 +1712,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
       {/* QUICK BID MODAL INSIDE CLIENT PANEL */}
       {quickBidLot && (() => {
         const isVzQuick = isVerizonLot(quickBidLot);
+        const isDiscountQuick = isDiscountBidAuction(quickBidLot);
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
             <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
@@ -1766,10 +1772,15 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                           </span>
                         </div>
                       </>
+                    ) : isDiscountQuick ? (
+                      <div className="flex justify-between items-center text-cyan-300 font-medium">
+                        <span>Oferta Livre (Análise):</span>
+                        <span className="font-mono font-bold text-emerald-300">Pode enviar valor menor</span>
+                      </div>
                     ) : (
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Lance Mínimo Requerido:</span>
-                        <span className="font-mono font-bold text-amber-400">${(quickBidLot.currentBidUsd + 25).toLocaleString()} USD</span>
+                        <span className="text-slate-400">Lance Base Atual:</span>
+                        <span className="font-mono font-bold text-amber-400">${quickBidLot.currentBidUsd.toLocaleString()} USD</span>
                       </div>
                     )}
                   </>
@@ -1854,43 +1865,60 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <input
                     type="number"
                     min={1}
-                    step={isVzQuick ? 'any' : '25'}
+                    step="any"
                     value={quickBidAmount || ''}
-                    placeholder={isVzQuick ? 'Digite o valor em USD (ex: 1500)' : undefined}
+                    placeholder={isVzQuick ? 'Digite o valor em USD (ex: 1500)' : isDiscountQuick ? 'Digite um valor em USD' : undefined}
                     onChange={e => setQuickBidAmount(Number(e.target.value))}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
 
                 {/* Presets */}
-                <div className="flex items-center gap-2 pt-2">
-                  {isVzQuick && quickBidLot.currentBidUsd === 0 ? (
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  {isDiscountQuick ? (
                     <>
-                      <span className="text-[11px] text-slate-400">Valores exemplo:</span>
-                      {[500, 1000, 2500].map(preset => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setQuickBidAmount(preset)}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
-                        >
-                          ${preset.toLocaleString()}
-                        </button>
-                      ))}
+                      <span className="text-[11px] text-slate-400">Sugestões:</span>
+                      {[5, 10, 15, 25].map(delta => {
+                        const target = Math.max(1, quickBidLot.currentBidUsd - delta);
+                        return (
+                          <button
+                            key={delta}
+                            type="button"
+                            onClick={() => setQuickBidAmount(target)}
+                            className={`px-2 py-1 rounded text-xs font-mono transition-colors ${
+                              quickBidAmount === target
+                                ? 'bg-amber-500 text-slate-950 font-bold'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            }`}
+                          >
+                            - ${delta}
+                          </button>
+                        );
+                      })}
                     </>
                   ) : (
                     <>
-                      <span className="text-[11px] text-slate-400">Adicionar:</span>
-                      {[25, 50, 100].map(inc => (
-                        <button
-                          key={inc}
-                          type="button"
-                          onClick={() => setQuickBidAmount(quickBidLot.currentBidUsd + inc)}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-mono"
-                        >
-                          +${inc}
-                        </button>
-                      ))}
+                      <span className="text-[11px] text-slate-400">Sugestões:</span>
+                      {[5, 10, 15, 25].map(inc => {
+                        const target =
+                          quickBidLot.currentBidUsd > 0
+                            ? quickBidLot.currentBidUsd + inc
+                            : (quickBidAmount || 0) + inc;
+                        return (
+                          <button
+                            key={inc}
+                            type="button"
+                            onClick={() => setQuickBidAmount(target)}
+                            className={`px-2 py-1 rounded text-xs font-mono transition-colors ${
+                              quickBidLot.currentBidUsd > 0 && quickBidAmount === target
+                                ? 'bg-amber-500 text-slate-950 font-bold'
+                                : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            }`}
+                          >
+                            +${inc}
+                          </button>
+                        );
+                      })}
                     </>
                   )}
                 </div>

@@ -583,7 +583,7 @@ export default function App() {
           ...lot.bidsHistory
         ];
         const shouldUpdateLotCurrentBid =
-          bidQty >= lot.quantity || lot.currentBidUsd === 0 || amountUsd > lot.currentBidUsd;
+          lot.currentBidUsd === 0 || (bidQty >= lot.quantity && amountUsd > lot.currentBidUsd) || amountUsd > lot.currentBidUsd;
         return {
           ...lot,
           currentBidUsd: shouldUpdateLotCurrentBid ? amountUsd : lot.currentBidUsd,
@@ -674,7 +674,9 @@ export default function App() {
                 ? auctions.filter(a => getMarketplaceNumber(a) === 2)
                 : filterAuctionHouse === 'MARKETPLACE_3'
                   ? auctions.filter(a => getMarketplaceNumber(a) === 3)
-                  : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
+                  : filterAuctionHouse === 'MARKETPLACE_4'
+                    ? auctions.filter(a => getMarketplaceNumber(a) === 4)
+                    : auctions.filter(a => a.auctionHouse === filterAuctionHouse);
 
     const modelMap = new Map<string, { model: string; count: number; totalUnits: number }>();
 
@@ -723,6 +725,8 @@ export default function App() {
         if (getMarketplaceNumber(lot) !== 2) return false;
       } else if (filterAuctionHouse === 'MARKETPLACE_3') {
         if (getMarketplaceNumber(lot) !== 3) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_4') {
+        if (getMarketplaceNumber(lot) !== 4) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) return false;
       }
@@ -870,6 +874,8 @@ export default function App() {
         if (getMarketplaceNumber(lot) !== 2) return false;
       } else if (filterAuctionHouse === 'MARKETPLACE_3') {
         if (getMarketplaceNumber(lot) !== 3) return false;
+      } else if (filterAuctionHouse === 'MARKETPLACE_4') {
+        if (getMarketplaceNumber(lot) !== 4) return false;
       } else if (filterAuctionHouse !== 'all') {
         if (lot.auctionHouse !== filterAuctionHouse && lot.sourceType !== filterAuctionHouse) {
           return false;
@@ -1260,8 +1266,9 @@ export default function App() {
                         T-MOBILE
                       </button>
 
-                      {(['MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3'] as const).map((mktKey, i) => {
-                        const label = `Marketplace ${i + 1}`;
+                      {(['MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3', ...(auctions.some(a => getMarketplaceNumber(a) === 4) ? (['MARKETPLACE_4'] as const) : [])] as const).map((mktKey) => {
+                        const num = mktKey.replace('MARKETPLACE_', '');
+                        const label = `Marketplace ${num}`;
                         return (
                           <button
                             key={mktKey}

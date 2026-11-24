@@ -63,7 +63,7 @@ export interface AuctionLot {
   bidsHistory: BidHistoryItem[];
   originalListingUrl?: string;
   listingUrl?: string;
-  sourceType?: 'VERIZON' | 'CARRIER' | 'CUSTOM' | 'DEFAULT' | 'STOCK_APPLE' | 'ASSURANT' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS';
+  sourceType?: 'VERIZON' | 'CARRIER' | 'CUSTOM' | 'DEFAULT' | 'STOCK_APPLE' | 'ASSURANT' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MARKETPLACE_4' | 'MACBOOKS';
 }
 
 export type UserAccessType = 'client' | 'admin_geral' | 'admin_credenciado';

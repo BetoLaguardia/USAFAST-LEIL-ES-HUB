@@ -80,6 +80,9 @@ export function sanitizeAuctions(lots: any[]): any[] {
       } else if (src === 'MARKETPLACE_3' || /marketplace\s*3|wesell/i.test(house)) {
         nextHouse = 'Marketplace 3';
         if (/wesell/i.test(loc) || !nextLoc) nextLoc = 'New York / Miami Hub - Warehouse 03';
+      } else if (src === 'MARKETPLACE_4' || /marketplace\s*4/i.test(house)) {
+        nextHouse = 'Marketplace 4';
+        if (!nextLoc) nextLoc = 'Miami Hub - Warehouse 04';
       }
 
       if (nextHouse === house && nextLoc === loc) return lot;

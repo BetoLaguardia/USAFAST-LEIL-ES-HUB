@@ -20,21 +20,24 @@ export const isTMobileLot = (lot?: Partial<AuctionLot> | null): boolean => {
   );
 };
 
-export const getMarketplaceNumber = (lot?: Partial<AuctionLot> | string | null): 1 | 2 | 3 | null => {
+export const getMarketplaceNumber = (lot?: Partial<AuctionLot> | string | null): 1 | 2 | 3 | 4 | null => {
   if (!lot) return null;
   if (typeof lot === 'string') {
     if (/marketplace\s*1|manna?pov/i.test(lot)) return 1;
     if (/marketplace\s*2|recirq/i.test(lot)) return 2;
     if (/marketplace\s*3|wesell/i.test(lot)) return 3;
+    if (/marketplace\s*4/i.test(lot)) return 4;
     return null;
   }
   if (lot.sourceType === 'MARKETPLACE_1') return 1;
   if (lot.sourceType === 'MARKETPLACE_2') return 2;
   if (lot.sourceType === 'MARKETPLACE_3') return 3;
+  if (lot.sourceType === 'MARKETPLACE_4') return 4;
   const text = `${lot.auctionHouse || ''} ${lot.location || ''}`;
   if (/marketplace\s*1|manna?pov/i.test(text)) return 1;
   if (/marketplace\s*2|recirq/i.test(text)) return 2;
   if (/marketplace\s*3|wesell/i.test(text)) return 3;
+  if (/marketplace\s*4/i.test(text)) return 4;
   return null;
 };
 
@@ -125,7 +128,9 @@ export const normalizeVerizonLot = (lot: AuctionLot): AuctionLot => {
         ? 'Marketplace 2'
         : mktNum === 3
           ? 'Marketplace 3'
-          : sanitizeSupplierStrings(lot.auctionHouse || '');
+          : mktNum === 4
+            ? 'Marketplace 4'
+            : sanitizeSupplierStrings(lot.auctionHouse || '');
   const cleanLoc =
     mktNum === 1 && /mannapov/i.test(lot.location || '')
       ? 'Miami Hub - Warehouse 01'

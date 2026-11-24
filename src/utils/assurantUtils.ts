@@ -12,6 +12,34 @@ export function isAssurantLot(lot: AuctionLot | null | undefined): boolean {
   );
 }
 
+export function isMacbooksLot(lot: Partial<AuctionLot> | null | undefined): boolean {
+  if (!lot) return false;
+  return (
+    lot.sourceType === 'MACBOOKS' ||
+    /macbook/i.test(lot.auctionHouse || '')
+  );
+}
+
+export function isMarketplaceLot(lot: Partial<AuctionLot> | null | undefined): boolean {
+  if (!lot) return false;
+  return (
+    lot.sourceType === 'MARKETPLACE_1' ||
+    lot.sourceType === 'MARKETPLACE_2' ||
+    lot.sourceType === 'MARKETPLACE_3' ||
+    lot.sourceType === 'MARKETPLACE_4' ||
+    /marketplace\s*[1-4]?|manna?pov|recirq|wesell/i.test(`${lot.auctionHouse || ''} ${lot.location || ''}`)
+  );
+}
+
+/**
+ * Retorna true para leilões que aceitam ofertas abaixo do valor atual (-$5, -$10, -$15, -$25):
+ * Assurant e Marketplace 1, 2, 3 e 4.
+ */
+export function isDiscountBidAuction(lot: Partial<AuctionLot> | null | undefined): boolean {
+  if (!lot) return false;
+  return isAssurantLot(lot as AuctionLot) || isMarketplaceLot(lot);
+}
+
 /**
  * Retorna o preço UNITÁRIO (em USD) de um lote.
  * No leilão ASSURANT, currentBidUsd já representa o valor unitário (NUNCA dividir pela quantidade).
