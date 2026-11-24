@@ -1138,8 +1138,22 @@ $285.00
   };
 
   // ----------------------------------------------------
-  // PRONTA ENTREGA TEXT PARSER (PRICE > 0 AND MIDDLE QTY > 0)
+  // PRONTA ENTREGA TEXT PARSER (PRICE > 0, HAVE > 0, ONLY GRADES A, AB, B)
   // ----------------------------------------------------
+  const extractProntaEntregaAllowedGrade = (name: string): 'A' | 'AB' | 'B' | null => {
+    const cleaned = name.trim();
+    if (!cleaned) return null;
+    const matches = Array.from(
+      cleaned.matchAll(/(?:^|[\s\-(])(?:Grade\s+)?(BLQ|DEF|LOCKED|CRACK|SWAP|BAD|PARTS|A\+|A-|B\+|B-|C\+|C-|A\/B|B\/C|AB|BC|CD|A|B|C|D)(?=$|[\s),])/gi)
+    );
+    if (matches.length === 0) return null;
+    const lastToken = matches[matches.length - 1][1].toUpperCase();
+    if (lastToken === 'A' || lastToken === 'AB' || lastToken === 'B') {
+      return lastToken;
+    }
+    return null;
+  };
+
   const parseProntaEntregaText = (text: string): StockAppleItem[] => {
     const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const filteredLines = rawLines.filter(l => {
@@ -1173,12 +1187,10 @@ $285.00
             ? parseInt(qtyParts[1].replace(/[^\d]/g, ''), 10) || 0
             : parseInt(qtyParts[0].replace(/[^\d]/g, ''), 10) || 0;
 
-          if (price > 0 && haveQty > 0) {
+          const allowedGrade = extractProntaEntregaAllowedGrade(modelName);
+          if (price > 0 && haveQty > 0 && allowedGrade) {
             const capMatch = modelName.match(/\b(\d+\s*(GB|TB))\b/i);
             const capacity = capMatch ? capMatch[1].replace(/\s+/g, '').toUpperCase() : '128GB';
-
-            const gradeMatch = modelName.match(/\b(BLQ|DEF|A\+|AB|A|B|C)\b/i);
-            const grade = gradeMatch ? gradeMatch[1].toUpperCase() : 'Grade A';
 
             const catLow = category.toLowerCase();
             const devType: StockAppleItem['deviceType'] =
@@ -1203,7 +1215,7 @@ $285.00
               carrier: 'UNLOCKED',
               lockStatus: 'UNLOCKED',
               color: 'Mixed',
-              grade,
+              grade: allowedGrade,
               availableQuantity: haveQty,
               listPrice: price,
               baseListPrice: price,
@@ -1233,13 +1245,11 @@ $285.00
         const makeLine = i >= 5 ? nonTabLines[i - 5] : 'Apple';
 
         const price = parsePrice(priceLine);
+        const allowedGrade = extractProntaEntregaAllowedGrade(nameLine);
 
-        if (price > 0 && haveQty > 0 && nameLine) {
+        if (price > 0 && haveQty > 0 && nameLine && allowedGrade) {
           const capMatch = nameLine.match(/\b(\d+\s*(GB|TB))\b/i);
           const capacity = capMatch ? capMatch[1].replace(/\s+/g, '').toUpperCase() : '128GB';
-
-          const gradeMatch = nameLine.match(/\b(BLQ|DEF|A\+|AB|A|B|C)\b/i);
-          const grade = gradeMatch ? gradeMatch[1].toUpperCase() : 'Grade A';
 
           const catLow = catLine.toLowerCase();
           const devType: StockAppleItem['deviceType'] =
@@ -1264,7 +1274,7 @@ $285.00
             carrier: 'UNLOCKED',
             lockStatus: 'UNLOCKED',
             color: 'Mixed',
-            grade,
+            grade: allowedGrade,
             availableQuantity: haveQty,
             listPrice: price,
             baseListPrice: price,
@@ -2567,7 +2577,7 @@ $285.00
     if (looksLikeProntaEntrega || (presetFormat === 'STOCK_APPLE' && !trimmedPaste.startsWith('<') && !/Item\s*#|Warehouse|Lock\s*Status/i.test(trimmedPaste.split(/\r?\n/)[0] || ''))) {
       const prontaItems = parseProntaEntregaText(trimmedPaste);
       if (prontaItems.length === 0) {
-        showNotice('Nenhum produto com preço > $0.00 e estoque positivo (Need/Have/OnPO) encontrado no texto colado.', 'error');
+        showNotice('Nenhum produto das Grades A, AB ou B com preço > $0.00 e estoque positivo foi encontrado no texto colado.', 'error');
         return;
       }
       setPresetFormat('STOCK_APPLE');
@@ -2592,7 +2602,7 @@ $285.00
         '_baseListPrice': it.baseListPrice,
         'Currency': it.currency
       })), true);
-      showNotice(`📦 ${prontaItems.length} itens de Pronta Entrega (preço > $0 e estoque > 0) prontos para publicar!`, 'success');
+      showNotice(`📦 ${prontaItems.length} itens de Pronta Entrega (Grades A, AB e B com preço > $0 e estoque > 0) prontos para publicar!`, 'success');
       return;
     }
 
@@ -4488,7 +4498,7 @@ $285.00
                         PRONTA ENTREGA
                       </span>
                       <span>
-                        Processa cabeçalho &amp; linhas (Manufacturer, Product Name, SKU, Category, Selling Price, Need/Have/OnPO), filtrando automaticamente preço &gt; $0.00 e estoque positivo (número do meio).
+                        Filtro automático ativo: apenas <strong className="text-white">Grades A, AB e B</strong> com preço &gt; $0.00 e estoque positivo em Need/Have/OnPO (demais grades como DEF, BLQ, C, etc. são excluídas mesmo com quantidade).
                       </span>
                     </div>
                   </div>
@@ -4632,7 +4642,7 @@ $285.00
                       {presetFormat === 'MACBOOKS'
                         ? 'Apple MacBook Pro / Air • Specs & Bateria Verificados'
                         : presetFormat === 'STOCK_APPLE'
-                        ? 'Pronta Entrega com Preço > $0 e Estoque Positivo'
+                        ? 'Apenas Grades A, AB e B • Preço > $0 e Estoque Positivo'
                         : 'Apple, Samsung & Google Desbloqueados (Sem LOCKED)'}
                     </span>
                   </div>
@@ -4656,7 +4666,7 @@ $285.00
                     {presetFormat === 'MACBOOKS'
                       ? <>MacBooks importados via texto com especificação completa de processador, memória, SSD e modelo Axxxx. Use o botão acima para acrescentar ou remover a margem (+$25 / +$40).</>
                       : presetFormat === 'STOCK_APPLE'
-                      ? <>Itens de Pronta Entrega / Stock Apple aprovados (preço maior que $0.00 e estoque disponível positivo em Need/Have/OnPO).</>
+                      ? <>Itens de Pronta Entrega filtrados estritamente para <span className="text-emerald-300 font-semibold">Grades A, AB e B</span> com preço maior que $0.00 e estoque positivo em Need/Have/OnPO.</>
                       : <>Critério de seleção aplicado: Apenas smartphones, tablets e wearables desbloqueados (<span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>). Todos os aparelhos bloqueados (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) e acessórios foram automaticamente descartados.</>}
                   </p>
                 </div>
