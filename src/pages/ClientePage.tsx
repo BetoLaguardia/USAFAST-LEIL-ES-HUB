@@ -20,6 +20,7 @@ import {
   ChevronRight,
   TrendingUp,
   FileText,
+  FileSpreadsheet,
   List,
   LayoutGrid,
   Lock
@@ -27,6 +28,7 @@ import {
 import { AuctionLot, GradeType, SystemUser } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { downloadOfficialInvoicePdf } from '../utils/generatePdfInvoice';
+import { exportAuctionsCatalogXlsx, exportAuctionsCatalogPdf, exportClientBidsXlsx, exportClientBidsPdf } from '../utils/styledExports';
 import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot } from '../utils/verizonUtils';
@@ -69,7 +71,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [selectedCapacityFilter, setSelectedCapacityFilter] = useState<string>('all');
   const [selectedAuctionHouseFilter, setSelectedAuctionHouseFilter] = useState<string>('all');
-  const [selectedAuctionSystemFilter, setSelectedAuctionSystemFilter] = useState<'all' | 'VERIZON' | 'T_MOBILE' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS'>('all');
+  const [selectedAuctionSystemFilter, setSelectedAuctionSystemFilter] = useState<'all' | 'VERIZON' | 'T_MOBILE' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MARKETPLACE_4' | 'MACBOOKS'>('all');
   const [selectedLotTypeFilter, setSelectedLotTypeFilter] = useState<string>('all');
   const [clientSearch, setClientSearch] = useState('');
   const [clientPage, setClientPage] = useState<number>(1);
@@ -181,6 +183,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && getMarketplaceNumber(lot) !== 1) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && getMarketplaceNumber(lot) !== 2) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && getMarketplaceNumber(lot) !== 3) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_4' && getMarketplaceNumber(lot) !== 4) return false;
     if (selectedAuctionSystemFilter === 'MACBOOKS' && lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse)) return false;
     return true;
   };
@@ -264,6 +267,7 @@ export const ClientePage: React.FC<ClientePageProps> = ({
     if (selectedAuctionSystemFilter === 'MARKETPLACE_1' && getMarketplaceNumber(lot) !== 1) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_2' && getMarketplaceNumber(lot) !== 2) return false;
     if (selectedAuctionSystemFilter === 'MARKETPLACE_3' && getMarketplaceNumber(lot) !== 3) return false;
+    if (selectedAuctionSystemFilter === 'MARKETPLACE_4' && getMarketplaceNumber(lot) !== 4) return false;
     if (selectedAuctionSystemFilter === 'MACBOOKS' && lot.sourceType !== 'MACBOOKS' && !/macbook/i.test(lot.auctionHouse)) return false;
     if (selectedLotTypeFilter === 'wholesale' && lot.quantity <= 1) return false;
     if (selectedLotTypeFilter === 'single' && lot.quantity > 1) return false;
@@ -450,6 +454,9 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                   <option value="MARKETPLACE_1">🏬 Marketplace 1</option>
                   <option value="MARKETPLACE_2">🏬 Marketplace 2</option>
                   <option value="MARKETPLACE_3">🏬 Marketplace 3</option>
+                  {normalizedAuctions.some(a => getMarketplaceNumber(a) === 4) && (
+                    <option value="MARKETPLACE_4">🏬 Marketplace 4</option>
+                  )}
                   <option value="MACBOOKS">💻 Leilão Macbooks</option>
                 </select>
               </div>
@@ -530,39 +537,76 @@ export const ClientePage: React.FC<ClientePageProps> = ({
             </div>
           </div>
 
-          {/* View Mode Switcher Bar */}
+          {/* View Mode Switcher & Catalog Export Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-300 font-bold">Modo de Exibição dos Modelos:</span>
               <span className="text-[11px] text-slate-500 hidden md:inline">· Escolha entre a lista consolidada ou cards visuais</span>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
-                  viewMode === 'list'
-                    ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <List className="w-3.5 h-3.5" />
-                <span>Lista de Modelos & Ofertas</span>
-              </button>
+            <div className="flex flex-wrap items-center gap-2">
+              {auctions.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      exportAuctionsCatalogXlsx(clientFilteredLots.length > 0 ? clientFilteredLots : auctions, usdRate, {
+                        filterLabel: clientFilteredLots.length < auctions.length
+                          ? `Filtro do Cliente (${clientFilteredLots.length} de ${auctions.length} lotes)`
+                          : `Todos os Leilões (${auctions.length} lotes)`
+                      });
+                      showSuccess('Planilha Excel do catálogo de leilões exportada!');
+                    }}
+                    className="px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Exportar Excel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      exportAuctionsCatalogPdf(clientFilteredLots.length > 0 ? clientFilteredLots : auctions, usdRate, {
+                        filterLabel: clientFilteredLots.length < auctions.length
+                          ? `Filtro do Cliente (${clientFilteredLots.length} de ${auctions.length} lotes)`
+                          : `Todos os Leilões (${auctions.length} lotes)`
+                      });
+                      showSuccess('Catálogo em PDF pronto para salvar/imprimir!');
+                    }}
+                    className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Exportar PDF</span>
+                  </button>
+                </div>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setViewMode('cards')}
-                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
-                  viewMode === 'cards'
-                    ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Cards em Grade</span>
-              </button>
+              <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                    viewMode === 'list'
+                      ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  <span>Lista de Modelos & Ofertas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
+                    viewMode === 'cards'
+                      ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Cards em Grade</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -898,9 +942,27 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                     Informar Valor ($)
                                   </button>
                                 </div>
+                              ) : isDiscountBidAuction(lot) ? (
+                                <div className="flex items-center justify-center gap-1 font-mono">
+                                  {[5, 10, 15, 25].map(delta => (
+                                    <button
+                                      key={delta}
+                                      type="button"
+                                      onClick={() => {
+                                        const val = Math.max(1, lot.currentBidUsd - delta);
+                                        onPlaceBid(lot.id, val);
+                                        showSuccess(`🎉 Oferta de $${val.toLocaleString()} USD computada no modelo ${lot.modelFamily} (${lot.lotNumber})!`);
+                                      }}
+                                      className="py-1 px-1.5 bg-slate-800 hover:bg-amber-400 hover:text-slate-950 active:scale-95 text-amber-300 border border-slate-700/80 rounded text-[10px] font-bold transition-all"
+                                      title={`Ofertar -$${delta} USD agora`}
+                                    >
+                                      -${delta}
+                                    </button>
+                                  ))}
+                                </div>
                               ) : (
                                 <div className="flex items-center justify-center gap-1 font-mono">
-                                  {[25, 50, 100, 250].map(inc => (
+                                  {[5, 10, 15, 25].map(inc => (
                                     <button
                                       key={inc}
                                       type="button"
@@ -1152,11 +1214,32 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                               <span>Lote fechado ({lot.quantity} un. fixas)</span>
                               <span className="font-bold text-emerald-300">Valor Livre (USD)</span>
                             </div>
+                          ) : isDiscountBidAuction(lot) ? (
+                            <>
+                              <span className="text-[10px] text-slate-400 font-semibold block">Computar Oferta Rápida:</span>
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {[5, 10, 15, 25].map(delta => (
+                                  <button
+                                    key={delta}
+                                    type="button"
+                                    onClick={() => {
+                                      const val = Math.max(1, lot.currentBidUsd - delta);
+                                      onPlaceBid(lot.id, val);
+                                      showSuccess(`🎉 Oferta de $${val.toLocaleString()} USD computada no lote ${lot.lotNumber}!`);
+                                    }}
+                                    className="py-1 px-1 bg-slate-800/90 hover:bg-amber-400 hover:text-slate-950 active:scale-95 text-amber-300 border border-slate-700/80 rounded-lg text-[10px] font-mono font-bold transition-all text-center"
+                                    title={`Computar oferta imediata de -$${delta} USD`}
+                                  >
+                                    -${delta}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
                           ) : (
                             <>
                               <span className="text-[10px] text-slate-400 font-semibold block">Computar Oferta Rápida:</span>
                               <div className="grid grid-cols-4 gap-1.5">
-                                {[25, 50, 100, 250].map(inc => (
+                                {[5, 10, 15, 25].map(inc => (
                                   <button
                                     key={inc}
                                     type="button"
@@ -1244,11 +1327,50 @@ export const ClientePage: React.FC<ClientePageProps> = ({
       {/* ========================================================= */}
       {activeTab === 'meus-lances' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-white">Lotes com Seus Lances Computados</h2>
               <p className="text-xs text-slate-400">Acompanhe se você é o arrematante vencedor ou se seu lance foi superado</p>
             </div>
+
+            {userBids.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportClientBidsXlsx({
+                      bids: userBids,
+                      auctions,
+                      adminOffers,
+                      currentUser,
+                      usdRate
+                    });
+                    showSuccess('Planilha Excel dos seus lances ativos exportada!');
+                  }}
+                  className="px-3.5 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Exportar Lances (Excel)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exportClientBidsPdf({
+                      bids: userBids,
+                      auctions,
+                      adminOffers,
+                      currentUser,
+                      usdRate
+                    });
+                    showSuccess('Relatório PDF dos seus lances ativos pronto para salvar/imprimir!');
+                  }}
+                  className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Exportar Lances (PDF)</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Live Offer Status Alerts from Admin */}

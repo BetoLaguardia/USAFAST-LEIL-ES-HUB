@@ -28,6 +28,7 @@ import { stripLotPrefix } from './utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
 import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
+import { exportAuctionsCatalogXlsx, exportAuctionsCatalogPdf } from './utils/styledExports';
 import { 
   Search, 
   Filter, 
@@ -41,6 +42,7 @@ import {
   SlidersHorizontal,
   Package,
   FileSpreadsheet,
+  FileText,
   List,
   Lock,
   Sparkles,
@@ -1476,8 +1478,8 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Bulk selection action bar */}
-              <div className="flex items-center gap-2">
+              {/* Bulk selection action bar & catalog exports */}
+              <div className="flex flex-wrap items-center gap-2">
                 {selectedLotIds.length > 0 ? (
                   <div className="flex items-center gap-2 text-xs">
                     <span className="font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
@@ -1517,6 +1519,43 @@ export default function App() {
                         Limpar filtros
                       </button>
                     )}
+                  </div>
+                )}
+
+                {auctions.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        exportAuctionsCatalogXlsx(filteredAuctions.length > 0 ? filteredAuctions : auctions, usdRate, {
+                          filterLabel: filteredAuctions.length < auctions.length
+                            ? `Filtro ativo (${filteredAuctions.length} de ${auctions.length} lotes)`
+                            : `Todos os Leilões Importados (${auctions.length} lotes)`
+                        });
+                        showToast('Planilha Excel dos leilões gerada com sucesso!');
+                      }}
+                      className="px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                      title="Exportar leilões exibidos em Excel estilizado"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      <span>Excel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        exportAuctionsCatalogPdf(filteredAuctions.length > 0 ? filteredAuctions : auctions, usdRate, {
+                          filterLabel: filteredAuctions.length < auctions.length
+                            ? `Filtro ativo (${filteredAuctions.length} de ${auctions.length} lotes)`
+                            : `Todos os Leilões Importados (${auctions.length} lotes)`
+                        });
+                        showToast('PDF do catálogo de leilões pronto para salvar/imprimir!');
+                      }}
+                      className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                      title="Exportar leilões exibidos em PDF com layout executivo"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>PDF</span>
+                    </button>
                   </div>
                 )}
               </div>

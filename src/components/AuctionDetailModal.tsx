@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Gavel, MapPin, Download, CheckCircle2, Battery, Smartphone, AlertTriangle, Lock, Layers, ChevronDown } from 'lucide-react';
+import { X, Gavel, MapPin, Download, FileText, CheckCircle2, Battery, Smartphone, AlertTriangle, Lock, Layers, ChevronDown } from 'lucide-react';
 import { AuctionLot } from '../types/auction';
 import { GRADE_EXPLANATIONS } from '../data/auctionsData';
 import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotUnitPriceUsd, getLotIncrementSize, getLotEffectiveQuantityStep } from '../utils/assurantUtils';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
-import { buildExpandedManifestUnits, exportLotManifestXlsx } from '../utils/manifestExport';
+import { buildExpandedManifestUnits, exportLotManifestXlsx, exportLotManifestPdf } from '../utils/manifestExport';
 
 interface AuctionDetailModalProps {
   lot: AuctionLot | null;
@@ -146,6 +146,10 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
     exportLotManifestXlsx(lot, currency, usdRate);
   };
 
+  const handleDownloadPdf = () => {
+    exportLotManifestPdf(lot, currency, usdRate);
+  };
+
   const formattedCurrentPrice = currency === 'USD'
     ? `$ ${lot.currentBidUsd.toLocaleString()} USD`
     : `aprox. R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
@@ -220,6 +224,14 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             >
               <Download className="w-3.5 h-3.5" />
               <span>Exportar Planilha (XLSX)</span>
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-lg text-xs font-semibold transition-colors"
+              title="Exportar Manifesto Técnico Oficial em PDF"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Exportar Manifesto (PDF)</span>
             </button>
             <button
               onClick={onClose}
@@ -749,13 +761,22 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 </p>
               </div>
 
-              <button
-                onClick={handleDownloadXlsx}
-                className="px-3.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Exportar Planilha XLSX (USAFAST LEILÕES)</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleDownloadXlsx}
+                  className="px-3.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Exportar Planilha XLSX (USAFAST LEILÕES)</span>
+                </button>
+                <button
+                  onClick={handleDownloadPdf}
+                  className="px-3.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Exportar Manifesto (PDF)</span>
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950/60 max-h-80 overflow-y-auto">

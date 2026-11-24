@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock } from 'lucide-react';
+import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock, FileSpreadsheet, FileText } from 'lucide-react';
 import { AuctionLot, SystemUser, UserAccessType } from '../types/auction';
 import { isAssurantLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotIncrementSize } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
 import { registerClientWithSupabase } from '../services/authService';
+import { exportClientBidsXlsx, exportClientBidsPdf } from '../utils/styledExports';
 
 interface AuctionSystemModalProps {
   isOpen: boolean;
@@ -367,13 +368,59 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
 
               {/* Meus Lances Registrados */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="font-semibold text-white text-xs">
                     Histórico de Lances Ativos no Nosso Sistema
                   </h4>
-                  <span className="text-[11px] text-slate-400">
-                    {userBids.length} lance(s) monitorado(s)
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400">
+                      {userBids.length} lance(s) monitorado(s)
+                    </span>
+                    {userBids.length > 0 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let adminOffers = [];
+                            try {
+                              adminOffers = JSON.parse(localStorage.getItem('us_admin_offers_v1') || '[]');
+                            } catch (e) {}
+                            exportClientBidsXlsx({
+                              bids: userBids,
+                              auctions,
+                              adminOffers,
+                              currentUser,
+                              usdRate
+                            });
+                          }}
+                          className="px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded text-[11px] font-semibold flex items-center gap-1"
+                        >
+                          <FileSpreadsheet className="w-3 h-3" />
+                          <span>Excel</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let adminOffers = [];
+                            try {
+                              adminOffers = JSON.parse(localStorage.getItem('us_admin_offers_v1') || '[]');
+                            } catch (e) {}
+                            exportClientBidsPdf({
+                              bids: userBids,
+                              auctions,
+                              adminOffers,
+                              currentUser,
+                              usdRate
+                            });
+                          }}
+                          className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded text-[11px] font-semibold flex items-center gap-1"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>PDF</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {userBids.length === 0 ? (

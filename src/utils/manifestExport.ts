@@ -8,6 +8,7 @@ import {
   parseBstockColorFromDesc
 } from './verizonUtils';
 import { isAssurantLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotIncrementSize } from './assurantUtils';
+import { escapeHtml, printHtmlToPdf } from './pdfPrint';
 
 export interface ExpandedManifestDevice extends DeviceItem {
   unitIndex: number;
@@ -445,3 +446,294 @@ export function exportLotManifestXlsx(
   const safeLotCode = String(lot.lotNumber || lot.id).replace(/[^a-zA-Z0-9_-]/g, '_');
   XLSX.writeFile(wb, `USAFAST_LEILOES_Lote_${safeLotCode}.xlsx`);
 }
+
+export function exportLotManifestPdf(
+  lot: AuctionLot,
+  currency: 'USD' | 'BRL',
+  usdRate: number
+) {
+  const verizon = isVerizonLot(lot);
+  const displayLotGrade = verizon ? mapVerizonGradeStrict(lot.grade) : (lot.grade || 'Grade A');
+  const cleanTitle = stripLotPrefix(lot.title);
+  const { units, totalLotQuantity, isTruncated } = buildExpandedManifestUnits(lot);
+  const mix = getLotMixSummary(lot);
+
+  const isAssurant = isAssurantLot(lot);
+  const unitUsd = getLotUnitPriceUsd(lot);
+  const totalUsd = getLotTotalPriceUsd(lot);
+  const incrementSize = getLotIncrementSize(lot);
+  const safeRate = usdRate > 0 ? usdRate : 5.75;
+
+  const priceSummary =
+    verizon && lot.currentBidUsd === 0
+      ? 'Sem Preço Fixo (Livre Escolha em USD)'
+      : isAssurant
+        ? `$ ${unitUsd.toLocaleString('en-US')} USD / un. · Inc: ${incrementSize} un. (aprox. R$ ${(unitUsd * safeRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.)`
+        : currency === 'USD'
+          ? `$ ${totalUsd.toLocaleString('en-US')} USD (aprox. R$ ${(totalUsd * safeRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })})`
+          : `aprox. R$ ${(totalUsd * safeRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} ($ ${totalUsd.toLocaleString('en-US')} USD)`;
+
+  const mixSectionHtml =
+    mix.groupedItems.length > 0
+      ? `
+      <div class="section-block">
+        <div class="section-bar">RESUMO AGRUPADO DO MIX (${mix.groupedItems.length} variações · ${totalLotQuantity.toLocaleString('pt-BR')} aparelhos)</div>
+        <table class="data-table compact">
+          <thead>
+            <tr>
+              <th>Modelo</th>
+              <th class="center">Capacidade</th>
+              <th>Cor</th>
+              <th class="center">Grade</th>
+              <th class="center">Quantidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${mix.groupedItems
+              .map(
+                (g, i) => `
+              <tr class="${i % 2 === 1 ? 'alt' : ''}">
+                <td class="bold">${escapeHtml(g.model)}</td>
+                <td class="center mono">${escapeHtml(g.storage)}</td>
+                <td>${escapeHtml(g.color)}</td>
+                <td class="center"><span class="grade-pill">${escapeHtml(g.grade)}</span></td>
+                <td class="center bold mono">${g.qty.toLocaleString('pt-BR')}x</td>
+              </tr>`
+              )
+              .join('')}
+          </tbody>
+        </table>
+      </div>`
+      : '';
+
+  const unitRowsHtml = units
+    .map(
+      (u, idx) => `
+      <tr class="${idx % 2 === 1 ? 'alt' : ''}">
+        <td class="center bold mono amber-text">#${u.unitIndex}</td>
+        <td>
+          <div class="bold">${escapeHtml(u.model)}</div>
+          ${u.itemDescription ? `<div class="sub-desc">${escapeHtml(u.itemDescription)}</div>` : ''}
+        </td>
+        <td class="center mono">${escapeHtml(u.storage)}</td>
+        <td>${escapeHtml(u.resolvedColor)}</td>
+        <td class="center"><span class="grade-pill">${escapeHtml(u.resolvedGrade)}</span></td>
+        <td class="center bold mono green-text">${u.batteryHealth}%</td>
+        <td>${escapeHtml(u.carrierStatus)}</td>
+        <td class="green-text bold">${escapeHtml(u.icloudStatus)}</td>
+        <td>${escapeHtml(u.screenCondition)}</td>
+        <td>${escapeHtml(u.housingCondition)}</td>
+        <td class="mono muted">${escapeHtml(u.imeiMasked)}</td>
+        <td class="mono muted">${escapeHtml(u.partNumber || '-')}</td>
+        <td>${escapeHtml(u.inventorySource || lot.auctionHouse || '-')}</td>
+      </tr>`
+    )
+    .join('');
+
+  const exportedAt = new Date().toLocaleString('pt-BR');
+  const safeLotCode = String(lot.lotNumber || lot.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8" />
+      <title>Manifesto Oficial - Lote ${escapeHtml(lot.lotNumber)}</title>
+      <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        @media print {
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          body { margin: 0; padding: 0; background: #fff !important; }
+        }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          margin: 0;
+          padding: 16px;
+          background: #ffffff;
+          color: #0f172a;
+          font-size: 10px;
+        }
+        .banner {
+          background: #0f172a;
+          color: #ffffff;
+          padding: 16px 20px;
+          border-radius: 10px;
+          border-bottom: 4px solid #f59e0b;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 14px;
+        }
+        .brand-badge {
+          display: inline-block;
+          background: #f59e0b;
+          color: #0f172a;
+          font-weight: 900;
+          font-size: 9px;
+          padding: 3px 8px;
+          border-radius: 4px;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          margin-bottom: 4px;
+        }
+        .banner h1 { margin: 0; font-size: 16px; font-weight: 900; color: #ffffff; }
+        .banner p { margin: 3px 0 0; font-size: 10px; color: #cbd5e1; }
+        .banner-right { text-align: right; font-family: ui-monospace, monospace; font-size: 10px; color: #e2e8f0; }
+        .lot-code { font-size: 14px; font-weight: 900; color: #fbbf24; }
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+        .kpi-card {
+          background: #f8fafc;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          padding: 9px 11px;
+        }
+        .kpi-label { font-size: 8.5px; text-transform: uppercase; font-weight: 800; color: #64748b; letter-spacing: 0.4px; }
+        .kpi-value { font-size: 11px; font-weight: 800; color: #0f172a; margin-top: 3px; }
+        .kpi-sub { font-size: 9px; color: #475569; margin-top: 2px; }
+        .section-block { margin-bottom: 14px; }
+        .section-bar {
+          background: #f59e0b;
+          color: #0f172a;
+          font-weight: 900;
+          font-size: 10px;
+          padding: 6px 10px;
+          border-radius: 6px 6px 0 0;
+          letter-spacing: 0.4px;
+        }
+        .data-table {
+          width: 100%;
+          border-collapse: collapse;
+          border: 1px solid #cbd5e1;
+        }
+        .data-table thead { display: table-header-group; }
+        .data-table tr { break-inside: avoid; }
+        .data-table th {
+          background: #0f172a;
+          color: #ffffff;
+          padding: 7px 6px;
+          font-size: 8.5px;
+          text-transform: uppercase;
+          text-align: left;
+          border-bottom: 2px solid #f59e0b;
+          white-space: nowrap;
+        }
+        .data-table td {
+          padding: 5.5px 6px;
+          border-bottom: 1px solid #e2e8f0;
+          font-size: 8.8px;
+          color: #1e293b;
+          vertical-align: top;
+        }
+        .data-table tr.alt td { background: #f8fafc; }
+        .center { text-align: center !important; }
+        .bold { font-weight: 700; color: #0f172a; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .amber-text { color: #b45309 !important; }
+        .green-text { color: #047857 !important; }
+        .muted { color: #64748b; }
+        .sub-desc { font-size: 7.5px; color: #64748b; margin-top: 1px; max-width: 170px; word-break: break-word; }
+        .grade-pill {
+          display: inline-block;
+          background: #fffbeb;
+          border: 1px solid #fcd34d;
+          color: #b45309;
+          padding: 1px 5px;
+          border-radius: 4px;
+          font-weight: 800;
+          font-size: 8px;
+        }
+        .footer {
+          margin-top: 12px;
+          padding: 8px 12px;
+          background: #0f172a;
+          color: #94a3b8;
+          border-radius: 6px;
+          display: flex;
+          justify-content: space-between;
+          font-size: 8.5px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="banner">
+        <div>
+          <div class="brand-badge">USAFAST LEILÕES HUB · MANIFESTO TÉCNICO OFICIAL</div>
+          <h1>${escapeHtml(cleanTitle)}</h1>
+          <p>Casa: ${escapeHtml(lot.auctionHouse)} · Origem: ${escapeHtml(lot.location)} · Modelo/Família: ${escapeHtml(lot.modelFamily || cleanTitle)}</p>
+        </div>
+        <div class="banner-right">
+          <div class="lot-code">${escapeHtml(lot.lotNumber)}</div>
+          <div>Exportado em ${escapeHtml(exportedAt)}</div>
+          <div>PTAX: R$ ${safeRate.toFixed(2)}</div>
+        </div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Grade &amp; Classificação</div>
+          <div class="kpi-value">${escapeHtml(displayLotGrade)}</div>
+          <div class="kpi-sub">Inspeção 30 Pontos · Clean IMEI</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Quantidade Total</div>
+          <div class="kpi-value">${totalLotQuantity.toLocaleString('pt-BR')} ${totalLotQuantity === 1 ? 'unidade' : 'unidades'}</div>
+          <div class="kpi-sub">Bateria: ${escapeHtml(lot.batteryHealthRange || '85%+')}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Valor / Lance Atual</div>
+          <div class="kpi-value">${escapeHtml(priceSummary)}</div>
+          <div class="kpi-sub">Operadora: ${escapeHtml(lot.carrierStatus || 'Desbloqueado')}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Capacidade &amp; Cores</div>
+          <div class="kpi-value">${escapeHtml(lot.primaryStorage || 'Misto')}</div>
+          <div class="kpi-sub">${escapeHtml((lot.colorHighlights || []).slice(0, 4).join(', ') || 'Cores do Manifesto')}</div>
+        </div>
+      </div>
+
+      ${mixSectionHtml}
+
+      <div class="section-block">
+        <div class="section-bar">
+          RELAÇÃO TÉCNICA DOS APARELHOS (${units.length.toLocaleString('pt-BR')} ${isTruncated ? `EXIBIDOS DE ${totalLotQuantity.toLocaleString('pt-BR')}` : 'UNIDADES'})
+        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th class="center">Item</th>
+              <th>Modelo / Descrição</th>
+              <th class="center">Cap.</th>
+              <th>Cor</th>
+              <th class="center">Grade</th>
+              <th class="center">Bat.</th>
+              <th>Operadora</th>
+              <th>iCloud</th>
+              <th>Tela</th>
+              <th>Carcaça</th>
+              <th>IMEI / ESN</th>
+              <th>Part #</th>
+              <th>Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${unitRowsHtml}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footer">
+        <span>USAFAST LEILÕES HUB MIAMI LLC · Hub Doral FL · FMI OFF &amp; Clean ESN Auditado</span>
+        <span>${isTruncated ? 'Nota: Visualização limitada aos primeiros 1.000 aparelhos para performance de impressão.' : `Manifesto integral com ${units.length} aparelhos`}</span>
+      </div>
+    </body>
+    </html>
+  `;
+
+  printHtmlToPdf(html, `USAFAST_Manifesto_Lote_${safeLotCode}`);
+}
+

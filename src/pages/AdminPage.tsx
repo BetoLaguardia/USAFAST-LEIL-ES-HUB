@@ -43,11 +43,20 @@ import {
   XCircle,
   Filter,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from 'lucide-react';
 import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
 import { fetchAdminClients, updateAdminClientAccessType, updateAdminClientStatus, deleteAdminClient } from '../services/authService';
+import { downloadOfficialInvoicePdf, downloadClientInvoicePdf, InvoiceLineItem } from '../utils/generatePdfInvoice';
+import {
+  exportAuctionsCatalogXlsx,
+  exportAuctionsCatalogPdf,
+  exportAdminOffersXlsx,
+  exportAdminOffersPdf,
+  exportAuctionTemplateXlsx
+} from '../utils/styledExports';
 
 interface AdminPageProps {
   auctions: AuctionLot[];
@@ -2933,56 +2942,8 @@ $285.00
   };
 
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'Lote': 'US-99100-MIA',
-        'Titulo': 'Palete 10x iPhone 16 Pro Max 256GB DNA Desbloqueados',
-        'Modelo': 'iPhone 16 Pro Max',
-        'Quantidade': 10,
-        'Grade': 'DNA',
-        'Armazenamento': '256GB',
-        'Saude Bateria': '95% - 100%',
-        'Lance Inicial USD': 0,
-        'Lance Atual USD': 0,
-        'Revenda Brasil BRL': 0,
-        'Casa de Leilao': 'Verizon Direct US Liquidation',
-        'Localizacao': 'Miami, FL'
-      },
-      {
-        'Lote': 'US-99101-DAL',
-        'Titulo': '5x iPhone 15 Pro 128GB DNB Natural Titanium',
-        'Modelo': 'iPhone 15 Pro',
-        'Quantidade': 5,
-        'Grade': 'DNB',
-        'Armazenamento': '128GB',
-        'Saude Bateria': '88% - 94%',
-        'Lance Inicial USD': 0,
-        'Lance Atual USD': 0,
-        'Revenda Brasil BRL': 0,
-        'Casa de Leilao': 'Verizon Direct US Liquidation',
-        'Localizacao': 'Dallas, TX'
-      },
-      {
-        'Lote': 'US-99102-MIA',
-        'Titulo': '1x iPhone 16 Pro Max 512GB Desert Titanium (Unidade Avulsa)',
-        'Modelo': 'iPhone 16 Pro Max',
-        'Quantidade': 1,
-        'Grade': 'Grade A+',
-        'Armazenamento': '512GB',
-        'Saude Bateria': '100%',
-        'Lance Inicial USD': 650,
-        'Lance Atual USD': 890,
-        'Revenda Brasil BRL': 9200,
-        'Casa de Leilao': 'Assurant Liquidation Hub',
-        'Localizacao': 'Miami, FL'
-      }
-    ];
-
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Modelo Leiloes');
-    XLSX.writeFile(wb, 'planilha_modelo_leiloes_iphones.xlsx');
-    showNotice('Planilha modelo Excel baixada com sucesso!');
+    exportAuctionTemplateXlsx();
+    showNotice('Planilha modelo Excel estilizada baixada com sucesso!');
   };
 
 
@@ -3050,6 +3011,7 @@ $285.00
   const [counterOfferUsdInput, setCounterOfferUsdInput] = useState<string>('');
   const [counterOfferNoteInput, setCounterOfferNoteInput] = useState<string>('');
   const [lastUpdatedOfferId, setLastUpdatedOfferId] = useState<string | null>(null);
+  const [selectedOfferClientFilter, setSelectedOfferClientFilter] = useState<string>('all');
 
   const [notificationEmails, setNotificationEmails] = useState<string[]>(() => {
     try {
@@ -3155,12 +3117,159 @@ $285.00
     showNotice(`Status da oferta alterado para "${newStatus}"! Cliente notificado no painel e WhatsApp.`);
   };
 
-  const handleExportOffersCsv = () => {
-    const ws = XLSX.utils.json_to_sheet(offersList);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Ofertas');
-    XLSX.writeFile(wb, 'relatorio_ofertas_computadas.xlsx');
-    showNotice('Relatório de ofertas exportado em Excel!');
+  const handleExportOffersExcel = (clientFilter: string = selectedOfferClientFilter) => {
+    exportAdminOffersXlsx({
+      offers: offersList,
+      auctions,
+      clients: clientsList,
+      usdRate,
+      selectedClientEmail: clientFilter
+    });
+    showNotice(
+      clientFilter === 'all'
+        ? 'Relatório estilizado de todas as ofertas exportado em Excel!'
+        : 'Relatório estilizado de ofertas do cliente exportado em Excel!'
+    );
+  };
+
+  const handleExportOffersPdf = (clientFilter: string = selectedOfferClientFilter) => {
+    exportAdminOffersPdf({
+      offers: offersList,
+      auctions,
+      clients: clientsList,
+      usdRate,
+      selectedClientEmail: clientFilter
+    });
+    showNotice(
+      clientFilter === 'all'
+        ? 'Relatório em PDF de todas as ofertas pronto para impressão/download!'
+        : 'Relatório em PDF das ofertas do cliente pronto para impressão/download!'
+    );
+  };
+
+  const handleGenerateOfferInvoice = (offer: AdminOffer) => {
+    const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
+    const clientObj = clientsList.find(
+      c =>
+        (c.email && offer.clientEmail && c.email.toLowerCase() === offer.clientEmail.toLowerCase()) ||
+        (c.name && offer.clientName && c.name.toLowerCase() === offer.clientName.toLowerCase())
+    );
+    const qty = lot?.quantity || 1;
+    const grade = lot ? (isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade) : 'Grade A';
+    const finalUsd = offer.status === 'Contra-Oferta' && offer.counterOfferUsd ? offer.counterOfferUsd : offer.amountUsd;
+
+    const invoiceUser: SystemUser = clientObj || {
+      name: offer.clientName || 'Arrematante USAFAST',
+      email: offer.clientEmail || '-',
+      cpfCnpj: 'Não informado',
+      phone: offer.clientWhatsapp || offer.clientPhone || '-',
+      whatsapp: offer.clientWhatsapp || offer.clientPhone || '-',
+      biddingLimitUsd: 0,
+      verifiedStatus: true,
+      registeredDate: offer.timestamp || new Date().toLocaleDateString('pt-BR')
+    };
+
+    const isApprovedOffer = offer.status === 'Aceita' || offer.status === 'Homologada / Arrematada';
+    downloadOfficialInvoicePdf({
+      invoiceNumber: `INV-${offer.lotNumber.replace(/[^A-Z0-9]/gi, '')}-${String(Date.now()).slice(-4)}`,
+      date: new Date().toLocaleDateString('pt-BR'),
+      lotNumber: offer.lotNumber,
+      lotTitle: stripLotPrefix(offer.lotTitle || lot?.title || offer.lotNumber),
+      quantity: qty,
+      grade,
+      totalUsd: finalUsd,
+      usdRate,
+      user: invoiceUser,
+      warehouseStatus: isApprovedOffer
+        ? 'Aguardando Conferência e Embalo nosso Galpão em Doral'
+        : `Status da Oferta: ${offer.status} · Pré-Fatura Administrativa`
+    });
+    showNotice(`Invoice Oficial PDF gerada para ${invoiceUser.name} (Lote ${offer.lotNumber})!`);
+  };
+
+  const handleGenerateClientConsolidatedInvoice = (clientKey: string, explicitClient?: SystemUser) => {
+    const normalizedKey = clientKey.trim().toLowerCase();
+    const clientObj =
+      explicitClient ||
+      clientsList.find(
+        c => (c.email || '').toLowerCase() === normalizedKey || (c.name || '').toLowerCase() === normalizedKey
+      );
+
+    const clientOffers = offersList.filter(o => {
+      const email = (o.clientEmail || '').trim().toLowerCase();
+      const name = (o.clientName || '').trim().toLowerCase();
+      if (clientObj) {
+        return (
+          (clientObj.email && email === clientObj.email.toLowerCase()) ||
+          (clientObj.name && name === clientObj.name.toLowerCase())
+        );
+      }
+      return email === normalizedKey || name === normalizedKey;
+    });
+
+    if (clientOffers.length === 0) {
+      showNotice(
+        `O cliente ${clientObj?.name || clientKey} ainda não possui ofertas computadas para gerar Invoice.`,
+        'error'
+      );
+      return;
+    }
+
+    const acceptedOffers = clientOffers.filter(
+      o => o.status === 'Aceita' || o.status === 'Homologada / Arrematada'
+    );
+    const nonRejectedOffers = clientOffers.filter(o => o.status !== 'Recusada');
+    const selectedOffers =
+      acceptedOffers.length > 0
+        ? acceptedOffers
+        : nonRejectedOffers.length > 0
+        ? nonRejectedOffers
+        : clientOffers;
+
+    const items: InvoiceLineItem[] = selectedOffers.map(offer => {
+      const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
+      const qty = lot?.quantity || 1;
+      const grade = lot ? (isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade) : 'Grade A';
+      const finalUsd = offer.status === 'Contra-Oferta' && offer.counterOfferUsd ? offer.counterOfferUsd : offer.amountUsd;
+      return {
+        lotNumber: offer.lotNumber,
+        lotTitle: stripLotPrefix(offer.lotTitle || lot?.title || offer.lotNumber),
+        grade,
+        quantity: qty,
+        totalUsd: finalUsd,
+        status: offer.status
+      };
+    });
+
+    const userForInvoice = clientObj || {
+      name: selectedOffers[0].clientName || 'Arrematante USAFAST',
+      email: selectedOffers[0].clientEmail || '-',
+      cpfCnpj: 'Não informado',
+      phone: selectedOffers[0].clientWhatsapp || selectedOffers[0].clientPhone || '-',
+      whatsapp: selectedOffers[0].clientWhatsapp || selectedOffers[0].clientPhone || '-'
+    };
+
+    const clientSlug = (userForInvoice.name || 'CLI')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 6)
+      .toUpperCase();
+
+    downloadClientInvoicePdf({
+      invoiceNumber: `INV-${clientSlug}-${String(Date.now()).slice(-6)}`,
+      date: new Date().toLocaleDateString('pt-BR'),
+      usdRate,
+      user: userForInvoice,
+      warehouseStatus:
+        acceptedOffers.length > 0
+          ? 'Aguardando Conferência e Embalo nosso Galpão em Doral'
+          : 'Fatura Consolidada das Ofertas Ativas · Aguardando Homologação Final',
+      items,
+      notes:
+        acceptedOffers.length > 0
+          ? `Fatura consolidada com ${items.length} lote(s) aceito(s)/homologado(s) para ${userForInvoice.name}.`
+          : `Fatura consolidada com ${items.length} oferta(s) ativa(s) registrada(s) para ${userForInvoice.name}.`
+    });
+    showNotice(`Invoice Consolidada em PDF gerada para ${userForInvoice.name} (${items.length} lote(s))!`);
   };
 
   // ----------------------------------------------------
@@ -5278,6 +5387,38 @@ $285.00
                 <button
                   type="button"
                   onClick={() => {
+                    const targetLots = filteredAdminLots.length > 0 ? filteredAdminLots : auctions;
+                    exportAuctionsCatalogXlsx(targetLots, usdRate, {
+                      filterLabel: adminLotSearch.trim()
+                        ? `Busca Admin: "${adminLotSearch.trim()}" (${targetLots.length} lotes)`
+                        : `Todos os Leilões Importados (${auctions.length} lotes)`
+                    });
+                    showNotice(`Excel estilizado gerado com ${targetLots.length} lote(s)!`, 'success');
+                  }}
+                  className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Exportar Leilões (Excel)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetLots = filteredAdminLots.length > 0 ? filteredAdminLots : auctions;
+                    exportAuctionsCatalogPdf(targetLots, usdRate, {
+                      filterLabel: adminLotSearch.trim()
+                        ? `Busca Admin: "${adminLotSearch.trim()}" (${targetLots.length} lotes)`
+                        : `Todos os Leilões Importados (${auctions.length} lotes)`
+                    });
+                    showNotice(`PDF estilizado gerado com ${targetLots.length} lote(s)!`, 'success');
+                  }}
+                  className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Exportar Leilões (PDF)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     const blob = new Blob([JSON.stringify(auctions)], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -5526,23 +5667,91 @@ $285.00
       {/* ======================================================== */}
       {/* TAB 3: OFERTAS COMPUTADAS (OFFERS CONSOLE) */}
       {/* ======================================================== */}
-      {adminTab === 'offers' && (
+      {adminTab === 'offers' && (() => {
+        // Unique clients present in offersList (+ clientsList)
+        const offerClientOptionsMap = new Map<string, { key: string; label: string; count: number }>();
+        offersList.forEach(o => {
+          const key = (o.clientEmail || o.clientName || '').trim().toLowerCase();
+          if (!key) return;
+          const prev = offerClientOptionsMap.get(key) || {
+            key,
+            label: o.clientEmail ? `${o.clientName} (${o.clientEmail})` : o.clientName,
+            count: 0
+          };
+          prev.count += 1;
+          offerClientOptionsMap.set(key, prev);
+        });
+        const offerClientOptions = Array.from(offerClientOptionsMap.values()).sort((a, b) =>
+          a.label.localeCompare(b.label)
+        );
+        const filteredOffersList =
+          selectedOfferClientFilter === 'all'
+            ? offersList
+            : offersList.filter(o => {
+                const email = (o.clientEmail || '').trim().toLowerCase();
+                const name = (o.clientName || '').trim().toLowerCase();
+                return email === selectedOfferClientFilter || name === selectedOfferClientFilter;
+              });
+
+        return (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-white">Central de Ofertas Computadas (Offers)</h2>
               <p className="text-xs text-slate-400">
-                Lances e ofertas enviadas pelos arrematantes brasileiros em tempo real
+                Lances e ofertas enviadas pelos arrematantes brasileiros em tempo real · Filtre por cliente para exportar ou faturar Invoice
               </p>
             </div>
 
-            <button
-              onClick={handleExportOffersCsv}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Exportar Ofertas (Excel)</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5">
+                <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <select
+                  value={selectedOfferClientFilter}
+                  onChange={e => setSelectedOfferClientFilter(e.target.value)}
+                  className="bg-transparent text-xs text-white font-semibold focus:outline-none max-w-[240px]"
+                  title="Filtrar ofertas computadas por cliente"
+                >
+                  <option value="all" className="bg-slate-950">
+                    Todos os Clientes ({offersList.length})
+                  </option>
+                  {offerClientOptions.map(opt => (
+                    <option key={opt.key} value={opt.key} className="bg-slate-950">
+                      {opt.label} · {opt.count}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleExportOffersExcel(selectedOfferClientFilter)}
+                className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>{selectedOfferClientFilter === 'all' ? 'Exportar Ofertas (Excel)' : 'Excel do Cliente'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExportOffersPdf(selectedOfferClientFilter)}
+                className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{selectedOfferClientFilter === 'all' ? 'Exportar Ofertas (PDF)' : 'PDF do Cliente'}</span>
+              </button>
+
+              {selectedOfferClientFilter !== 'all' && (
+                <button
+                  type="button"
+                  onClick={() => handleGenerateClientConsolidatedInvoice(selectedOfferClientFilter)}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Gerar Invoice do Cliente (PDF)</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* E-mails para Novas Ofertas & Teste de Envio WhatsApp */}
@@ -5666,7 +5875,7 @@ $285.00
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                {offersList.map(offer => {
+                {filteredOffersList.map(offer => {
                   const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
                   return (
                   <tr key={offer.id} className="hover:bg-slate-800/40 transition-colors">
@@ -5787,6 +5996,15 @@ $285.00
                             </a>
                           );
                         })()}
+                        <button
+                          type="button"
+                          onClick={() => handleGenerateOfferInvoice(offer)}
+                          className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 rounded text-[11px] font-bold transition-colors flex items-center gap-1"
+                          title="Gerar Invoice Oficial em PDF para este cliente/lote"
+                        >
+                          <Receipt className="w-3 h-3" />
+                          <span>Invoice PDF</span>
+                        </button>
                       </div>
                       {counterOfferEditingId === offer.id && (
                         <div className="mt-2 p-2.5 bg-slate-950 border border-indigo-500/40 rounded-lg flex flex-col sm:flex-row items-center justify-end gap-2">
@@ -5828,7 +6046,8 @@ $285.00
             </table>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ======================================================== */}
       {/* TAB 4: CLIENTES & PAINEL DE ARREMATANTES */}
@@ -6029,6 +6248,53 @@ $285.00
 
                           return (
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => handleGenerateClientConsolidatedInvoice(client.email || client.name, client)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-500/15 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/35 rounded text-[11px] font-bold transition-colors"
+                                title="Gerar Invoice Consolidada em PDF para este cliente"
+                              >
+                                <Receipt className="w-3 h-3" />
+                                <span>Invoice PDF</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const key = (client.email || client.name || '').toLowerCase();
+                                  const count = offersList.filter(
+                                    o => (o.clientEmail || '').toLowerCase() === key || (o.clientName || '').toLowerCase() === key
+                                  ).length;
+                                  if (count === 0) {
+                                    showNotice(`${client.name} ainda não possui ofertas computadas.`, 'error');
+                                    return;
+                                  }
+                                  handleExportOffersExcel(key);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-semibold transition-colors"
+                                title="Exportar ofertas deste cliente em Excel"
+                              >
+                                <FileSpreadsheet className="w-3 h-3" />
+                                <span>Excel</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const key = (client.email || client.name || '').toLowerCase();
+                                  const count = offersList.filter(
+                                    o => (o.clientEmail || '').toLowerCase() === key || (o.clientName || '').toLowerCase() === key
+                                  ).length;
+                                  if (count === 0) {
+                                    showNotice(`${client.name} ainda não possui ofertas computadas.`, 'error');
+                                    return;
+                                  }
+                                  handleExportOffersPdf(key);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded text-[11px] font-semibold transition-colors"
+                                title="Exportar ofertas deste cliente em PDF"
+                              >
+                                <FileText className="w-3 h-3" />
+                                <span>PDF</span>
+                              </button>
                               {isApproved ? (
                                 <button
                                   onClick={() => handleRejectClient(client.email)}
