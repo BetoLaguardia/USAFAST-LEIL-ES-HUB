@@ -233,7 +233,7 @@ async function startServer() {
         if (!result?.code) return next();
         const patchedCode = result.code.replace(
           'transport.connect(createHMRHandler(handleMessage));',
-          '/* HMR disabled in middleware mode */'
+          'transport.send = async () => {}; transport.invoke = async () => undefined; /* HMR disabled in middleware mode */'
         );
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
