@@ -167,18 +167,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            onClick={() => handleNavClick('live')}
-            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 border ${
-              currentPage === 'live'
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold'
-                : 'text-rose-300 border-rose-500/25 bg-rose-500/10 hover:bg-rose-500/20'
-            }`}
-          >
-            <Radio className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-            <span>{t.liveAuctions}</span>
-          </button>
-
-          <button
             onClick={() => handleNavClick('gradeamento')}
             className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
               currentPage === 'gradeamento'
@@ -200,6 +188,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Users className="w-3.5 h-3.5 text-cyan-400" />
             <span>{t.aboutUs}</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('live')}
+            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 border ${
+              currentPage === 'live'
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold'
+                : 'text-rose-300 border-rose-500/25 bg-rose-500/10 hover:bg-rose-500/20'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span>{t.liveAuctions}</span>
           </button>
 
           {/* Dedicated Portal do Cliente / Arrematante tab */}
@@ -324,13 +324,6 @@ export const Header: React.FC<HeaderProps> = ({
             Leilões Ativos
           </button>
           <button
-            onClick={() => handleNavClick('live')}
-            className={`w-full text-left px-3 py-2 rounded-lg font-bold flex items-center gap-2 ${currentPage === 'live' ? 'bg-rose-500 text-white' : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'}`}
-          >
-            <Radio className="w-3.5 h-3.5" />
-            <span>Live de Leilões ao Vivo</span>
-          </button>
-          <button
             onClick={() => handleNavClick('gradeamento')}
             className={`w-full text-left px-3 py-2 rounded-lg font-semibold ${currentPage === 'gradeamento' ? 'bg-slate-800 text-amber-400' : 'text-slate-300'}`}
           >
@@ -341,6 +334,13 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-full text-left px-3 py-2 rounded-lg font-semibold ${currentPage === 'quem-somos' ? 'bg-slate-800 text-amber-400' : 'text-slate-300'}`}
           >
             Quem Somos & Assessoria Miami
+          </button>
+          <button
+            onClick={() => handleNavClick('live')}
+            className={`w-full text-left px-3 py-2 rounded-lg font-bold flex items-center gap-2 ${currentPage === 'live' ? 'bg-rose-500 text-white' : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'}`}
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span>Live de Leilões ao Vivo</span>
           </button>
           <button
             onClick={() => handleNavClick('cliente')}

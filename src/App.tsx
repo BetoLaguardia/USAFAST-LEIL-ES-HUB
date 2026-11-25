@@ -2324,17 +2324,17 @@ export default function App() {
             </button>
             <span>·</span>
             <button
-              onClick={() => setCurrentPage('leiloes')}
-              className="hover:text-slate-300 transition-colors"
-            >
-              Leilões
-            </button>
-            <span>·</span>
-            <button
               onClick={() => setCurrentPage('live')}
               className="text-rose-400 hover:underline font-semibold"
             >
               Live ao Vivo
+            </button>
+            <span>·</span>
+            <button
+              onClick={() => setCurrentPage('leiloes')}
+              className="hover:text-slate-300 transition-colors"
+            >
+              Leilões
             </button>
             <span>·</span>
             <button

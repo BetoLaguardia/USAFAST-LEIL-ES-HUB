@@ -220,8 +220,27 @@ async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        ws: false,
+        hmr: false,
+      },
       appType: 'spa',
+    });
+    app.get('/@vite/client', async (_req, res, next) => {
+      try {
+        const result = await vite.transformRequest('/@vite/client');
+        if (!result?.code) return next();
+        const patchedCode = result.code.replace(
+          'transport.connect(createHMRHandler(handleMessage));',
+          '/* HMR disabled in middleware mode */'
+        );
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        return res.send(patchedCode);
+      } catch {
+        return next();
+      }
     });
     app.use(vite.middlewares);
   } else {
