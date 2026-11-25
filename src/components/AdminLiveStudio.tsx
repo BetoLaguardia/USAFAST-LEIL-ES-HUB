@@ -12,6 +12,7 @@ import {
   Users,
   AlertCircle,
   SwitchCamera,
+  ExternalLink,
 } from 'lucide-react';
 import { SystemUser } from '../types/auction';
 import { LIVE_MODE_LABELS, LiveCaptureMode } from '../types/live';
@@ -70,6 +71,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
     isMicMuted,
     mediaError,
     setMediaError,
+    isDisplayCaptureBlocked,
     isStartingMedia,
     startBroadcast,
     stopBroadcast,
@@ -79,6 +81,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
     sendChatMessage,
     deleteChatMessage,
     clearChat,
+    reconnectRoom,
   } = useLiveRoom({ role: 'broadcaster', enabled: true });
 
   const [streamTitle, setStreamTitle] = useState('Leilão ao Vivo — USAFAST Hub');
@@ -181,7 +184,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
 
           <button
             type="button"
-            disabled={isStartingMedia || connectionState !== 'connected'}
+            disabled={isStartingMedia}
             onClick={handleStartOrStop}
             className={`min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide transition-colors flex items-center gap-2 disabled:opacity-50 ${
               isBroadcasting
@@ -211,9 +214,34 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
 
       {/* Errors */}
       {(connectionError || mediaError) && (
-        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-200 text-xs flex items-start gap-2.5">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-          <span>{mediaError || connectionError}</span>
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <span>{mediaError || connectionError}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {isDisplayCaptureBlocked && typeof window !== 'undefined' && (
+              <a
+                href={window.location.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-xs inline-flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Abrir em Nova Aba</span>
+              </a>
+            )}
+            {connectionState !== 'connected' && (
+              <button
+                type="button"
+                onClick={reconnectRoom}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg text-xs inline-flex items-center gap-1.5 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reconectar</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -343,10 +371,34 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
               )}
             </div>
 
-            <div className="text-[11px] font-mono text-slate-400">
-              {connectionState === 'connected'
-                ? 'Servidor ao vivo conectado'
-                : 'Conectando ao servidor...'}
+            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  connectionState === 'connected'
+                    ? 'bg-emerald-500'
+                    : connectionState === 'error'
+                    ? 'bg-rose-500'
+                    : 'bg-amber-400'
+                }`}
+              />
+              <span>
+                {connectionState === 'connected'
+                  ? 'Servidor ao vivo conectado'
+                  : connectionState === 'reconnecting'
+                  ? 'Reconectando ao servidor...'
+                  : connectionState === 'error'
+                  ? 'Falha na conexão ao vivo'
+                  : 'Conectando ao servidor...'}
+              </span>
+              {connectionState !== 'connected' && (
+                <button
+                  type="button"
+                  onClick={reconnectRoom}
+                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] font-sans font-semibold transition-colors"
+                >
+                  Reconectar
+                </button>
+              )}
             </div>
           </div>
         </div>

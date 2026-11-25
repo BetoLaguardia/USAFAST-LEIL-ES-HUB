@@ -41,9 +41,11 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
   const [cameraFacing, setCameraFacing] = useState<'environment' | 'user'>('environment');
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [isDisplayCaptureBlocked, setIsDisplayCaptureBlocked] = useState(false);
   const [isStartingMedia, setIsStartingMedia] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const connectFnRef = useRef<(() => void) | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const pingIntervalRef = useRef<number | null>(null);
   const unmountedRef = useRef(false);
@@ -259,11 +261,20 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
+      let { data } = await supabase.auth.getSession();
+      if (
+        data?.session?.expires_at &&
+        data.session.expires_at * 1000 - Date.now() < 60_000
+      ) {
+        const refreshed = await supabase.auth.refreshSession().catch(() => null);
+        if (refreshed?.data?.session) {
+          data = refreshed.data;
+        }
+      }
       const token = data?.session?.access_token;
       if (!token) {
         setConnectionState('error');
-        setConnectionError('Sessão expirada. Faça login novamente.');
+        setConnectionError('Sessão expirada. Faça login novamente no Painel Admin.');
         return;
       }
 
@@ -463,9 +474,27 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
       };
     };
 
+    connectFnRef.current = () => {
+      if (unmountedRef.current) return;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      if (wsRef.current) {
+        try {
+          wsRef.current.onclose = null;
+          wsRef.current.close();
+        } catch {}
+        wsRef.current = null;
+      }
+      attempt = 0;
+      connect();
+    };
+
     connect();
 
     return () => {
+      connectFnRef.current = null;
       unmountedRef.current = true;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
@@ -506,6 +535,25 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
         );
       }
 
+      const classifyDisplayError = (err: any, fallbackLabel: string) => {
+        const rawMsg = String(err?.message || '');
+        if (/permissions?\s*policy|disallowed|feature/i.test(rawMsg)) {
+          setIsDisplayCaptureBlocked(true);
+          throw new Error(
+            'Esta janela incorporada bloqueou o compartilhamento de tela por política do navegador. Clique em "Abrir em Nova Aba" para transmitir sua tela/aba ou selecione Webcam / Câmera.'
+          );
+        }
+        if (err?.name === 'NotAllowedError') {
+          if (typeof window !== 'undefined' && window.self !== window.top) {
+            setIsDisplayCaptureBlocked(true);
+            throw new Error(
+              'Compartilhamento cancelado ou bloqueado na janela incorporada. Se a janela de seleção de aba não abriu, clique em "Abrir em Nova Aba" ou use Webcam / Câmera.'
+            );
+          }
+          throw new Error(fallbackLabel);
+        }
+      };
+
       if (mode === 'desktop_screen') {
         if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
           throw new Error(
@@ -526,14 +574,19 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
             },
           });
         } catch (err: any) {
-          if (err?.name === 'NotAllowedError') {
-            throw new Error('Permissão de compartilhamento de tela cancelada.');
-          }
+          classifyDisplayError(err, 'Permissão de compartilhamento de tela cancelada.');
           // Fallback to video-only screen share if audio capture fails
-          return await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: false,
-          });
+          try {
+            return await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: false,
+            });
+          } catch (fallbackErr: any) {
+            classifyDisplayError(fallbackErr, 'Permissão de compartilhamento de tela cancelada.');
+            throw new Error(
+              fallbackErr?.message || 'Não foi possível capturar a tela ou aba.'
+            );
+          }
         }
       }
 
@@ -541,20 +594,33 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
         if (typeof navigator.mediaDevices.getUserMedia !== 'function') {
           throw new Error('Acesso à webcam não suportado neste navegador.');
         }
-        return await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        });
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+        } catch (err: any) {
+          if (err?.name === 'NotAllowedError') {
+            throw new Error('Permissão da webcam/microfone negada ou bloqueada pelo navegador.');
+          }
+          if (err?.name === 'NotFoundError') {
+            throw new Error('Nenhuma webcam ou microfone conectado foi encontrado neste computador.');
+          }
+          if (err?.name === 'NotReadableError') {
+            throw new Error('A webcam já está em uso por outro aplicativo.');
+          }
+          throw new Error(err?.message || 'Não foi possível acessar a webcam e microfone.');
+        }
       }
 
       if (mode === 'mobile_screen') {
         if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
           throw new Error(
-            'Este navegador móvel não suporta captura da tela do celular (comum no iOS Safari). Use o modo "Câmera do Celular + Microfone" ou Chrome no Android.'
+            'Este navegador móvel não suporta captura da tela do celular (comum no iOS Safari). Use o modo "Câmera do Celular" ou Chrome no Android.'
           );
         }
         try {
@@ -563,15 +629,14 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
             audio: true,
           });
         } catch (err: any) {
-          if (err?.name === 'NotAllowedError') {
-            throw new Error('Captura da tela do celular cancelada.');
-          }
+          classifyDisplayError(err, 'Captura da tela do celular cancelada.');
           try {
             return await navigator.mediaDevices.getDisplayMedia({
               video: true,
               audio: false,
             });
-          } catch {
+          } catch (fallbackErr: any) {
+            classifyDisplayError(fallbackErr, 'Captura da tela do celular cancelada.');
             throw new Error(
               'Não foi possível capturar a tela deste celular. Utilize o modo Câmera do Celular.'
             );
@@ -583,18 +648,28 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
       if (typeof navigator.mediaDevices.getUserMedia !== 'function') {
         throw new Error('Acesso à câmera do celular não suportado.');
       }
-      return await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: facing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      } catch (err: any) {
+        if (err?.name === 'NotAllowedError') {
+          throw new Error('Permissão da câmera do celular/microfone negada pelo navegador.');
+        }
+        if (err?.name === 'NotFoundError') {
+          throw new Error('Nenhuma câmera encontrada neste aparelho.');
+        }
+        throw new Error(err?.message || 'Não foi possível acessar a câmera do celular.');
+      }
     },
     []
   );
@@ -647,6 +722,7 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
     async (mode: LiveCaptureMode, title?: string, facingOverride?: 'environment' | 'user') => {
       if (role !== 'broadcaster') return false;
       setMediaError(null);
+      setIsDisplayCaptureBlocked(false);
       setIsStartingMedia(true);
 
       const effectiveFacing = facingOverride ?? cameraFacing;
@@ -687,11 +763,14 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
           stopLocalTracks(previousStream);
           isBroadcastingRef.current = true;
           setIsBroadcasting(true);
-          sendWs({
+          const sent = sendWs({
             type: 'broadcaster:start',
             mode,
             title: broadcasterTitleRef.current,
           });
+          if (!sent) {
+            connectFnRef.current?.();
+          }
         }
 
         setIsStartingMedia(false);
@@ -774,6 +853,11 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
     sendWs({ type: 'viewer:request-offer' });
   }, [cleanupViewerPc, sendWs]);
 
+  const reconnectRoom = useCallback(() => {
+    setConnectionError(null);
+    connectFnRef.current?.();
+  }, []);
+
   return {
     connectionState,
     connectionError,
@@ -788,6 +872,7 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
     isMicMuted,
     mediaError,
     setMediaError,
+    isDisplayCaptureBlocked,
     isStartingMedia,
     startBroadcast,
     stopBroadcast,
@@ -798,5 +883,6 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
     deleteChatMessage,
     clearChat,
     requestStreamReconnect,
+    reconnectRoom,
   };
 }

@@ -64,6 +64,7 @@ function isOriginAllowed(req: IncomingMessage): boolean {
   try {
     const parsedOrigin = new URL(origin);
     const originHost = parsedOrigin.host.toLowerCase();
+    const originHostname = parsedOrigin.hostname.toLowerCase();
     const requestHost = String(
       req.headers['x-forwarded-host'] || req.headers.host || ''
     )
@@ -75,11 +76,25 @@ function isOriginAllowed(req: IncomingMessage): boolean {
       return true;
     }
 
+    if (originHostname === 'localhost' || originHostname === '127.0.0.1') {
+      return true;
+    }
+
+    // Cloud Run / AI Studio preview & deployed URLs behind reverse proxy
     if (
-      parsedOrigin.hostname === 'localhost' ||
-      parsedOrigin.hostname === '127.0.0.1'
+      parsedOrigin.protocol === 'https:' &&
+      originHostname.endsWith('.run.app')
     ) {
       return true;
+    }
+
+    const appUrl = process.env.APP_URL;
+    if (appUrl) {
+      try {
+        if (new URL(appUrl).host.toLowerCase() === originHost) {
+          return true;
+        }
+      } catch {}
     }
 
     return false;
