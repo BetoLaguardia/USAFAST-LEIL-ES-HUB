@@ -1,6 +1,8 @@
 import express from 'express';
+import http from 'http';
 import path from 'path';
 import dotenv from 'dotenv';
+import { attachLiveWebSocketServer } from './server/liveServer.ts';
 import {
   getAuctionsFromStore,
   isSupabaseConfigured,
@@ -30,6 +32,8 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
+  const httpServer = http.createServer(app);
+  const liveHub = attachLiveWebSocketServer(httpServer);
   app.use(express.json({ limit: '100mb' }));
 
   app.get('/api/health', (_req, res) => {
@@ -40,6 +44,11 @@ async function startServer() {
       supabaseConfigured: isSupabaseConfigured(),
       timestamp: new Date().toISOString(),
     });
+  });
+
+  app.get('/api/live/status', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    return res.json({ ok: true, status: liveHub.getStatus() });
   });
 
   // Endpoint para buscar leilões do Supabase (com fallback automático para auctions_store.json)
@@ -224,7 +233,7 @@ async function startServer() {
   }
 
   const port = Number(process.env.PORT) || 3000;
-  app.listen(port, '0.0.0.0', () => {
+  httpServer.listen(port, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${port}`);
   });
 }

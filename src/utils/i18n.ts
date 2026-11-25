@@ -3,6 +3,7 @@ export type Language = 'pt' | 'es' | 'en';
 export interface Translations {
   home: string;
   auctions: string;
+  liveAuctions: string;
   grading: string;
   aboutUs: string;
   clientPanel: string;
@@ -50,6 +51,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
   pt: {
     home: 'Início',
     auctions: 'Leilões',
+    liveAuctions: 'Live ao Vivo',
     grading: 'Gradeamento',
     aboutUs: 'Quem Somos',
     clientPanel: 'Painel do Cliente',
@@ -95,6 +97,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
   es: {
     home: 'Inicio',
     auctions: 'Subastas',
+    liveAuctions: 'En Vivo',
     grading: 'Clasificación',
     aboutUs: 'Quiénes Somos',
     clientPanel: 'Panel del Cliente',
@@ -140,6 +143,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
   en: {
     home: 'Home',
     auctions: 'Auctions',
+    liveAuctions: 'Live Auctions',
     grading: 'Grading',
     aboutUs: 'About Us',
     clientPanel: 'Client Panel',

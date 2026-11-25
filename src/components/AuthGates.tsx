@@ -173,12 +173,15 @@ interface ClientLoginGateProps {
   currentUser: SystemUser;
   onLoginSuccess: (user: SystemUser) => void;
   onCancel: () => void;
+  context?: 'client' | 'live';
 }
 
 export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
   onLoginSuccess,
-  onCancel
+  onCancel,
+  context = 'client'
 }) => {
+  const isLiveContext = context === 'live';
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -332,13 +335,15 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
             </div>
             <div>
               <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
-                Portal do Arrematante
+                {isLiveContext ? 'Transmissão ao Vivo' : 'Portal do Arrematante'}
               </span>
               <h2 className="text-2xl font-black text-white tracking-tight mt-2">
-                Sistema de Leilões dos EUA
+                {isLiveContext ? 'Live de Leilões ao Vivo' : 'Sistema de Leilões dos EUA'}
               </h2>
               <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                Acesse sua conta para consultar laudos detalhados de IMEI, verificar lotes e enviar lances em tempo real.
+                {isLiveContext
+                  ? 'Entre com as mesmas credenciais do Painel do Cliente para assistir à transmissão ao vivo e participar do bate-papo.'
+                  : 'Acesse sua conta para consultar laudos detalhados de IMEI, verificar lotes e enviar lances em tempo real.'}
               </p>
             </div>
           </div>
@@ -446,7 +451,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                 ) : (
                   <>
                     <UserCheck className="w-4 h-4" />
-                    <span>Acessar Painel do Cliente</span>
+                    <span>{isLiveContext ? 'Entrar na Live ao Vivo' : 'Acessar Painel do Cliente'}</span>
                   </>
                 )}
               </button>

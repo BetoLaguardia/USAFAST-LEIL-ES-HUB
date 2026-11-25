@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Gavel, ShieldCheck, DollarSign, Layers, Users, Lock, Menu, X, UserCheck, Globe } from 'lucide-react';
+import { Gavel, ShieldCheck, DollarSign, Layers, Users, Lock, Menu, X, UserCheck, Globe, Radio } from 'lucide-react';
 import { Language, TRANSLATIONS } from '../utils/i18n';
 import { PWAInstallButton } from './PWAInstallButton';
 
-export type AppPage = 'home' | 'leiloes' | 'gradeamento' | 'quem-somos' | 'cliente' | 'admin';
+export type AppPage = 'home' | 'leiloes' | 'live' | 'gradeamento' | 'quem-somos' | 'cliente' | 'admin';
 
 interface HeaderProps {
   currentPage: AppPage;
@@ -167,6 +167,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
+            onClick={() => handleNavClick('live')}
+            className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 border ${
+              currentPage === 'live'
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 font-bold'
+                : 'text-rose-300 border-rose-500/25 bg-rose-500/10 hover:bg-rose-500/20'
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+            <span>{t.liveAuctions}</span>
+          </button>
+
+          <button
             onClick={() => handleNavClick('gradeamento')}
             className={`px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
               currentPage === 'gradeamento'
@@ -310,6 +322,13 @@ export const Header: React.FC<HeaderProps> = ({
             className={`w-full text-left px-3 py-2 rounded-lg font-semibold ${currentPage === 'leiloes' ? 'bg-slate-800 text-amber-400' : 'text-slate-300'}`}
           >
             Leilões Ativos
+          </button>
+          <button
+            onClick={() => handleNavClick('live')}
+            className={`w-full text-left px-3 py-2 rounded-lg font-bold flex items-center gap-2 ${currentPage === 'live' ? 'bg-rose-500 text-white' : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'}`}
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span>Live de Leilões ao Vivo</span>
           </button>
           <button
             onClick={() => handleNavClick('gradeamento')}

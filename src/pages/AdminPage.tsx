@@ -47,8 +47,10 @@ import {
   Receipt,
   Laptop,
   Mail,
-  Send
+  Send,
+  Radio
 } from 'lucide-react';
+import { AdminLiveStudio } from '../components/AdminLiveStudio';
 import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
 import { fetchAdminClients, updateAdminClientAccessType, updateAdminClientStatus, deleteAdminClient } from '../services/authService';
@@ -63,7 +65,7 @@ import {
 
 interface AdminPageProps {
   auctions: AuctionLot[];
-  onUpdateAuctions: (newAuctions: AuctionLot[]) => void;
+  onUpdateAuctions: (newAuctions: AuctionLot[]) => void | boolean | Promise<boolean | void>;
   currentUser: SystemUser;
   onUpdateCurrentUser: (user: SystemUser) => void;
   usdRate: number;
@@ -83,7 +85,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const isAdminCredenciado = currentUser.userType === 'admin_credenciado';
   const isAdminGeral = !isAdminCredenciado;
 
-  const [adminTab, setAdminTab] = useState<'dashboard' | 'upload' | 'lots' | 'offers' | 'clients' | 'settings'>('dashboard');
+  const [adminTab, setAdminTab] = useState<'dashboard' | 'upload' | 'lots' | 'offers' | 'clients' | 'live' | 'settings'>('dashboard');
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   React.useEffect(() => {
@@ -103,7 +105,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'paste'>('file');
-  const [presetFormat, setPresetFormat] = useState<'VERIZON' | 'T_MOBILE' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS' | 'GENERIC'>('VERIZON');
+  type PresetFormatType = 'VERIZON' | 'T_MOBILE' | 'ASSURANT' | 'STOCK_APPLE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'MACBOOKS' | 'GENERIC';
+  const [presetFormat, setPresetFormat] = useState<PresetFormatType>('VERIZON');
+  const [presetSelectedManually, setPresetSelectedManually] = useState(false);
+  const [isPublishingLots, setIsPublishingLots] = useState(false);
   const isStockFeedFormat = (fmt: string) => ['STOCK_APPLE', 'ASSURANT', 'MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3', 'MACBOOKS'].includes(fmt);
   const [pasteText, setPasteText] = useState('');
   const [parsedPreviewRows, setParsedPreviewRows] = useState<any[]>([]);
@@ -118,6 +123,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const [tMobileGroupedLots, setTMobileGroupedLots] = useState<TMobileGroupedLot[]>([]);
   const [replaceExistingLots, setReplaceExistingLots] = useState(false);
   const [verizonImportMode, setVerizonImportMode] = useState<'individual' | 'grouped'>('grouped');
+  const [adminSourceFilter, setAdminSourceFilter] = useState<
+    'ALL' | 'VERIZON' | 'ASSURANT' | 'T_MOBILE' | 'MARKETPLACE_1' | 'MARKETPLACE_2' | 'MARKETPLACE_3' | 'STOCK_APPLE' | 'MACBOOKS' | 'OTHER'
+  >('ALL');
 
   // ----------------------------------------------------
   // ASSURANT AUCTION ENGINE (+ $5 USD PER UNIT ADJUSTMENT)
@@ -187,6 +195,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     title: string;
     deviceType: 'iPhone' | 'iPad' | 'Apple Watch' | 'MacBook';
     modelFamily: string;
+    oemBrand?: string;
     capacity: string;
     grade: string;
     warehouse: string;
@@ -279,12 +288,26 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return mapVerizonGradeStrict(raw);
   };
 
-  // Helper: parse date and time from Verizon CSV
+  // Helper: parse date and time from Verizon CSV or XLSX (supports Date objects, serial numbers & fractional times)
   const parseAuctionEndTime = (endDateVal: any, endTimeVal: any): string => {
     let d: Date;
-    if (typeof endDateVal === 'number' || (!isNaN(Number(endDateVal)) && Number(endDateVal) > 40000 && Number(endDateVal) < 60000)) {
+    let embeddedTimeFrac: number | null = null;
+
+    if (endDateVal instanceof Date) {
+      d = new Date(endDateVal.getTime());
+    } else if (
+      typeof endDateVal === 'number' ||
+      (typeof endDateVal === 'string' &&
+        endDateVal.trim() !== '' &&
+        !isNaN(Number(endDateVal)) &&
+        Number(endDateVal) > 40000 &&
+        Number(endDateVal) < 60000)
+    ) {
       const serial = Number(endDateVal);
-      d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+      const wholeDays = Math.floor(serial);
+      const frac = serial - wholeDays;
+      if (frac > 0) embeddedTimeFrac = frac;
+      d = new Date(Math.round((wholeDays - 25569) * 86400 * 1000));
     } else if (typeof endDateVal === 'string' && endDateVal.trim()) {
       const parts = endDateVal.trim().split(/[\/\-]/);
       if (parts.length === 3 && parts[2].length === 4) {
@@ -297,7 +320,21 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     }
     if (isNaN(d.getTime())) d = new Date(Date.now() + 86400000 * 2);
 
-    if (typeof endTimeVal === 'string' && endTimeVal.includes(':')) {
+    const numericTime =
+      typeof endTimeVal === 'number'
+        ? endTimeVal
+        : typeof endTimeVal === 'string' && /^\s*0?\.\d+\s*$/.test(endTimeVal)
+          ? Number(endTimeVal)
+          : null;
+
+    if (endTimeVal instanceof Date) {
+      d.setHours(endTimeVal.getHours(), endTimeVal.getMinutes(), 0, 0);
+    } else if (typeof numericTime === 'number' && !isNaN(numericTime) && numericTime >= 0 && numericTime < 1) {
+      const totalMinutes = Math.round(numericTime * 24 * 60);
+      const hrs = Math.floor(totalMinutes / 60) % 24;
+      const mins = totalMinutes % 60;
+      d.setHours(hrs, mins, 0, 0);
+    } else if (typeof endTimeVal === 'string' && endTimeVal.includes(':')) {
       const isPM = /pm/i.test(endTimeVal);
       const isAM = /am/i.test(endTimeVal);
       const clean = endTimeVal.replace(/[^\d:]/g, '');
@@ -307,6 +344,11 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (isPM && hrs < 12) hrs += 12;
       if (isAM && hrs === 12) hrs = 0;
       d.setHours(hrs, mins, 0, 0);
+    } else if (embeddedTimeFrac !== null) {
+      const totalMinutes = Math.round(embeddedTimeFrac * 24 * 60);
+      const hrs = Math.floor(totalMinutes / 60) % 24;
+      const mins = totalMinutes % 60;
+      d.setHours(hrs, mins, 0, 0);
     }
 
     if (d.getTime() < Date.now()) {
@@ -315,7 +357,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
     return d.toISOString();
   };
 
-  // Core parser for VERIZON standard rows
+  // Core parser for VERIZON standard rows (supports CSV & XLSX column variations)
   const processVerizonRows = (rawRows: any[]) => {
     const groups = new Map<string, {
       lotNumber: string;
@@ -336,27 +378,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({
 
     rawRows.forEach((r, idx) => {
       const lockCheckText = [
-        r['Lock Status'], r['LockStatus'], r['lock_status'], r['Carrier Lock'],
-        r['FMIP/Google Lock Status'], r['Item Description'], r['itemDescription'],
-        r['Condition'], r['Grade'], r['Model'], r['Title']
+        normalizeField(r, 'Lock Status', 'LockStatus', 'lock_status', 'Carrier Lock', 'FMIP/Google Lock Status'),
+        normalizeField(r, 'Item Description', 'itemDescription', 'Description'),
+        normalizeField(r, 'Condition', 'Grade', 'Model', 'Title')
       ].map(v => String(v || '')).join(' ');
       if (/\b(?:locked|sim\s*lock(?:ed)?|carrier\s*lock(?:ed)?|icloud\s*lock(?:ed)?|fmip\s*on|fmi\s*on|bad\s*esn|blacklisted|mdm\s*lock)\b/i.test(lockCheckText) && !/\bunlocked\b/i.test(lockCheckText)) {
         return;
       }
 
-      const lotNum = String(r['Lot #'] || r['Lot#'] || r['Lot'] || r['lotNumber'] || r['Item #'] || r['Item'] || r['ID'] || `VZ-${idx + 1}`).trim();
+      const lotNum = (normalizeField(r, 'Lot #', 'Lot#', 'Lot', 'Lot ID', 'lotNumber', 'Item #', 'Item', 'ID') || `VZ-${idx + 1}`).trim();
       if (!lotNum) return;
 
       if (!groups.has(lotNum)) {
         groups.set(lotNum, {
           lotNumber: lotNum,
-          title: cleanLotTitle(String(r['Title'] || r['title'] || `iPhone ${lotNum}`)),
-          oem: String(r['OEM'] || r['oem'] || 'Apple').trim(),
-          primaryModel: String(r['Model'] || r['model'] || 'Smartphone').trim(),
-          gradeRaw: String(r['Grade'] || r['grade'] || 'C(T)').trim(),
-          endDate: r['End Date'] || r['endDate'],
-          endTime: r['End Time'] || r['endTime'],
-          url: String(r['URL'] || r['url'] || '').trim(),
+          title: cleanLotTitle(normalizeField(r, 'Title', 'title', 'Listing Title') || `iPhone ${lotNum}`),
+          oem: normalizeField(r, 'OEM', 'oem', 'Make', 'Brand') || 'Apple',
+          primaryModel: normalizeField(r, 'Model', 'model', 'Model Name') || 'Smartphone',
+          gradeRaw: normalizeField(r, 'Grade', 'grade', 'Condition') || 'C(T)',
+          endDate: r['End Date'] ?? r['endDate'] ?? r['EndDate'],
+          endTime: r['End Time'] ?? r['endTime'] ?? r['EndTime'],
+          url: normalizeField(r, 'URL', 'url', 'Listing URL'),
           totalQty: 0,
           models: new Set<string>(),
           capacities: new Set<string>(),
@@ -367,14 +409,15 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       }
 
       const g = groups.get(lotNum)!;
-      const q = Math.max(1, parseInt(String(r['Qty'] || r['qty'] || 1), 10) || 1);
+      const qtyRaw = normalizeField(r, 'Qty', 'qty', 'Quantity', 'Units') || '1';
+      const q = Math.max(1, parseInt(qtyRaw.replace(/[^0-9]/g, '') || '1', 10) || 1);
       g.totalQty += q;
 
-      const model = String(r['Model'] || r['model'] || g.primaryModel).trim();
-      const cap = String(r['Capacity'] || r['capacity'] || '128GB').trim();
-      const itemDescription = String(r['Item Description'] || r['itemDescription'] || '').trim();
-      const color = parseBstockColorFromDesc(itemDescription, String(r['Color'] || r['color'] || ''));
-      const source = String(r['Inventory Source'] || r['inventorySource'] || 'Verizon Direct Return').trim();
+      const model = normalizeField(r, 'Model', 'model', 'Model Name') || g.primaryModel;
+      const cap = normalizeField(r, 'Capacity', 'capacity', 'Storage') || '128GB';
+      const itemDescription = normalizeField(r, 'Item Description', 'itemDescription', 'Description');
+      const color = parseBstockColorFromDesc(itemDescription, normalizeField(r, 'Color', 'color'));
+      const source = normalizeField(r, 'Inventory Source', 'inventorySource', 'Source') || 'Verizon Direct Return';
 
       if (model) g.models.add(model);
       if (cap) g.capacities.add(cap);
@@ -382,7 +425,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
       if (source) g.sources.add(source);
 
       // Transform grade ONLY for Verizon: A(T) -> DNA, B(T) -> DNB, C(T) -> DNC, D(T) -> DND
-      const mappedG = mapVerizonGrade(String(r['Grade'] || g.gradeRaw));
+      const mappedG = mapVerizonGrade(normalizeField(r, 'Grade', 'grade', 'Condition') || g.gradeRaw);
 
       g.items.push({
         id: `dev-vz-${lotNum}-${idx}`,
@@ -396,7 +439,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
         icloudStatus: 'Clean / FMI OFF',
         screenCondition: `Conforme Grade Verizon ${mappedG}`,
         housingCondition: `Conforme Grade Verizon ${mappedG}`,
-        partNumber: String(r['Part #'] || r['partNumber'] || '').trim(),
+        partNumber: normalizeField(r, 'Part #', 'partNumber', 'Part Number'),
         inventorySource: source,
         itemDescription,
         qty: q
@@ -1302,8 +1345,13 @@ $285.00
   // ----------------------------------------------------
   // PROCESS STOCK APPLE ROWS (STRICT FILTER: ONLY UNLOCKED IPHONES, IPADS, WATCHES & MACBOOKS)
   // ----------------------------------------------------
-  const processStockAppleRows = (rawRows: any[], allowAllBrands = false) => {
-    console.log(`[XLSX/Stock Import] processStockAppleRows started with ${rawRows.length} raw rows. allowAllBrands=${allowAllBrands}`);
+  const processStockAppleRows = (
+    rawRows: any[],
+    allowAllBrands = false,
+    activePresetOverride?: PresetFormatType
+  ) => {
+    const effectivePreset = activePresetOverride ?? presetFormat;
+    console.log(`[XLSX/Stock Import] processStockAppleRows started with ${rawRows.length} raw rows. allowAllBrands=${allowAllBrands}, preset=${effectivePreset}`);
     let approvedIPhones = 0;
     let approvedIPads = 0;
     let approvedWatches = 0;
@@ -1318,18 +1366,18 @@ $285.00
     const processedItems: StockAppleItem[] = [];
 
     rawRows.forEach((row, idx) => {
-      const itemNumber = normalizeField(row, 'Item #', 'Item#', 'ItemNumber', 'item_number', 'item-number', 'Item', 'id') || `ITM-${100000 + idx}`;
+      const itemNumber = normalizeField(row, 'Item #', 'Item#', 'ItemNumber', 'item_number', 'item-number', 'SKU/Barcode', 'SKU', 'sku', 'Barcode', 'Item', 'id') || `ITM-${100000 + idx}`;
       const warehouse = normalizeField(row, 'Warehouse', 'warehouse', 'Armazem') || 'W23-ATT';
-      const category = normalizeField(row, 'Category', 'category', 'Categoria') || '';
-      const make = normalizeField(row, 'Make', 'make', 'Fabricante', 'Brand', 'OEM', 'Manufacturer', 'manufacturer') || 'Apple';
+      const category = normalizeField(row, 'Category', 'category', 'Category Name', 'Categoria') || '';
+      const make = normalizeField(row, 'Make', 'make', 'Fabricante', 'Brand', 'OEM', 'Manufacturer', 'Manufacturer Name', 'manufacturer') || 'Apple';
       const description = normalizeField(row, 'Description', 'description', 'Descricao') || '';
-      const model = normalizeField(row, 'Model', 'model', 'Modelo', 'ModelName', 'model_name', 'DeviceModel', 'device_model', 'Product', 'product', 'ItemName', 'item_name') || (description ? description.split(/\s+/).slice(0, 4).join(' ') : 'iPhone');
-      const modelNumber = normalizeField(row, 'Model Number', 'ModelNumber', 'model_number', 'PartNumber', 'part_number') || '';
+      const model = normalizeField(row, 'Model', 'model', 'Modelo', 'ModelName', 'model_name', 'DeviceModel', 'device_model', 'Product', 'Product Name', 'product', 'ItemName', 'item_name') || (description ? description.split(/\s+/).slice(0, 4).join(' ') : 'iPhone');
+      const modelNumber = normalizeField(row, 'Model Number', 'ModelNumber', 'model_number', 'PartNumber', 'part_number', 'Part #') || '';
       const capacity = normalizeField(row, 'Capacity', 'capacity', 'Capacidade', 'Storage', 'storage', 'Memory', 'memory') || '128GB';
       const carrier = normalizeField(row, 'Carrier', 'carrier', 'Operadora') || '';
-      const lockStatus = normalizeField(row, 'Lock Status', 'LockStatus', 'lock_status', 'lock-status', 'StatusBloqueio') || '';
+      const lockStatus = normalizeField(row, 'Lock Status', 'LockStatus', 'lock_status', 'lock-status', 'StatusBloqueio', 'Carrier Lock', 'FMIP/Google Lock Status') || '';
       const color = normalizeField(row, 'Color', 'color', 'Cor') || 'Space Gray';
-      const grade = normalizeField(row, 'Grade', 'grade', 'Condicao') || 'DLS A';
+      const grade = normalizeField(row, 'Grade', 'grade', 'Cosmetic Grade', 'Condicao', 'Condition') || 'DLS A';
       
       const qtyRaw = normalizeField(
         row,
@@ -1340,9 +1388,11 @@ $285.00
         'Quantity Total',
         'QuantityTotal',
         'Qty Available',
+        'Available Qty',
         'Quantity',
         'Qty',
         'qty',
+        'Stock',
         'Quantidade'
       ) || '1';
       const availableQuantity = Math.max(1, parseInt(String(qtyRaw).replace(/[^0-9]/g, '') || '1', 10) || 1);
@@ -1387,7 +1437,7 @@ $285.00
       const listPrice = parsedPrice;
       const currency = 'USD';
 
-      // 1. BRAND CHECK: Must be Apple unless allowAllBrands (Assurant) is active
+      // 1. BRAND CHECK: Must be Apple unless allowAllBrands (Assurant / Marketplaces / MacBooks) is active
       const isAppleMake = allowAllBrands ||
         make.trim().toLowerCase() === 'apple' ||
         /iphone|ipad|apple watch|\bwatch\b/i.test(model) ||
@@ -1465,7 +1515,7 @@ $285.00
       }
 
       // 2b. STRICT CATEGORY/PROCESSOR FILTERS FOR PRONTA ENTREGA (iPhones only, Grades A/AB/B) & MACBOOKS (M1+)
-      const isProntaEntregaRow = presetFormat === 'STOCK_APPLE' || /pronta entrega/i.test(warehouse);
+      const isProntaEntregaRow = effectivePreset === 'STOCK_APPLE' || /pronta entrega/i.test(warehouse);
       if (isProntaEntregaRow) {
         const gradeToken = extractProntaEntregaAllowedGrade(grade) || extractProntaEntregaAllowedGrade(model);
         if (deviceType !== 'iPhone' || !isProntaEntregaIphone(make, model, category) || !gradeToken) {
@@ -1498,7 +1548,7 @@ $285.00
         }
       }
 
-      const isMacbookRow = presetFormat === 'MACBOOKS' || /apple macbooks/i.test(warehouse);
+      const isMacbookRow = effectivePreset === 'MACBOOKS' || /apple macbooks/i.test(warehouse);
       if (isMacbookRow) {
         if (deviceType !== 'MacBook' || !isMacbookM1OrNewer(`${model} ${description}`)) {
           discardedNonAppleCount++;
@@ -1575,14 +1625,18 @@ $285.00
         return;
       }
 
-      // Whenever the feed provides a Lock Status column, strictly require confirmed UNLOCKED
+      // Whenever the feed provides a Lock Status column, strictly require confirmed UNLOCKED (or Wi-Fi Only)
       if (hasLockColumn) {
         const isConfirmedUnlocked = lockUpper.includes('UNLOCKED') ||
           descUpper.includes('UNLOCKED') ||
+          lockUpper === 'WIFI' ||
+          lockUpper === 'WI-FI' ||
           carrierUpper === 'UNL' ||
           carrierUpper === 'UNLOCKED' ||
           carrierUpper === 'GSM UNLOCKED' ||
-          carrierUpper === 'FACTORY UNLOCKED';
+          carrierUpper === 'FACTORY UNLOCKED' ||
+          carrierUpper === 'WIFI' ||
+          carrierUpper === 'WI-FI';
 
         if (!isConfirmedUnlocked) {
           discardedLockedCount++;
@@ -1743,6 +1797,7 @@ $285.00
         title,
         deviceType: g.deviceType,
         modelFamily: g.modelFamily,
+        oemBrand: groupMake,
         capacity: g.capacity,
         grade: g.grade,
         warehouse: g.warehouse,
@@ -1769,7 +1824,7 @@ $285.00
       setRawHeaders(Object.keys(rows[0] || {}));
       setParsedPreviewRows(rows);
       setPresetFormat('STOCK_APPLE');
-      const { audit } = processStockAppleRows(rows);
+      const { audit } = processStockAppleRows(rows, false, 'STOCK_APPLE');
       showNotice(`Exemplo XML Apple processado! ${audit.approvedCount} itens aprovados (iPhones, iPads e Watches DESBLOQUEADOS) e ${audit.discardedLockedCount} bloqueados descartados.`, 'success');
     } catch (err: any) {
       showNotice(`Erro ao processar exemplo XML: ${err?.message}`, 'error');
@@ -1789,7 +1844,7 @@ $285.00
       setRawHeaders(Object.keys(rows[0] || {}));
       setParsedPreviewRows(rows);
       setPresetFormat('STOCK_APPLE');
-      const { audit } = processStockAppleRows(rows);
+      const { audit } = processStockAppleRows(rows, false, 'STOCK_APPLE');
       showNotice(`Planilha oficial em anexo carregada! ${audit.approvedCount.toLocaleString()} itens aprovados (iPhones, iPads e Watches DESBLOQUEADOS) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
     } catch (err: any) {
       showNotice(`Erro ao carregar planilha oficial: ${err?.message}`, 'error');
@@ -1812,7 +1867,7 @@ $285.00
       setParsedPreviewRows(rows);
       setPresetFormat('MARKETPLACE_3');
       setStockAppleGroupMode('individual');
-      const { audit } = processStockAppleRows(rows, true);
+      const { audit } = processStockAppleRows(rows, true, 'MARKETPLACE_3');
       showNotice(
         `Planilha Marketplace 3 carregada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`,
         'success'
@@ -1866,13 +1921,14 @@ $285.00
   };
 
   // Publish Stock Apple Lots to Auction Store
-  const handleApplyStockAppleImport = () => {
+  const handleApplyStockAppleImport = async () => {
     const approvedItems = stockAppleItems.filter(i => i.status === 'APPROVED');
     if (approvedItems.length === 0) {
       showNotice('Nenhum item Apple desbloqueado aprovado para publicar.', 'error');
       return;
     }
 
+    setIsPublishingLots(true);
     try {
       const isAssurant = presetFormat === 'ASSURANT';
       const markupPerUnit = isAssurant && addAssurantFiveUsd ? assurantMarkupAmount : 0;
@@ -1903,7 +1959,7 @@ $285.00
             lotNumber: `${meta.prefix}-${g.lotNumber.replace(/^(UF-|ASR-)/, '')}`,
             title: cleanLotTitle(g.title),
             modelFamily: cleanLotTitle(g.modelFamily) || g.modelFamily,
-            oemBrand: 'Apple',
+            oemBrand: presetFormat !== 'STOCK_APPLE' ? (g.oemBrand || 'Apple') : 'Apple',
             quantity: g.totalQuantity,
             incrementSize: g.incrementsOf || 1,
             grade: g.grade as GradeType,
@@ -2046,18 +2102,28 @@ $285.00
       }
 
       const targetSourceType = isStockFeedFormat(presetFormat) ? presetFormat : 'STOCK_APPLE';
+      const targetMktNum = targetSourceType === 'MARKETPLACE_1' ? 1 : targetSourceType === 'MARKETPLACE_2' ? 2 : targetSourceType === 'MARKETPLACE_3' ? 3 : null;
       const shouldReplaceSameSource = replaceExistingLots || ['ASSURANT', 'MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3'].includes(presetFormat);
-      const finalLots = shouldReplaceSameSource
-        ? [...newLots, ...auctions.filter(a => a.sourceType !== targetSourceType)]
-        : [...newLots, ...auctions];
+      const remainingAuctions = shouldReplaceSameSource
+        ? auctions.filter(a => a.sourceType !== targetSourceType && (!targetMktNum || getMarketplaceNumber(a) !== targetMktNum))
+        : auctions;
+      const finalLots = [...newLots, ...remainingAuctions];
 
-      console.log(`[XLSX/Stock Import] Publishing ${newLots.length} new lots. Total lots after merge: ${finalLots.length}. replaceExistingLots=${replaceExistingLots}`);
-      onUpdateAuctions(finalLots);
+      console.log(`[XLSX/Stock Import] Publishing ${newLots.length} new lots (${targetSourceType}). Total lots after merge: ${finalLots.length}.`);
+      const syncResult = await Promise.resolve(onUpdateAuctions(finalLots));
+      if (syncResult === false) {
+        showNotice(`⚠️ ${newLots.length} Lotes ${meta.label} carregados na tela, mas o envio ao servidor falhou. Clique em publicar novamente para salvar no banco.`, 'error');
+        return;
+      }
 
-      showNotice(`🎉 ${newLots.length} Lotes ${meta.label} (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados com sucesso no catálogo e painel do cliente!`, 'success');
+      showNotice(`🎉 ${newLots.length} Lotes ${meta.label} (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados e salvos no banco com sucesso!`, 'success');
+      setAdminSourceFilter(targetSourceType as any);
+      setAdminLotPage(1);
       setAdminTab('lots');
     } catch (err: any) {
       showNotice(`Falha ao publicar lotes Apple: ${err?.message}`, 'error');
+    } finally {
+      setIsPublishingLots(false);
     }
   };
 
@@ -2197,6 +2263,175 @@ $285.00
   </Item>
 </StockList>`;
 
+  const buildGenericColumnMapping = (headers: string[]) => ({
+    lotNumber: headers.find(h => /lote|lot|id|codigo/i.test(h)) || headers[0] || '',
+    title: headers.find(h => /titulo|title|produto|descricao/i.test(h)) || headers[1] || '',
+    modelFamily: headers.find(h => /modelo|model|familia|aparelho/i.test(h)) || headers[2] || '',
+    quantity: headers.find(h => /quantidade|qtd|unidades|units|qty/i.test(h)) || headers[3] || '',
+    grade: headers.find(h => /grade|condicao|classificacao/i.test(h)) || headers[4] || '',
+    storage: headers.find(h => /armazenamento|storage|capacidade|memoria/i.test(h)) || '',
+    batteryHealth: headers.find(h => /bateria|battery|saude/i.test(h)) || '',
+    currentBidUsd: headers.find(h => /lance atual|current bid|lance|valor usd|preco|list price|price/i.test(h)) || '',
+    startingBidUsd: headers.find(h => /lance inicial|starting bid|minimo|abertura/i.test(h)) || '',
+    estimatedRetailBrl: headers.find(h => /revenda|varejo|brasil|brl|mercado livre/i.test(h)) || '',
+    auctionHouse: headers.find(h => /casa|auction house|origem|fornecedor/i.test(h)) || '',
+    location: headers.find(h => /localizacao|armazem|cidade|location|estado/i.test(h)) || ''
+  });
+
+  const findSpreadsheetHeaderIndex = (dataGrid: any[][], totalSheets: number): number => {
+    for (let r = 0; r < Math.min(30, dataGrid.length); r++) {
+      const cells = (dataGrid[r] || [])
+        .map((c: any) => String(c ?? '').replace(/^\uFEFF/, '').replace(/\s+/g, ' ').trim().toLowerCase())
+        .filter(Boolean);
+      if (cells.length < 2) continue;
+      const rowStr = cells.join(' ');
+      if (
+        (cells.some(c => c.includes('lot id')) && cells.some(c => c.includes('model') || c.includes('grade') || c.includes('quantity') || c.includes('price'))) ||
+        (rowStr.includes('item') && (rowStr.includes('warehouse') || rowStr.includes('model') || rowStr.includes('category') || rowStr.includes('lock') || rowStr.includes('list price'))) ||
+        (rowStr.includes('lot') && (rowStr.includes('description') || rowStr.includes('title') || rowStr.includes('model') || rowStr.includes('grade') || rowStr.includes('quantity') || rowStr.includes('price'))) ||
+        (cells.some(c => /sku|item\s*#|lot\s*#|lot id|product\s*name|model|lote/.test(c)) &&
+          cells.filter(c => /lot|item|sku|model|modelo|grade|qty|quantity|quantidade|price|preco|capacity|storage|color|carrier|make|manufacturer|oem|category|description|title|titulo|warehouse|lock/.test(c)).length >= 3)
+      ) {
+        return r;
+      }
+    }
+
+    if (totalSheets === 1 || dataGrid.length >= 2) {
+      for (let r = 0; r < Math.min(15, dataGrid.length); r++) {
+        const nonEmpty = (dataGrid[r] || []).filter((c: any) => String(c ?? '').trim() !== '');
+        if (nonEmpty.length >= 2) return r;
+      }
+    }
+    return -1;
+  };
+
+  // Unified classification & rule processor shared identically between CSV, XLSX/XLS/XLX/XLSM and XML
+  const classifyAndProcessSpreadsheetRows = (
+    rows: any[],
+    headers: string[],
+    fileName: string,
+    sheetLabel = '',
+    forcedPreset?: PresetFormatType
+  ) => {
+    if (!rows || rows.length === 0) return;
+
+    const sheetSuffix = sheetLabel ? ` (${sheetLabel})` : '';
+    const fileMktNum = getMarketplaceNumber(fileName);
+    const isTMobile = isTMobileHeaders(headers, fileName);
+    const isExplicitAssurant =
+      /assurant|a02-assurant/i.test(fileName) ||
+      rows.slice(0, 20).some(r => /a02-assurant|assurant/i.test(String(r['Warehouse'] || r['warehouse'] || '')));
+    const isStockApple =
+      headers.some(h => /item\s*#|itemnumber|warehouse|lock\s*status|lockstatus|available\s*quantity|quantity\s*available|list\s*price|selling\s*price/i.test(h)) ||
+      (/stock/i.test(fileName) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
+      (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make|manufacturer/i.test(h2)));
+    const isVerizon =
+      (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
+      (/verizon|usafast/i.test(fileName) && !fileMktNum);
+
+    const explicitFilePreset: PresetFormatType | null = isTMobile
+      ? 'T_MOBILE'
+      : fileMktNum === 3
+        ? 'MARKETPLACE_3'
+        : fileMktNum === 1
+          ? 'MARKETPLACE_1'
+          : fileMktNum === 2
+            ? 'MARKETPLACE_2'
+            : isExplicitAssurant
+              ? 'ASSURANT'
+              : /verizon/i.test(fileName)
+                ? 'VERIZON'
+                : null;
+
+    let targetFormat: PresetFormatType;
+    if (forcedPreset) {
+      targetFormat = forcedPreset;
+    } else if (presetSelectedManually) {
+      if (explicitFilePreset && explicitFilePreset !== presetFormat) {
+        targetFormat = explicitFilePreset;
+      } else {
+        targetFormat = presetFormat;
+      }
+    } else if (explicitFilePreset) {
+      targetFormat = explicitFilePreset;
+    } else if (isVerizon) {
+      targetFormat = 'VERIZON';
+    } else if (/b-stock|stocklist|stock_list/i.test(fileName)) {
+      targetFormat = isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE' ? presetFormat : 'ASSURANT';
+    } else if (isStockApple) {
+      targetFormat = 'STOCK_APPLE';
+    } else {
+      targetFormat = 'GENERIC';
+    }
+
+    if (targetFormat === 'T_MOBILE') {
+      setPresetFormat('T_MOBILE');
+      const grouped = processTMobileRows(rows);
+      const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+      showNotice(
+        `Planilha T-MOBILE detectada${sheetSuffix}! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) com Mix de Cores/Modelos pronto para publicar.`,
+        'success'
+      );
+    } else if (
+      targetFormat === 'MARKETPLACE_1' ||
+      targetFormat === 'MARKETPLACE_2' ||
+      targetFormat === 'MARKETPLACE_3' ||
+      targetFormat === 'ASSURANT'
+    ) {
+      setPresetFormat(targetFormat);
+      setStockAppleGroupMode('individual');
+      const { audit } = processStockAppleRows(rows, true, targetFormat);
+      const label =
+        targetFormat === 'MARKETPLACE_1'
+          ? 'Marketplace 1'
+          : targetFormat === 'MARKETPLACE_2'
+            ? 'Marketplace 2'
+            : targetFormat === 'MARKETPLACE_3'
+              ? 'Marketplace 3'
+              : 'ASSURANT';
+      const extraAssurant =
+        targetFormat === 'ASSURANT'
+          ? ` (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un)`
+          : '';
+      showNotice(
+        `Planilha ${label} detectada${sheetSuffix}! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos)${extraAssurant} e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`,
+        'success'
+      );
+    } else if (targetFormat === 'VERIZON') {
+      setPresetFormat('VERIZON');
+      setVerizonImportMode('grouped');
+      const grouped = processVerizonRows(rows);
+      const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
+      showNotice(
+        `Planilha VERIZON detectada${sheetSuffix}! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`,
+        'success'
+      );
+    } else if (targetFormat === 'STOCK_APPLE' || targetFormat === 'MACBOOKS') {
+      setPresetFormat(targetFormat);
+      const { audit } = processStockAppleRows(rows, targetFormat === 'MACBOOKS', targetFormat);
+      showNotice(
+        `Planilha ${targetFormat === 'MACBOOKS' ? 'MacBooks' : 'Estoque Apple'} processada${sheetSuffix}! ${audit.approvedCount.toLocaleString()} itens aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`,
+        'success'
+      );
+    } else {
+      setPresetFormat('GENERIC');
+      setColumnMapping(buildGenericColumnMapping(headers));
+      showNotice(`Arquivo "${fileName}"${sheetSuffix} carregado com ${rows.length} linhas.`);
+    }
+  };
+
+  const handleSelectPresetFormat = (fmt: PresetFormatType, mode: 'file' | 'paste' = 'file') => {
+    setPresetSelectedManually(true);
+    setPresetFormat(fmt);
+    setUploadMode(mode);
+    if (isStockFeedFormat(fmt)) {
+      setStockAppleGroupMode('individual');
+    }
+    if (mode === 'file' && parsedPreviewRows.length > 0) {
+      classifyAndProcessSpreadsheetRows(parsedPreviewRows, rawHeaders, uploadedFileName || fmt, '', fmt);
+    }
+  };
+
   const handleLoadSampleAssurantXml = () => {
     try {
       const rows = parseXmlSpreadsheet(SAMPLE_ASSURANT_XML);
@@ -2205,7 +2440,8 @@ $285.00
       setParsedPreviewRows(rows);
       setUploadedFileName('leilao_assurant_unlocked.xml');
       setPresetFormat('ASSURANT');
-      const { audit } = processStockAppleRows(rows);
+      setStockAppleGroupMode('individual');
+      const { audit } = processStockAppleRows(rows, true, 'ASSURANT');
       showNotice(`XML Leilão ASSURANT carregado! ${audit.approvedCount} aparelhos UNLOCKED aprovados (${audit.discardedLockedCount} LOCKED descartados). ${addAssurantFiveUsd ? `+$${assurantMarkupAmount} USD aplicado!` : ''}`, 'success');
     } catch (e: any) {
       showNotice(`Erro ao carregar XML Assurant: ${e?.message}`, 'error');
@@ -2235,8 +2471,9 @@ $285.00
 
     const displayFileName = sanitizeSupplierStrings(file.name).replace(/^[\s\-_]+|[\s\-_]+$/g, '') || 'Planilha_Marketplace';
     setUploadedFileName(displayFileName);
-    const isXml = file.name.toLowerCase().endsWith('.xml') || file.type.includes('xml');
-    const isCsv = file.name.toLowerCase().endsWith('.csv');
+    const lowerName = file.name.toLowerCase();
+    const isXml = lowerName.endsWith('.xml') || file.type.includes('xml');
+    const isCsv = lowerName.endsWith('.csv');
 
     if (isXml) {
       const reader = new FileReader();
@@ -2248,48 +2485,10 @@ $285.00
             showNotice('O arquivo XML não possui linhas ou lotes legíveis.', 'error');
             return;
           }
-          const headers = Object.keys(rows[0]);
+          const headers = Object.keys(rows[0] || {});
           setRawHeaders(headers);
           setParsedPreviewRows(rows);
-
-          const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
-                               (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
-                               (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
-
-          const isVerizon = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
-                            /verizon|usafast/i.test(file.name);
-
-          if (isVerizon) {
-            setPresetFormat('VERIZON');
-            setVerizonImportMode('grouped');
-            const grouped = processVerizonRows(rows);
-            let totalUnits = 0;
-            grouped.forEach(g => { totalUnits += g.totalQty; });
-            showNotice(`Arquivo VERIZON detectado! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
-          } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE' && !isVerizon) {
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Arquivo XML ${presetFormat} processado! ${audit.approvedCount.toLocaleString()} lotes/aparelhos UNLOCKED aprovados.`, 'success');
-          } else if (/assurant/i.test(file.name)) {
-            setPresetFormat('ASSURANT');
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Arquivo XML ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/aparelhos UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (isStockApple || presetFormat === 'STOCK_APPLE') {
-            setPresetFormat('STOCK_APPLE');
-            const { audit } = processStockAppleRows(rows);
-            showNotice(`Arquivo XML Estoque Apple processado! ${audit.approvedCount.toLocaleString()} aparelhos aprovados (iPhones, iPads e Watches UNLOCKED) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (presetFormat === 'VERIZON') {
-            setPresetFormat('VERIZON');
-            setVerizonImportMode('grouped');
-            const grouped = processVerizonRows(rows);
-            let totalUnits = 0;
-            grouped.forEach(g => { totalUnits += g.totalQty; });
-            showNotice(`Arquivo XML processado! ${grouped.length} lotes agrupados e ${totalUnits} aparelhos lidos.`);
-          } else {
-            setPresetFormat('GENERIC');
-            showNotice(`Arquivo XML "${file.name}" carregado com ${rows.length} registros.`);
-          }
+          classifyAndProcessSpreadsheetRows(rows, headers, file.name);
         } catch (err: any) {
           showNotice(`Erro ao processar arquivo XML: ${err?.message}`, 'error');
         }
@@ -2311,76 +2510,7 @@ $285.00
           const headers = Object.keys(rows[0] || {});
           setRawHeaders(headers);
           setParsedPreviewRows(rows);
-
-          const isTMobile = isTMobileHeaders(headers, file.name);
-
-          const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
-                               (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
-                               (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
-
-          const isVerizon = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
-                            /verizon/i.test(file.name);
-
-          if (isTMobile) {
-            setPresetFormat('T_MOBILE');
-            const grouped = processTMobileRows(rows);
-            const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
-            showNotice(`Planilha T-MOBILE detectada! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) com Mix de Cores/Modelos pronto para publicar.`, 'success');
-          } else if (getMarketplaceNumber(file.name) === 3) {
-            setPresetFormat('MARKETPLACE_3');
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha Marketplace 3 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (getMarketplaceNumber(file.name) === 1) {
-            setPresetFormat('MARKETPLACE_1');
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha Marketplace 1 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (getMarketplaceNumber(file.name) === 2) {
-            setPresetFormat('MARKETPLACE_2');
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha Marketplace 2 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (/assurant/i.test(file.name)) {
-            setPresetFormat('ASSURANT');
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (isVerizon) {
-            setPresetFormat('VERIZON');
-            setVerizonImportMode('grouped');
-            const grouped = processVerizonRows(rows);
-            let totalUnits = 0;
-            grouped.forEach(g => { totalUnits += g.totalQty; });
-            showNotice(`Planilha VERIZON detectada! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
-          } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha ${presetFormat} detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-          } else if (/b-stock|stocklist|stock_list/i.test(file.name)) {
-            setPresetFormat('ASSURANT');
-            setStockAppleGroupMode('individual');
-            const { audit } = processStockAppleRows(rows, true);
-            showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (isStockApple || presetFormat === 'STOCK_APPLE') {
-            setPresetFormat('STOCK_APPLE');
-            const { audit } = processStockAppleRows(rows);
-            showNotice(`Planilha Estoque Apple detectada! ${audit.approvedCount.toLocaleString()} itens aprovados (iPhones, iPads e Watches UNLOCKED) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-          } else if (presetFormat === 'VERIZON') {
-            setPresetFormat('VERIZON');
-            setVerizonImportMode('grouped');
-            const grouped = processVerizonRows(rows);
-            let totalUnits = 0;
-            grouped.forEach(g => { totalUnits += g.totalQty; });
-            showNotice(`Arquivo VERIZON detectado! ${grouped.length} lotes agrupados e ${totalUnits} aparelhos lidos.`);
-          } else if (presetFormat === 'T_MOBILE') {
-            const grouped = processTMobileRows(rows);
-            const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
-            showNotice(`Planilha T-MOBILE carregada! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos).`, 'success');
-          } else {
-            setPresetFormat('GENERIC');
-            showNotice(`Arquivo "${file.name}" carregado com ${rows.length} linhas.`);
-          }
+          classifyAndProcessSpreadsheetRows(rows, headers, file.name);
         } catch (err: any) {
           showNotice(`Erro ao processar arquivo CSV: ${err?.message}`, 'error');
         }
@@ -2389,7 +2519,7 @@ $285.00
       return;
     }
 
-    // Standard binary reading for XLSX / XLS / XLX — reads ALL sheets (e.g. Tab 1 + Tab 2 MIXED)
+    // Standard binary reading for XLSX / XLS / XLX / XLSM — reads ALL sheets with 100% parity to CSV
     console.log(`[XLSX Upload] Reading binary file "${file.name}" with XLSX.read...`);
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -2405,34 +2535,35 @@ $285.00
         for (const sheetName of wb.SheetNames) {
           const ws = wb.Sheets[sheetName];
           if (!ws) continue;
-          const dataGrid: any[] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          const dataGrid: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
           if (!dataGrid || dataGrid.length < 2) continue;
 
-          // Find header row in first 25 rows (collapsing multiline headers like "Lot ID \n(In Ivalua)")
-          let headerIdx = -1;
-          for (let r = 0; r < Math.min(25, dataGrid.length); r++) {
-            const rowStr = (dataGrid[r] || [])
-              .map((c: any) => String(c || '').replace(/\s+/g, ' ').trim().toLowerCase())
-              .join(' ');
-            if (
-              (rowStr.includes('item') && (rowStr.includes('warehouse') || rowStr.includes('model') || rowStr.includes('category') || rowStr.includes('lock'))) ||
-              (rowStr.includes('lot') && (rowStr.includes('description') || rowStr.includes('title') || rowStr.includes('model') || rowStr.includes('grade') || rowStr.includes('quantity') || rowStr.includes('price')))
-            ) {
-              headerIdx = r;
-              break;
-            }
-          }
-
-          if (headerIdx === -1) {
-            if (wb.SheetNames.length === 1 && (dataGrid[0] || []).filter((c: any) => String(c || '').trim() !== '').length >= 2) {
-              headerIdx = 0;
-            } else {
+          // Detect CSV text packed inside single-column XLSX sheets
+          const singleColCsvLines = dataGrid
+            .slice(0, 20)
+            .filter(row => {
+              const nonEmpty = (row || []).filter((c: any) => String(c ?? '').trim() !== '');
+              return nonEmpty.length === 1 && /;|,/.test(String(nonEmpty[0] ?? ''));
+            });
+          if (singleColCsvLines.length >= 2) {
+            const packedCsvText = dataGrid
+              .map(row => String((row || [])[0] ?? ''))
+              .filter(line => line.trim() !== '')
+              .join('\n');
+            const parsedCsvRows = parseCsvText(packedCsvText);
+            if (parsedCsvRows.length > 0) {
+              parsedCsvRows.forEach(r => rawJson.push({ _sheetName: sheetName, ...r }));
+              Object.keys(parsedCsvRows[0] || {}).filter(Boolean).forEach(h => allHeadersSet.add(h));
+              loadedSheetLabels.push(`${sheetName} (${parsedCsvRows.length})`);
               continue;
             }
           }
 
+          const headerIdx = findSpreadsheetHeaderIndex(dataGrid, wb.SheetNames.length);
+          if (headerIdx === -1) continue;
+
           const sheetHeaders = (dataGrid[headerIdx] as any[]).map(h =>
-            String(h || '').replace(/\s+/g, ' ').trim()
+            String(h ?? '').replace(/^\uFEFF/, '').replace(/\s+/g, ' ').trim()
           );
           let sheetRowsAdded = 0;
           for (let r = headerIdx + 1; r < dataGrid.length; r++) {
@@ -2467,94 +2598,7 @@ $285.00
 
         setRawHeaders(headers);
         setParsedPreviewRows(rawJson);
-
-        const isTMobileFormat = isTMobileHeaders(headers, file.name);
-
-        const isStockApple = headers.some(h => /item #|warehouse|lock status|available quantity|list price/i.test(h)) ||
-                             (/stock/i.test(file.name) && !headers.some(h => /^lot\s*#?$/i.test(h))) ||
-                             (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
-
-        const isVerizonFormat = (headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h))) ||
-                                /verizon/i.test(file.name);
-
-        if (isTMobileFormat) {
-          setPresetFormat('T_MOBILE');
-          const grouped = processTMobileRows(rawJson);
-          const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
-          showNotice(
-            `Planilha T-MOBILE detectada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos com Mix de Modelos/Cores.`,
-            'success'
-          );
-        } else if (getMarketplaceNumber(file.name) === 3) {
-          setPresetFormat('MARKETPLACE_3');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha Marketplace 3 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados (${audit.totalApprovedUnits.toLocaleString()} aparelhos) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (getMarketplaceNumber(file.name) === 1) {
-          setPresetFormat('MARKETPLACE_1');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha Marketplace 1 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (getMarketplaceNumber(file.name) === 2) {
-          setPresetFormat('MARKETPLACE_2');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha Marketplace 2 detectada! ${audit.approvedCount.toLocaleString()} lotes UNLOCKED aprovados e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (/assurant/i.test(file.name)) {
-          setPresetFormat('ASSURANT');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (isVerizonFormat) {
-          setPresetFormat('VERIZON');
-          setVerizonImportMode('grouped');
-          const grouped = processVerizonRows(rawJson);
-          let totalUnits = 0;
-          grouped.forEach(g => { totalUnits += g.totalQty; });
-          showNotice(`Planilha VERIZON detectada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados e ${totalUnits.toLocaleString()} aparelhos lidos (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
-        } else if (isStockFeedFormat(presetFormat) && presetFormat !== 'STOCK_APPLE') {
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha ${presetFormat} detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-        } else if (/b-stock|stocklist|stock_list/i.test(file.name)) {
-          setPresetFormat('ASSURANT');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rawJson, true);
-          showNotice(`Planilha ASSURANT detectada! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados (+$${addAssurantFiveUsd ? assurantMarkupAmount : 0} USD/un) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (isStockApple || presetFormat === 'STOCK_APPLE') {
-          setPresetFormat('STOCK_APPLE');
-          const { audit } = processStockAppleRows(rawJson);
-          showNotice(`Planilha Estoque Apple detectada! ${audit.approvedCount.toLocaleString()} itens aprovados (iPhones, iPads e Watches UNLOCKED) e ${audit.discardedLockedCount.toLocaleString()} bloqueados descartados.`, 'success');
-        } else if (presetFormat === 'VERIZON') {
-          setPresetFormat('VERIZON');
-          setVerizonImportMode('grouped');
-          const grouped = processVerizonRows(rawJson);
-          let totalUnits = 0;
-          grouped.forEach(g => { totalUnits += g.totalQty; });
-          showNotice(`Arquivo VERIZON detectado! ${grouped.length} lotes agrupados e ${totalUnits} aparelhos lidos.`);
-        } else if (presetFormat === 'T_MOBILE') {
-          const grouped = processTMobileRows(rawJson);
-          const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
-          showNotice(`Planilha T-MOBILE carregada (${loadedSheetLabels.join(' + ')})! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos).`, 'success');
-        } else {
-          setPresetFormat('GENERIC');
-          const mapping = {
-            lotNumber: headers.find(h => /lote|lot|id|codigo/i.test(h)) || headers[0] || '',
-            title: headers.find(h => /titulo|title|produto|descricao/i.test(h)) || headers[1] || '',
-            modelFamily: headers.find(h => /modelo|model|familia|aparelho/i.test(h)) || headers[2] || '',
-            quantity: headers.find(h => /quantidade|qtd|unidades|units|qty/i.test(h)) || headers[3] || '',
-            grade: headers.find(h => /grade|condicao|classificacao/i.test(h)) || headers[4] || '',
-            storage: headers.find(h => /armazenamento|storage|capacidade|memoria/i.test(h)) || '',
-            batteryHealth: headers.find(h => /bateria|battery|saude/i.test(h)) || '',
-            currentBidUsd: headers.find(h => /lance atual|current bid|lance|valor usd|preco/i.test(h)) || '',
-            startingBidUsd: headers.find(h => /lance inicial|starting bid|minimo|abertura/i.test(h)) || '',
-            estimatedRetailBrl: headers.find(h => /revenda|varejo|brasil|brl|mercado livre/i.test(h)) || '',
-            auctionHouse: headers.find(h => /casa|auction house|origem|fornecedor/i.test(h)) || '',
-            location: headers.find(h => /localizacao|armazem|cidade|location|estado/i.test(h)) || ''
-          };
-          setColumnMapping(mapping);
-          showNotice(`Arquivo "${file.name}" carregado com ${rawJson.length} linhas.`);
-        }
+        classifyAndProcessSpreadsheetRows(rawJson, headers, file.name, loadedSheetLabels.join(' + '));
       } catch (err: any) {
         showNotice(`Erro ao processar planilha: ${err?.message || 'Arquivo inválido'}`, 'error');
       }
@@ -2590,7 +2634,7 @@ $285.00
           'Currency': it.currency
         };
       });
-      processStockAppleRows(updatedRows, true);
+      processStockAppleRows(updatedRows, true, 'MACBOOKS');
       showNotice(
         nextActive
           ? '✅ Margem Macbooks aplicada nos itens! (<= $500: +$25 USD | > $500: +$40 USD)'
@@ -2643,7 +2687,7 @@ $285.00
         'List Price': it.listPrice,
         '_baseListPrice': it.baseListPrice,
         'Currency': it.currency
-      })), true);
+      })), true, 'MACBOOKS');
       showNotice(
         `💻 ${macbookItems.length} MacBooks M1+ processados! ${macbookMarginActive ? 'Margem ativa (<= $500: +$25 | > $500: +$40).' : 'Valor original mantido — clique no botão de margem se desejar acrescentar (+$25 / +$40).'}`,
         'success'
@@ -2679,7 +2723,7 @@ $285.00
         'List Price': it.listPrice,
         '_baseListPrice': it.baseListPrice,
         'Currency': it.currency
-      })), true);
+      })), true, 'STOCK_APPLE');
       showNotice(`📦 ${prontaItems.length} iPhones de Pronta Entrega (Grades A, AB e B com preço > $0 e estoque > 0) prontos para publicar!`, 'success');
       return;
     }
@@ -2692,44 +2736,12 @@ $285.00
           showNotice('Nenhum registro reconhecido no XML colado.', 'error');
           return;
         }
-        const headers = Object.keys(rows[0]);
+        const headers = Object.keys(rows[0] || {});
         setRawHeaders(headers);
         setParsedPreviewRows(rows);
         setUploadedFileName('Dados Colados em XML');
-
-        const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
-                             (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
-
-        const isVerizon = headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h));
-
-        if (/A02-ASSURANT|assurant/i.test(pasteText)) {
-          setPresetFormat('ASSURANT');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rows, true);
-          showNotice(`XML ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-        } else if (isVerizon) {
-          setPresetFormat('VERIZON');
-          setVerizonImportMode('grouped');
-          const grouped = processVerizonRows(rows);
-          showNotice(`XML Padrão VERIZON processado! ${grouped.length} lotes agrupados (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
-        } else if (presetFormat === 'ASSURANT') {
-          setPresetFormat('ASSURANT');
-          setStockAppleGroupMode('individual');
-          const { audit } = processStockAppleRows(rows, true);
-          showNotice(`XML ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-        } else if (isStockApple || (presetFormat as string) === 'STOCK_APPLE') {
-          setPresetFormat('STOCK_APPLE');
-          const { audit } = processStockAppleRows(rows);
-          showNotice(`XML Estoque Apple processado! ${audit.approvedCount.toLocaleString()} itens aprovados.`, 'success');
-        } else if ((presetFormat as string) === 'VERIZON') {
-          setPresetFormat('VERIZON');
-          setVerizonImportMode('grouped');
-          const grouped = processVerizonRows(rows);
-          showNotice(`XML Padrão VERIZON processado! ${grouped.length} lotes agrupados.`);
-        } else {
-          setPresetFormat('GENERIC');
-          showNotice(`${rows.length} registros XML processados com sucesso!`);
-        }
+        const pasteHint = /A02-ASSURANT|assurant/i.test(pasteText) ? 'Assurant.xml' : 'Dados_Colados.xml';
+        classifyAndProcessSpreadsheetRows(rows, headers, pasteHint);
         return;
       } catch (err: any) {
         showNotice(`Falha ao interpretar XML colado: ${err?.message}`, 'error');
@@ -2754,96 +2766,43 @@ $285.00
       setRawHeaders(headers);
       setParsedPreviewRows(rows);
       setUploadedFileName('Dados Colados do Excel / CSV');
-
-      const isTMobile = isTMobileHeaders(headers);
-
-      const isStockApple = headers.some(h => /item #|itemnumber|warehouse|lock status|lockstatus|available quantity|list price/i.test(h)) ||
-                           (headers.some(h => /category/i.test(h)) && headers.some(h2 => /make/i.test(h2)));
-
-      const isVerizon = headers.some(h => /^lot\s*#?$/i.test(h)) && headers.some(h => /item description|part #|inventory source|package type|end date/i.test(h));
-
-      if (isTMobile || presetFormat === 'T_MOBILE') {
-        setPresetFormat('T_MOBILE');
-        const grouped = processTMobileRows(rows);
-        const totalUnits = grouped.reduce((acc, g) => acc + g.totalQty, 0);
-        showNotice(`Padrão T-MOBILE detectado! ${grouped.length} lotes agrupados (${totalUnits.toLocaleString()} aparelhos) no padrão Mix.`, 'success');
-      } else if (/A02-ASSURANT|assurant/i.test(pasteText)) {
-        setPresetFormat('ASSURANT');
-        setStockAppleGroupMode('individual');
-        const { audit } = processStockAppleRows(rows, true);
-        showNotice(`ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-      } else if (isVerizon) {
-        setPresetFormat('VERIZON');
-        setVerizonImportMode('grouped');
-        const grouped = processVerizonRows(rows);
-        showNotice(`Padrão VERIZON detectado! ${grouped.length} lotes agrupados (Grades DNA/DNB/DNC/DND, Sem Preço Fixo, Qtd Fixa).`, 'success');
-      } else if (presetFormat === 'ASSURANT') {
-        setPresetFormat('ASSURANT');
-        setStockAppleGroupMode('individual');
-        const { audit } = processStockAppleRows(rows, true);
-        showNotice(`ASSURANT processado! ${audit.approvedCount.toLocaleString()} lotes/itens UNLOCKED aprovados.`, 'success');
-      } else if (isStockApple || (presetFormat as string) === 'STOCK_APPLE') {
-        setPresetFormat('STOCK_APPLE');
-        const { audit } = processStockAppleRows(rows);
-        showNotice(`Estoque Apple processado! ${audit.approvedCount.toLocaleString()} itens aprovados.`, 'success');
-      } else if ((presetFormat as string) === 'VERIZON') {
-        setPresetFormat('VERIZON');
-        setVerizonImportMode('grouped');
-        const grouped = processVerizonRows(rows);
-        showNotice(`Padrão VERIZON detectado! ${grouped.length} lotes agrupados.`);
-      } else {
-        setPresetFormat('GENERIC');
-        const mapping = {
-          lotNumber: headers.find(h => /lote|lot|id|codigo/i.test(h)) || headers[0] || '',
-          title: headers.find(h => /titulo|title|produto|descricao/i.test(h)) || headers[1] || '',
-          modelFamily: headers.find(h => /modelo|model|familia|aparelho/i.test(h)) || headers[2] || '',
-          quantity: headers.find(h => /quantidade|qtd|unidades|units|qty/i.test(h)) || headers[3] || '',
-          grade: headers.find(h => /grade|condicao|classificacao/i.test(h)) || headers[4] || '',
-          storage: headers.find(h => /armazenamento|storage|capacidade|memoria/i.test(h)) || '',
-          batteryHealth: headers.find(h => /bateria|battery|saude/i.test(h)) || '',
-          currentBidUsd: headers.find(h => /lance atual|current bid|lance|valor usd|preco/i.test(h)) || '',
-          startingBidUsd: headers.find(h => /lance inicial|starting bid|minimo|abertura/i.test(h)) || '',
-          estimatedRetailBrl: headers.find(h => /revenda|varejo|brasil|brl|mercado livre/i.test(h)) || '',
-          auctionHouse: headers.find(h => /casa|auction house|origem|fornecedor/i.test(h)) || '',
-          location: headers.find(h => /localizacao|armazem|cidade|location|estado/i.test(h)) || ''
-        };
-        setColumnMapping(mapping);
-        showNotice(`${rows.length} linhas de leilão processadas com sucesso!`);
-      }
+      const pasteHint = /A02-ASSURANT|assurant/i.test(pasteText) ? 'Assurant_Paste.csv' : 'Dados_Colados.csv';
+      classifyAndProcessSpreadsheetRows(rows, headers, pasteHint);
     } catch (e: any) {
       showNotice(`Erro ao processar dados colados: ${e?.message}`, 'error');
     }
   };
 
   // Publish VERIZON lots (Individual line-by-line or Grouped by Lot #)
-  const handleApplyVerizonImport = () => {
+  const handleApplyVerizonImport = async () => {
     if (verizonGroupedLots.length === 0 && parsedPreviewRows.length === 0) {
       showNotice('Nenhum lote VERIZON para publicar.', 'error');
       return;
     }
 
+    setIsPublishingLots(true);
     try {
       let newLots: AuctionLot[] = [];
 
       if (verizonImportMode === 'individual' && parsedPreviewRows.length > 0) {
         const unlockedVerizonRows = parsedPreviewRows.filter(r => {
           const lockCheck = [
-            r['Lock Status'], r['LockStatus'], r['lock_status'], r['Carrier Lock'],
-            r['FMIP/Google Lock Status'], r['Item Description'], r['itemDescription'],
-            r['Condition'], r['Grade'], r['Model'], r['Title']
+            normalizeField(r, 'Lock Status', 'LockStatus', 'lock_status', 'Carrier Lock', 'FMIP/Google Lock Status'),
+            normalizeField(r, 'Item Description', 'itemDescription', 'Description'),
+            normalizeField(r, 'Condition', 'Grade', 'Model', 'Title')
           ].map(v => String(v || '')).join(' ');
           return !(/\b(?:locked|sim\s*lock(?:ed)?|carrier\s*lock(?:ed)?|icloud\s*lock(?:ed)?|fmip\s*on|fmi\s*on|bad\s*esn|blacklisted|mdm\s*lock)\b/i.test(lockCheck) && !/\bunlocked\b/i.test(lockCheck));
         });
         newLots = unlockedVerizonRows.map((r, idx) => {
-          const lotNum = String(r['Lot #'] || r['Lot#'] || r['Lot'] || r['lotNumber'] || r['Item #'] || r['Item'] || r['ID'] || `VZ-${idx + 1}`).trim();
-          const oem = String(r['OEM'] || r['oem'] || 'Apple').trim();
-          const primaryModel = String(r['Model'] || r['model'] || 'Smartphone').trim();
-          const cap = String(r['Capacity'] || r['capacity'] || '128GB').trim();
-          const itemDescription = String(r['Item Description'] || r['itemDescription'] || '').trim();
-          const color = parseBstockColorFromDesc(itemDescription, String(r['Color'] || r['color'] || ''));
-          const gradeRaw = String(r['Grade'] || r['grade'] || 'C(T)').trim();
+          const lotNum = (normalizeField(r, 'Lot #', 'Lot#', 'Lot', 'Lot ID', 'lotNumber', 'Item #', 'Item', 'ID') || `VZ-${idx + 1}`).trim();
+          const oem = normalizeField(r, 'OEM', 'oem', 'Make', 'Brand') || 'Apple';
+          const primaryModel = normalizeField(r, 'Model', 'model', 'Model Name') || 'Smartphone';
+          const cap = normalizeField(r, 'Capacity', 'capacity', 'Storage') || '128GB';
+          const itemDescription = normalizeField(r, 'Item Description', 'itemDescription', 'Description');
+          const color = parseBstockColorFromDesc(itemDescription, normalizeField(r, 'Color', 'color'));
+          const gradeRaw = normalizeField(r, 'Grade', 'grade', 'Condition') || 'C(T)';
           const mappedGrade = mapVerizonGrade(gradeRaw);
-          const q = Math.max(1, parseInt(String(r['Qty'] || r['qty'] || 1), 10) || 1);
+          const q = Math.max(1, parseInt((normalizeField(r, 'Qty', 'qty', 'Quantity') || '1').replace(/[^0-9]/g, ''), 10) || 1);
 
           const isSamsung = /samsung|galaxy|fold|flip/i.test(primaryModel) || /samsung/i.test(oem);
           const imageUrl = isSamsung
@@ -2874,7 +2833,7 @@ $285.00
             reservePriceMet: false,
             estimatedBrazilRetailBrl: 0,
             totalBidsCount: 0,
-            endTime: parseAuctionEndTime(r['End Date'] || r['endDate'], r['End Time'] || r['endTime']),
+            endTime: parseAuctionEndTime(r['End Date'] ?? r['endDate'] ?? r['EndDate'], r['End Time'] ?? r['endTime'] ?? r['EndTime']),
             imageUrl,
             galleryImages: [
               imageUrl,
@@ -2986,21 +2945,30 @@ $285.00
         ? newLots
         : [...newLots, ...auctions];
 
-      onUpdateAuctions(finalLots);
+      const syncResult = await Promise.resolve(onUpdateAuctions(finalLots));
+      if (syncResult === false) {
+        showNotice(`⚠️ Lotes VERIZON carregados localmente, mas o envio ao servidor falhou. Clique em publicar novamente.`, 'error');
+        return;
+      }
 
       showNotice(`🎉 ${newLots.length} Lotes Oficiais VERIZON (${newLots.reduce((acc, l) => acc + l.quantity, 0)} aparelhos) publicados com sucesso (Grades DNA/DNB/DNC/DND, Sem Preço Fixo e Qtd Fixa)!`, 'success');
+      setAdminSourceFilter('VERIZON');
+      setAdminLotPage(1);
       setAdminTab('lots');
     } catch (err: any) {
       showNotice(`Falha ao publicar lotes VERIZON: ${err?.message}`, 'error');
+    } finally {
+      setIsPublishingLots(false);
     }
   };
 
   // Publish T-MOBILE lots (Grouped by Lot ID using Verizon Mix architecture)
-  const handleApplyTMobileImport = () => {
+  const handleApplyTMobileImport = async () => {
     if (tMobileGroupedLots.length === 0) {
       showNotice('Nenhum lote T-MOBILE para publicar.', 'error');
       return;
     }
+    setIsPublishingLots(true);
     try {
       const newLots = buildTMobileAuctionLots(tMobileGroupedLots, usdRate);
       const finalLots = replaceExistingLots
@@ -3010,32 +2978,40 @@ $285.00
             ...auctions.filter(a => !/t-?mobile/i.test(a.auctionHouse || '')),
           ];
 
-      onUpdateAuctions(finalLots);
+      const syncResult = await Promise.resolve(onUpdateAuctions(finalLots));
+      if (syncResult === false) {
+        showNotice(`⚠️ Lotes T-MOBILE carregados localmente, mas o envio ao servidor falhou. Clique em publicar novamente.`, 'error');
+        return;
+      }
       const totalUnits = newLots.reduce((acc, l) => acc + l.quantity, 0);
       showNotice(
         `🎉 ${newLots.length} Lotes Oficiais T-MOBILE (${totalUnits.toLocaleString()} aparelhos) publicados com sucesso com Mix expandível!`,
         'success'
       );
+      setAdminSourceFilter('T_MOBILE');
+      setAdminLotPage(1);
       setAdminTab('lots');
     } catch (err: any) {
       showNotice(`Falha ao publicar lotes T-MOBILE: ${err?.message}`, 'error');
+    } finally {
+      setIsPublishingLots(false);
     }
   };
 
   // Publish Generic Custom Lots
-  const handleApplyImport = () => {
+  const handleApplyImport = async () => {
     if (isStockFeedFormat(presetFormat) && stockAppleItems.length > 0) {
-      handleApplyStockAppleImport();
+      await handleApplyStockAppleImport();
       return;
     }
 
     if (presetFormat === 'VERIZON' && verizonGroupedLots.length > 0) {
-      handleApplyVerizonImport();
+      await handleApplyVerizonImport();
       return;
     }
 
     if (presetFormat === 'T_MOBILE' && tMobileGroupedLots.length > 0) {
-      handleApplyTMobileImport();
+      await handleApplyTMobileImport();
       return;
     }
 
@@ -3044,6 +3020,7 @@ $285.00
       return;
     }
 
+    setIsPublishingLots(true);
     try {
       const unlockedPreviewRows = parsedPreviewRows.filter(row => {
         const joined = Object.values(row || {}).map(v => String(v ?? '')).join(' ');
@@ -3142,14 +3119,21 @@ $285.00
       });
 
       const finalLots = replaceExistingLots ? newLots : [...newLots, ...auctions];
-      onUpdateAuctions(finalLots);
+      const syncResult = await Promise.resolve(onUpdateAuctions(finalLots));
+      if (syncResult === false) {
+        showNotice(`⚠️ ${newLots.length} lotes carregados localmente, mas o envio ao servidor falhou. Clique em publicar novamente.`, 'error');
+        return;
+      }
 
       showNotice(`${newLots.length} lotes importados e publicados no catálogo com sucesso!`);
       setParsedPreviewRows([]);
       setUploadedFileName(null);
+      setAdminLotPage(1);
       setAdminTab('lots');
     } catch (err: any) {
       showNotice(`Falha na importação: ${err?.message}`, 'error');
+    } finally {
+      setIsPublishingLots(false);
     }
   };
 
@@ -3901,6 +3885,18 @@ $285.00
             </button>
 
             <button
+              onClick={() => setAdminTab('live')}
+              className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
+                adminTab === 'live'
+                  ? 'bg-rose-500 text-white font-bold shadow-md shadow-rose-500/20'
+                  : 'text-rose-300 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/20'
+              }`}
+            >
+              <Radio className="w-4 h-4" />
+              <span>Transmitir ao Vivo</span>
+            </button>
+
+            <button
               onClick={() => setAdminTab('settings')}
               className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
                 adminTab === 'settings'
@@ -4414,7 +4410,7 @@ $285.00
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <button
                     type="button"
-                    onClick={() => setPresetFormat('VERIZON')}
+                    onClick={() => handleSelectPresetFormat('VERIZON', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'VERIZON'
                         ? 'bg-red-600 text-white shadow-md shadow-red-600/20'
@@ -4426,7 +4422,7 @@ $285.00
 
                   <button
                     type="button"
-                    onClick={() => setPresetFormat('T_MOBILE')}
+                    onClick={() => handleSelectPresetFormat('T_MOBILE', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'T_MOBILE'
                         ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-600/25 ring-1 ring-fuchsia-400'
@@ -4438,10 +4434,7 @@ $285.00
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPresetFormat('ASSURANT');
-                      setStockAppleGroupMode('individual');
-                    }}
+                    onClick={() => handleSelectPresetFormat('ASSURANT', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'ASSURANT'
                         ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 ring-1 ring-indigo-400'
@@ -4453,56 +4446,43 @@ $285.00
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPresetFormat('MARKETPLACE_1');
-                      setStockAppleGroupMode('individual');
-                    }}
+                    onClick={() => handleSelectPresetFormat('MARKETPLACE_1', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MARKETPLACE_1'
                         ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
-                    <span>★ Marketplace 1</span>
+                    <span>★ Marketplace 1 (XLSX / CSV)</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPresetFormat('MARKETPLACE_2');
-                      setStockAppleGroupMode('individual');
-                    }}
+                    onClick={() => handleSelectPresetFormat('MARKETPLACE_2', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MARKETPLACE_2'
                         ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
-                    <span>★ Marketplace 2</span>
+                    <span>★ Marketplace 2 (XLSX / CSV)</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPresetFormat('MARKETPLACE_3');
-                      setStockAppleGroupMode('individual');
-                    }}
+                    onClick={() => handleSelectPresetFormat('MARKETPLACE_3', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MARKETPLACE_3'
                         ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
                         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
                     }`}
                   >
-                    <span>★ Marketplace 3</span>
+                    <span>★ Marketplace 3 (XLSX / CSV)</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPresetFormat('STOCK_APPLE');
-                      setStockAppleGroupMode('individual');
-                      setUploadMode('paste');
-                    }}
+                    onClick={() => handleSelectPresetFormat('STOCK_APPLE', 'paste')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'STOCK_APPLE'
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-400'
@@ -4514,11 +4494,7 @@ $285.00
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setPresetFormat('MACBOOKS');
-                      setStockAppleGroupMode('individual');
-                      setUploadMode('paste');
-                    }}
+                    onClick={() => handleSelectPresetFormat('MACBOOKS', 'paste')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MACBOOKS'
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-1 ring-purple-400'
@@ -4530,7 +4506,7 @@ $285.00
 
                   <button
                     type="button"
-                    onClick={() => setPresetFormat('GENERIC')}
+                    onClick={() => handleSelectPresetFormat('GENERIC', 'file')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'GENERIC'
                         ? 'bg-amber-400 text-slate-950 font-bold'
@@ -4583,7 +4559,7 @@ $285.00
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileUpload}
-                  accept=".xlsx, .xls, .xlx, .csv"
+                  accept=".xlsx, .xls, .xlx, .xlsm, .csv, .xml"
                   className="hidden"
                 />
                 <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
@@ -4591,10 +4567,10 @@ $285.00
                 </div>
                 <div className="space-y-1">
                   <span className="text-sm font-bold text-white block">
-                    {uploadedFileName ? `Arquivo Carregado: ${uploadedFileName}` : 'Clique para subir ou arraste sua planilha (CSV / Excel) aqui'}
+                    {uploadedFileName ? `Arquivo Carregado: ${uploadedFileName}` : 'Clique para subir ou arraste sua planilha (CSV / Excel XLSX) aqui'}
                   </span>
                   <span className="text-xs text-slate-400 block">
-                    Formatos aceitos: Arquivos CSV (.csv) e Microsoft Excel (.xlsx, .xls)
+                    Formatos aceitos com configuração idêntica: Excel (.xlsx, .xls, .xlsm), CSV (.csv) e XML (.xml)
                   </span>
                 </div>
               </div>
@@ -4603,18 +4579,19 @@ $285.00
                   <div className="text-xs text-emerald-200">
                     <span className="font-bold block">Planilha pronta: {uploadedFileName}</span>
                     <span className="text-[11px] text-emerald-400">
-                      {(presetFormat === 'STOCK_APPLE' || presetFormat === 'ASSURANT' || presetFormat === 'MARKETPLACE_1' || presetFormat === 'MARKETPLACE_2' || presetFormat === 'MARKETPLACE_3')
+                      {(presetFormat === 'STOCK_APPLE' || presetFormat === 'ASSURANT' || presetFormat === 'MARKETPLACE_1' || presetFormat === 'MARKETPLACE_2' || presetFormat === 'MARKETPLACE_3' || presetFormat === 'MACBOOKS')
                         ? `${stockAppleAudit.approvedCount.toLocaleString()} itens/lotes prontos para carregar`
                         : `${parsedPreviewRows.length.toLocaleString()} linhas lidas`}
                     </span>
                   </div>
                   <button
                     type="button"
+                    disabled={isPublishingLots}
                     onClick={handleApplyImport}
-                    className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
+                    className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Importar / Carregar Lotes Agora</span>
+                    {isPublishingLots ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>{isPublishingLots ? 'Publicando e Sincronizando...' : 'Importar / Carregar Lotes Agora'}</span>
                   </button>
                 </div>
               )}
@@ -4871,11 +4848,16 @@ $285.00
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
+                    disabled={isPublishingLots}
                     onClick={handleApplyStockAppleImport}
-                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
+                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Carregar e Publicar {stockAppleGroupMode === 'grouped' ? `${stockAppleGroupedLots.length} Lotes no Atacado` : `${stockAppleAudit.approvedCount.toLocaleString()} Lotes Individuais`} no Hub</span>
+                    {isPublishingLots ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>
+                      {isPublishingLots
+                        ? 'Publicando e Sincronizando...'
+                        : `Carregar e Publicar ${stockAppleGroupMode === 'grouped' ? `${stockAppleGroupedLots.length} Lotes no Atacado` : `${stockAppleAudit.approvedCount.toLocaleString()} Lotes Individuais`} no Hub`}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -5273,11 +5255,16 @@ $285.00
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
+                    disabled={isPublishingLots}
                     onClick={handleApplyVerizonImport}
-                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
+                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Publicar {verizonImportMode === 'individual' ? `${(parsedPreviewRows.length || verizonGroupedLots.reduce((acc, l) => acc + l.totalQty, 0)).toLocaleString()} Modelos Individuais` : `${verizonGroupedLots.length} Lotes`} no Catálogo</span>
+                    {isPublishingLots ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>
+                      {isPublishingLots
+                        ? 'Publicando e Sincronizando...'
+                        : `Publicar ${verizonImportMode === 'individual' ? `${(parsedPreviewRows.length || verizonGroupedLots.reduce((acc, l) => acc + l.totalQty, 0)).toLocaleString()} Modelos Individuais` : `${verizonGroupedLots.length} Lotes`} no Catálogo`}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -5517,11 +5504,12 @@ $285.00
                 <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="button"
+                    disabled={isPublishingLots}
                     onClick={handleApplyTMobileImport}
-                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
+                    className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-black rounded-xl text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Publicar {tMobileGroupedLots.length} Lotes T-Mobile no Catálogo</span>
+                    {isPublishingLots ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>{isPublishingLots ? 'Publicando e Sincronizando...' : `Publicar ${tMobileGroupedLots.length} Lotes T-Mobile no Catálogo`}</span>
                   </button>
                 </div>
               </div>
@@ -5655,11 +5643,12 @@ $285.00
                 </div>
 
                 <button
+                  disabled={isPublishingLots}
                   onClick={handleApplyImport}
-                  className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                  className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-60 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center gap-2 shadow-lg shadow-emerald-500/20"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Publicar {parsedPreviewRows.length} Lotes no Catálogo Agora</span>
+                  {isPublishingLots ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  <span>{isPublishingLots ? 'Publicando...' : `Publicar ${parsedPreviewRows.length} Lotes no Catálogo Agora`}</span>
                 </button>
               </div>
 
@@ -5792,7 +5781,29 @@ $285.00
       {/* TAB 2: GERENCIAR LEILÕES (EDIÇÃO, BUSCA & PAGINAÇÃO ULTRA-RÁPIDA) */}
       {/* ======================================================== */}
       {isAdminGeral && adminTab === 'lots' && (() => {
+        const getLotAdminSourceKey = (lot: AuctionLot): typeof adminSourceFilter => {
+          const mkt = getMarketplaceNumber(lot);
+          if (mkt === 1) return 'MARKETPLACE_1';
+          if (mkt === 2) return 'MARKETPLACE_2';
+          if (mkt === 3) return 'MARKETPLACE_3';
+          if (lot.sourceType === 'VERIZON' || isVerizonLot(lot)) return 'VERIZON';
+          if (lot.sourceType === 'ASSURANT' || isAssurantLot(lot)) return 'ASSURANT';
+          if (lot.sourceType === 'CARRIER' || /t-?mobile/i.test(lot.auctionHouse || '')) return 'T_MOBILE';
+          if (lot.sourceType === 'STOCK_APPLE') return 'STOCK_APPLE';
+          if (lot.sourceType === 'MACBOOKS') return 'MACBOOKS';
+          return 'OTHER';
+        };
+
+        const sourceCounts = auctions.reduce<Record<string, number>>((acc, lot) => {
+          const k = getLotAdminSourceKey(lot);
+          acc[k] = (acc[k] || 0) + 1;
+          return acc;
+        }, {});
+
         const filteredAdminLots = auctions.filter(lot => {
+          if (adminSourceFilter !== 'ALL' && getLotAdminSourceKey(lot) !== adminSourceFilter) {
+            return false;
+          }
           if (!adminLotSearch.trim()) return true;
           const q = adminLotSearch.toLowerCase();
           return (
@@ -5900,6 +5911,42 @@ $285.00
                   <span>Importar Mais Lotes (Excel)</span>
                 </button>
               </div>
+            </div>
+
+            {/* Source Filter Pills for Admin Lots */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {([
+                { key: 'ALL', label: 'Todos', count: auctions.length },
+                { key: 'VERIZON', label: 'Verizon', count: sourceCounts.VERIZON || 0 },
+                { key: 'ASSURANT', label: 'Assurant', count: sourceCounts.ASSURANT || 0 },
+                { key: 'T_MOBILE', label: 'T-Mobile', count: sourceCounts.T_MOBILE || 0 },
+                { key: 'MARKETPLACE_1', label: 'Marketplace 1', count: sourceCounts.MARKETPLACE_1 || 0 },
+                { key: 'MARKETPLACE_2', label: 'Marketplace 2', count: sourceCounts.MARKETPLACE_2 || 0 },
+                { key: 'MARKETPLACE_3', label: 'Marketplace 3', count: sourceCounts.MARKETPLACE_3 || 0 },
+                { key: 'STOCK_APPLE', label: 'Pronta Entrega', count: sourceCounts.STOCK_APPLE || 0 },
+                { key: 'MACBOOKS', label: 'MacBooks', count: sourceCounts.MACBOOKS || 0 },
+              ] as const).map(pill => (
+                <button
+                  key={pill.key}
+                  type="button"
+                  onClick={() => {
+                    setAdminSourceFilter(pill.key);
+                    setAdminLotPage(1);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
+                    adminSourceFilter === pill.key
+                      ? 'bg-amber-400 text-slate-950 shadow-sm'
+                      : 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  <span>{pill.label}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
+                    adminSourceFilter === pill.key ? 'bg-slate-950/15 text-slate-950' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {pill.count.toLocaleString()}
+                  </span>
+                </button>
+              ))}
             </div>
 
             {/* Quick Search Bar for Admin Lots */}
@@ -6877,7 +6924,9 @@ $285.00
         </div>
       )}
 
-      
+      {isAdminGeral && adminTab === 'live' && (
+        <AdminLiveStudio currentUser={currentUser} />
+      )}
     </div>
   );
 };

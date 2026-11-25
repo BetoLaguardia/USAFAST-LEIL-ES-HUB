@@ -274,6 +274,48 @@ export async function getAuthenticatedProfile(authHeader?: string) {
   };
 }
 
+export async function verifyAccessTokenForLive(token: string): Promise<{
+  ok: boolean;
+  userId?: string;
+  userName?: string;
+  email?: string;
+  role?: 'admin' | 'client';
+  userType?: UserAccessType;
+  isAdminGeral?: boolean;
+  error?: string;
+}> {
+  const cleanToken = String(token || '').trim();
+  if (!cleanToken) {
+    return { ok: false, error: 'Sessão ausente. Faça login para acessar a live.' };
+  }
+
+  const profile = await getAuthenticatedProfile(`Bearer ${cleanToken}`);
+  if (!profile.ok || !profile.user) {
+    return { ok: false, error: profile.error || 'Sessão inválida ou expirada.' };
+  }
+
+  const user = profile.user;
+  if (profile.role !== 'admin') {
+    const isApproved = user.approvalStatus === 'APPROVED' || Boolean(user.verifiedStatus);
+    if (!isApproved) {
+      return { ok: false, error: 'Cadastro pendente ou não autorizado para assistir à live.' };
+    }
+  }
+
+  const userType: UserAccessType = profile.userType || user.userType || 'client';
+  const isAdminGeral = profile.role === 'admin' && userType !== 'admin_credenciado';
+
+  return {
+    ok: true,
+    userId: String(user.id || user.email || cleanToken.slice(0, 12)),
+    userName: user.name || user.email || 'Arrematante',
+    email: user.email || '',
+    role: profile.role === 'admin' ? 'admin' : 'client',
+    userType,
+    isAdminGeral,
+  };
+}
+
 export async function registerClientInSupabase(payload: {
   name?: string;
   email?: string;

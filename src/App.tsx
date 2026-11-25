@@ -11,6 +11,7 @@ import { QuemSomosPage } from './pages/QuemSomosPage';
 import { GradeamentoPage } from './pages/GradeamentoPage';
 import { AdminPage } from './pages/AdminPage';
 import { ClientePage } from './pages/ClientePage';
+import { LivePage } from './pages/LivePage';
 import { AdminLoginGate, ClientLoginGate } from './components/AuthGates';
 import { OfflineIndicator } from './components/PWAInstallButton';
 import { INITIAL_AUCTIONS, DEFAULT_PTAX_USD_BRL, GRADE_EXPLANATIONS } from './data/auctionsData';
@@ -2222,6 +2223,32 @@ export default function App() {
         )}
 
         {/* ========================================================= */}
+        {/* VIEW 5B: LIVE DE LEILÕES AO VIVO (LOGIN CLIENTE -> LIVE)  */}
+        {/* ========================================================= */}
+        {currentPage === 'live' && (
+          !isClientAuthenticated && !isAdminAuthenticated ? (
+            <ClientLoginGate
+              context="live"
+              currentUser={currentUser}
+              onLoginSuccess={(user) => {
+                setIsClientAuthenticated(true);
+                setIsAdminAuthenticated(user.role === 'admin');
+                setCurrentUser(user);
+                showToast(`Bem-vindo à Live ao Vivo, ${user.name}!`);
+              }}
+              onCancel={() => setCurrentPage('home')}
+            />
+          ) : (
+            <LivePage
+              currentUser={currentUser}
+              onNavigateHome={() => setCurrentPage('home')}
+              onNavigateAuctions={() => setCurrentPage('leiloes')}
+              onLogout={handleClientLogout}
+            />
+          )
+        )}
+
+        {/* ========================================================= */}
         {/* VIEW 5: PAINEL DO CLIENTE (PORTAL DO ARREMATANTE) */}
         {/* ========================================================= */}
         {currentPage === 'cliente' && (
@@ -2301,6 +2328,13 @@ export default function App() {
               className="hover:text-slate-300 transition-colors"
             >
               Leilões
+            </button>
+            <span>·</span>
+            <button
+              onClick={() => setCurrentPage('live')}
+              className="text-rose-400 hover:underline font-semibold"
+            >
+              Live ao Vivo
             </button>
             <span>·</span>
             <button
