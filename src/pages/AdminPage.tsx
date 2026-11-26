@@ -3753,43 +3753,43 @@ $285.00
   const paginatedStockItems = filteredStockItems.slice((stockApplePage - 1) * stockPageSize, stockApplePage * stockPageSize);
 
   return (
-    <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-slate-200 space-y-8">
+    <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-slate-800 dark:text-slate-200 space-y-8">
       {/* Top Banner Notice */}
       {notification && (
         <div className={`p-4 rounded-xl text-xs font-semibold flex items-center gap-2 border animate-in fade-in ${
           notification.type === 'success'
-            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
-            : 'bg-rose-500/10 border-rose-500/40 text-rose-300'
+            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300'
+            : 'bg-rose-500/10 border-rose-500/40 text-rose-700 dark:text-rose-300'
         }`}>
           {notification.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           )}
           <span>{notification.message}</span>
         </div>
       )}
 
       {/* Admin Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-6">
         <div>
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-0.5 rounded border text-xs font-mono font-bold ${
               isAdminCredenciado
-                ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
-                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30'
+                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
             }`}>
               {isAdminCredenciado ? 'USAFAST LEILÕES HUB · ADMIN CREDENCIADO' : 'USAFAST LEILÕES HUB · ADMIN GERAL'}
             </span>
             <span className="text-xs text-slate-500">·</span>
-            <span className="text-xs text-emerald-400 font-mono">
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-mono">
               PTAX: R$ {usdRate.toFixed(2)}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
             USAFAST LEILÕES HUB — {isAdminCredenciado ? 'Painel Credenciado' : 'Painel Executivo'}
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
             {isAdminCredenciado
               ? 'Dashboard geral e acompanhamento de ofertas computadas pelos clientes.'
               : 'Dashboard de pregões, gestão de ofertas computadas, importação de planilhas (Excel, CSV & XML) e controle de arrematações.'}
@@ -3800,20 +3800,20 @@ $285.00
           {isAdminGeral && (
             <button
               onClick={handleDownloadTemplate}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5"
+              className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-medium transition-colors flex items-center gap-1.5"
               title="Baixar planilha modelo no formato Excel"
             >
-              <Download className="w-3.5 h-3.5 text-amber-400" />
+              <Download className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               <span>Planilha Modelo (XLSX)</span>
             </button>
           )}
           {onLogout && (
             <button
               onClick={onLogout}
-              className="px-3 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
               title="Encerrar sessão de administrador"
             >
-              <Lock className="w-3.5 h-3.5 text-rose-400" />
+              <Lock className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
               <span>Sair</span>
             </button>
           )}
@@ -3821,13 +3821,13 @@ $285.00
       </div>
 
       {/* Admin Tabs Bar */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-2 text-xs font-semibold">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-semibold">
         <button
           onClick={() => setAdminTab('dashboard')}
           className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
             adminTab === 'dashboard'
               ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
           }`}
         >
           <TrendingUp className="w-4 h-4" />
@@ -3839,7 +3839,7 @@ $285.00
           className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
             adminTab === 'offers'
               ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
           }`}
         >
           <DollarSign className="w-4 h-4" />
@@ -3853,7 +3853,7 @@ $285.00
               className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
                 adminTab === 'upload'
                   ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
               }`}
             >
               <Upload className="w-4 h-4" />
@@ -3865,7 +3865,7 @@ $285.00
               className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
                 adminTab === 'lots'
                   ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
               }`}
             >
               <Gavel className="w-4 h-4" />
@@ -3877,7 +3877,7 @@ $285.00
               className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
                 adminTab === 'clients'
                   ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -3889,7 +3889,7 @@ $285.00
               className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
                 adminTab === 'live'
                   ? 'bg-rose-500 text-white font-bold shadow-md shadow-rose-500/20'
-                  : 'text-rose-300 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/20'
+                  : 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border border-rose-500/25 hover:bg-rose-500/20'
               }`}
             >
               <Radio className="w-4 h-4" />
@@ -3901,7 +3901,7 @@ $285.00
               className={`px-4 py-2 rounded-xl transition-colors flex items-center gap-2 ${
                 adminTab === 'settings'
                   ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/10'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
               }`}
             >
               <Settings className="w-4 h-4" />
@@ -3918,68 +3918,68 @@ $285.00
         <div className="space-y-6 animate-in fade-in duration-200">
           {/* Top Operational Metrics */}
           <div className={`grid grid-cols-2 md:grid-cols-4 ${isAdminGeral ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3.5`}>
-            <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="p-4 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                 <span>Lotes Ativos</span>
-                <Gavel className="w-4 h-4 text-amber-400" />
+                <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
-              <span className="text-2xl font-black text-white font-mono block">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono block">
                 {auctions.length}
               </span>
-              <span className="text-[10px] text-emerald-400 block font-medium">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-medium">
                 {auctions.filter(a => a.sourceType === 'VERIZON').length} lotes Padrão Oficial VERIZON
               </span>
             </div>
 
-            <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="p-4 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                 <span>Total de Aparelhos</span>
-                <Smartphone className="w-4 h-4 text-cyan-400" />
+                <Smartphone className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               </div>
-              <span className="text-2xl font-black text-cyan-300 font-mono block">
+              <span className="text-2xl font-black text-cyan-700 dark:text-cyan-300 font-mono block">
                 {auctions.reduce((acc, l) => acc + l.quantity, 0).toLocaleString()}
               </span>
-              <span className="text-[10px] text-slate-400 block">
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                 Unidades em disputa nos EUA
               </span>
             </div>
 
-            <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="p-4 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                 <span>Volume em Pregão (USD)</span>
-                <DollarSign className="w-4 h-4 text-emerald-400" />
+                <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <span className="text-2xl font-black text-emerald-400 font-mono block">
+              <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono block">
                 ${auctions.reduce((acc, l) => acc + l.currentBidUsd, 0).toLocaleString()}
               </span>
-              <span className="text-[10px] text-slate-400 block font-mono">
+              <span className="text-[10px] text-slate-600 dark:text-slate-400 block font-mono">
                 aprox. R$ {(auctions.reduce((acc, l) => acc + l.currentBidUsd, 0) * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
               </span>
             </div>
 
-            <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1">
-              <div className="flex items-center justify-between text-slate-400 text-[11px]">
+            <div className="p-4 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                 <span>Ofertas Computadas</span>
-                <TrendingUp className="w-4 h-4 text-amber-400" />
+                <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
-              <span className="text-2xl font-black text-amber-400 font-mono block">
+              <span className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono block">
                 {offersList.length}
               </span>
-              <span className="text-[10px] text-emerald-400 block">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block">
                 {offersList.filter(o => o.status === 'Vencendo').length} ofertas vencedoras
               </span>
             </div>
 
             {isAdminGeral && (
-              <div className="p-4 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-1 col-span-2 lg:col-span-1">
-                <div className="flex items-center justify-between text-slate-400 text-[11px]">
+              <div className="p-4 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-1 col-span-2 lg:col-span-1">
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
                   <span>Arrematantes</span>
-                  <Users className="w-4 h-4 text-purple-400" />
+                  <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                 </div>
-                <span className="text-2xl font-black text-white font-mono block">
+                <span className="text-2xl font-black text-slate-900 dark:text-white font-mono block">
                   {clientsList.length}
                 </span>
-                <span className="text-[10px] text-emerald-400 block">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block">
                   {clientsList.filter(c => c.verifiedStatus).length} verificados com limite
                 </span>
               </div>
@@ -3987,11 +3987,11 @@ $285.00
           </div>
 
           {/* Quick Action Shortcuts */}
-          <div className="p-4 bg-gradient-to-r from-slate-900 via-amber-950/20 to-slate-900 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="p-4 bg-gradient-to-r from-white dark:from-slate-900 via-amber-950/20 to-slate-50 dark:to-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="text-slate-300">
-                Ações rápidas da central <strong className="text-white">USAFAST LEILÕES HUB</strong>:
+              <Package className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="text-slate-700 dark:text-slate-300">
+                Ações rápidas da central <strong className="text-slate-900 dark:text-white">USAFAST LEILÕES HUB</strong>:
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -4006,17 +4006,17 @@ $285.00
               )}
               <button
                 onClick={() => setAdminTab('offers')}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
               >
-                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Gerenciar Ofertas ({offersList.length})</span>
               </button>
               {isAdminGeral && (
                 <button
                   onClick={() => setAdminTab('lots')}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 font-medium"
                 >
-                  <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                  <Gavel className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                   <span>Ver Todos os Lotes</span>
                 </button>
               )}
@@ -4026,13 +4026,13 @@ $285.00
           {/* Analytical Charts and Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Model Family Breakdown */}
-            <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-amber-400" />
+            <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>Distribuição por Modelo</span>
                 </h3>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">
                   {auctions.length.toLocaleString()} lotes catalogados
                 </span>
               </div>
@@ -4059,11 +4059,11 @@ $285.00
 
                     return (
                       <div key={model} className="space-y-1">
-                        <div className="flex justify-between text-slate-300 text-[11px]">
-                          <span className="font-medium text-white truncate max-w-[220px]">{model}</span>
-                          <span className="font-mono text-amber-400 font-semibold">{count.toLocaleString()} lote(s) · {pctStr}%</span>
+                        <div className="flex justify-between text-slate-700 dark:text-slate-300 text-[11px]">
+                          <span className="font-medium text-slate-900 dark:text-white truncate max-w-[220px]">{model}</span>
+                          <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold">{count.toLocaleString()} lote(s) · {pctStr}%</span>
                         </div>
-                        <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                        <div className="w-full bg-slate-100 dark:bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-200 dark:border-slate-800">
                           <div
                             className="bg-gradient-to-r from-amber-500 to-amber-300 h-2 rounded-full transition-all duration-500"
                             style={{ width: `${barWidth}%` }}
@@ -4077,13 +4077,13 @@ $285.00
             </div>
 
             {/* Aesthetic Grade Breakdown */}
-            <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Distribuição por Grade</span>
                 </h3>
-                <span className="text-[11px] text-slate-400 font-mono">
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">
                   Auditado em {auctions.reduce((acc, l) => acc + l.quantity, 0).toLocaleString()} aparelhos
                 </span>
               </div>
@@ -4094,37 +4094,37 @@ $285.00
                       label: 'Grade A+ / DNA',
                       matches: (g: string) => /A\+|DNA|DLS A\+|AA\+/i.test(g),
                       desc: 'Impecável / Mint (Com Laudo)',
-                      badgeColor: 'border-emerald-500/40 text-emerald-400'
+                      badgeColor: 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
                     },
                     {
                       label: 'Grade A',
                       matches: (g: string) => /\bGrade A\b|\bDLS A\b|^A$/i.test(g) && !/A\+/i.test(g),
                       desc: 'Excelente Estado de Conservação',
-                      badgeColor: 'border-cyan-500/40 text-cyan-400'
+                      badgeColor: 'border-cyan-500/40 text-cyan-600 dark:text-cyan-400'
                     },
                     {
                       label: 'Grade B / DNB',
                       matches: (g: string) => /Grade B|DNB|DLS B|^B$/i.test(g),
                       desc: 'Marcas Leves de Uso (Testados)',
-                      badgeColor: 'border-amber-500/40 text-amber-400'
+                      badgeColor: 'border-amber-500/40 text-amber-600 dark:text-amber-400'
                     },
                     {
                       label: 'Grade C / DNC',
                       matches: (g: string) => /Grade C|DNC|DLS C|^C$/i.test(g),
                       desc: 'Econômico / Funcional',
-                      badgeColor: 'border-orange-500/40 text-orange-400'
+                      badgeColor: 'border-orange-500/40 text-orange-600 dark:text-orange-400'
                     },
                     {
                       label: 'Grade DND / D',
                       matches: (g: string) => /Grade D|DND|DLS D|^D$/i.test(g),
                       desc: 'Desgaste Estético Pesado',
-                      badgeColor: 'border-rose-500/40 text-rose-400'
+                      badgeColor: 'border-rose-500/40 text-rose-600 dark:text-rose-400'
                     },
                     {
                       label: 'Outras Grades',
                       matches: (g: string) => !/A\+|DNA|DLS A\+|AA\+|\bGrade A\b|\bDLS A\b|^A$|Grade B|DNB|DLS B|^B$|Grade C|DNC|DLS C|^C$|Grade D|DND|DLS D|^D$/i.test(g),
                       desc: 'Outras Classificações',
-                      badgeColor: 'border-slate-700 text-slate-300'
+                      badgeColor: 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
                     }
                   ];
 
@@ -4136,15 +4136,15 @@ $285.00
                     if (cat.label === 'Outras Grades' && matchingLots.length === 0) return null;
 
                     return (
-                      <div key={cat.label} className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1 shadow-sm">
+                      <div key={cat.label} className="p-3 bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1 shadow-sm">
                         <div className="flex items-center justify-between">
                           <span className={`font-bold text-xs ${cat.badgeColor}`}>{cat.label}</span>
-                          <span className="text-[10px] text-amber-400 font-mono font-bold">{matchingLots.length.toLocaleString()} lotes</span>
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono font-bold">{matchingLots.length.toLocaleString()} lotes</span>
                         </div>
-                        <span className="text-lg font-black text-slate-100 font-mono block">
+                        <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono block">
                           {totalUnits.toLocaleString()} aparelhos
                         </span>
-                        <span className="text-[10px] text-slate-400 block truncate">
+                        <span className="text-[10px] text-slate-600 dark:text-slate-400 block truncate">
                           {cat.desc}
                         </span>
                       </div>
@@ -4156,20 +4156,20 @@ $285.00
           </div>
 
           {/* Recent Live Computed Offers Feed */}
-          <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-emerald-400" />
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Últimas Ofertas Computadas pelos Clientes</span>
                 </h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                   Lances enviados em tempo real através do painel do cliente USAFAST
                 </p>
               </div>
               <button
                 onClick={() => setAdminTab('offers')}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors"
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors"
               >
                 Ver Todas as Ofertas ({offersList.length}) →
               </button>
@@ -4178,7 +4178,7 @@ $285.00
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-[11px] bg-slate-950/40">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] bg-slate-100/60 dark:bg-slate-950/40">
                     <th className="py-2.5 px-3">Horário</th>
                     <th className="py-2.5 px-3">Lote</th>
                     <th className="py-2.5 px-3">Arrematante</th>
@@ -4188,21 +4188,21 @@ $285.00
                     <th className="py-2.5 px-3 text-right">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                   {offersList.slice(0, 5).map(offer => (
-                    <tr key={offer.id} className="hover:bg-slate-800/30 transition-colors">
-                      <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">{offer.timestamp}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-amber-400">{offer.lotNumber}</td>
-                      <td className="py-2.5 px-3 font-semibold text-white">{offer.clientName}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-emerald-400">${offer.amountUsd.toLocaleString()} USD</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-300">aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
+                    <tr key={offer.id} className="hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{offer.timestamp}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">{offer.lotNumber}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">{offer.clientName}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">${offer.amountUsd.toLocaleString()} USD</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300">aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
                       <td className="py-2.5 px-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
                           offer.status === 'Vencendo'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                             : offer.status === 'Homologada / Arrematada'
-                            ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                            : 'bg-slate-800 text-slate-400 border-slate-700'
+                            ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'
                         }`}>
                           {offer.status}
                         </span>
@@ -4210,7 +4210,7 @@ $285.00
                       <td className="py-2.5 px-3 text-right">
                         <button
                           onClick={() => handleUpdateOfferStatus(offer.id, 'Homologada / Arrematada')}
-                          className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 rounded text-[11px] font-medium transition-colors"
+                          className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white border border-emerald-500/40 rounded text-[11px] font-medium transition-colors"
                         >
                           Homologar
                         </button>
@@ -4230,18 +4230,18 @@ $285.00
       {isAdminGeral && adminTab === 'upload' && (
         <div className="space-y-6">
           {/* Clear All Imported Spreadsheets Action Bar */}
-          <div className="p-4 sm:p-5 bg-slate-900/80 border border-rose-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+          <div className="p-4 sm:p-5 bg-white/90 dark:bg-slate-900/80 border border-rose-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <Trash2 className="w-4 h-4 text-rose-400" />
-                <h3 className="text-sm font-black text-white">
+                <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">
                   Limpar Dados das Planilhas Importadas
                 </h3>
-                <span className="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px] font-mono text-slate-300">
+                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[11px] font-mono text-slate-700 dark:text-slate-300">
                   {auctions.length.toLocaleString('pt-BR')} lote(s) ativo(s)
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Remove todos os lotes importados de todas as planilhas (Verizon, T-Mobile, Assurant, Marketplaces 1/2/3, Estoque e Genérico) no catálogo e no banco de dados.
               </p>
             </div>
@@ -4251,14 +4251,14 @@ $285.00
                 type="button"
                 disabled={isClearingAll}
                 onClick={() => setConfirmClearAll(true)}
-                className="px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/50 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
+                className="px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white border border-rose-500/50 font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shrink-0 active:scale-95"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Limpar Tudo que Foi Importado</span>
               </button>
             ) : (
-              <div className="flex flex-wrap items-center gap-2 bg-rose-950/60 border border-rose-500/50 px-3 py-2 rounded-xl">
-                <span className="text-xs font-bold text-rose-200">
+              <div className="flex flex-wrap items-center gap-2 bg-rose-50 dark:bg-rose-950/60 border border-rose-500/50 px-3 py-2 rounded-xl">
+                <span className="text-xs font-bold text-rose-800 dark:text-rose-200">
                   Apagar todos os {auctions.length.toLocaleString('pt-BR')} lotes?
                 </span>
                 <button
@@ -4274,7 +4274,7 @@ $285.00
                   type="button"
                   disabled={isClearingAll}
                   onClick={() => setConfirmClearAll(false)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-lg text-xs transition-colors"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-lg text-xs transition-colors"
                 >
                   Cancelar
                 </button>
@@ -4284,22 +4284,22 @@ $285.00
 
           {/* Verizon, T-Mobile & Marketplace 3 Featured Banners */}
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-            <div className="p-6 bg-gradient-to-r from-red-950/40 via-slate-900 to-amber-950/30 border border-red-500/40 rounded-2xl space-y-4 shadow-xl">
+            <div className="p-6 bg-gradient-to-r from-red-950/40 via-white dark:via-slate-900 to-amber-950/30 border border-red-500/40 rounded-2xl space-y-4 shadow-xl">
               <div className="flex flex-col justify-between gap-4 h-full">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded bg-red-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
                       PADRÃO VERIZON
                     </span>
-                    <span className="px-2.5 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/30 font-mono text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-mono text-[11px]">
                       US Carrier Wholesale
                     </span>
                   </div>
-                  <h2 className="text-lg font-black text-white tracking-tight">
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                     Importador VERIZON Oficial
                   </h2>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Layout 16 colunas (<span className="text-amber-300 font-mono">Lot #, Title, Qty, OEM, Model, Grade</span>) com agrupamento automático por lote.
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    Layout 16 colunas (<span className="text-amber-700 dark:text-amber-300 font-mono">Lot #, Title, Qty, OEM, Model, Grade</span>) com agrupamento automático por lote.
                   </p>
                 </div>
 
@@ -4311,9 +4311,9 @@ $285.00
                     className="px-4 py-2.5 bg-red-600 hover:bg-red-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 active:scale-95"
                   >
                     {isLoadingVerizon ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-slate-900 dark:text-white" />
                     ) : (
-                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                      <FileSpreadsheet className="w-4 h-4 text-slate-900 dark:text-white" />
                     )}
                     <span>
                       {isLoadingVerizon ? 'Lendo e Agrupando...' : '⚡ Carregar CSV VERIZON Oficial (Anexo)'}
@@ -4323,22 +4323,22 @@ $285.00
               </div>
             </div>
 
-            <div className="p-6 bg-gradient-to-r from-fuchsia-950/40 via-slate-900 to-pink-950/30 border border-fuchsia-500/40 rounded-2xl space-y-4 shadow-xl">
+            <div className="p-6 bg-gradient-to-r from-fuchsia-950/40 via-white dark:via-slate-900 to-pink-950/30 border border-fuchsia-500/40 rounded-2xl space-y-4 shadow-xl">
               <div className="flex flex-col justify-between gap-4 h-full">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded bg-fuchsia-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
                       LEILÃO T-MOBILE COPPELL
                     </span>
-                    <span className="px-2.5 py-0.5 rounded bg-slate-800 text-fuchsia-300 border border-fuchsia-500/30 font-mono text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-500/30 font-mono text-[11px]">
                       2 Abas (Color + Mixed)
                     </span>
                   </div>
-                  <h2 className="text-lg font-black text-white tracking-tight">
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                     Importador T-Mobile Live Auction
                   </h2>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Lê todas as abas do XLSX/CSV (<span className="text-fuchsia-300 font-mono">BUYER LOTS w/ COLOR</span> e <span className="text-fuchsia-300 font-mono">MIXED</span>), expandindo cores e modelos no padrão Mix da Verizon.
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    Lê todas as abas do XLSX/CSV (<span className="text-fuchsia-700 dark:text-fuchsia-300 font-mono">BUYER LOTS w/ COLOR</span> e <span className="text-fuchsia-700 dark:text-fuchsia-300 font-mono">MIXED</span>), expandindo cores e modelos no padrão Mix da Verizon.
                   </p>
                 </div>
 
@@ -4350,9 +4350,9 @@ $285.00
                     className="px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-fuchsia-600/30 active:scale-95"
                   >
                     {isLoadingTMobile ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-slate-900 dark:text-white" />
                     ) : (
-                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                      <FileSpreadsheet className="w-4 h-4 text-slate-900 dark:text-white" />
                     )}
                     <span>
                       {isLoadingTMobile ? 'Lendo T-Mobile...' : '⚡ Carregar Lista T-Mobile Coppell (Anexo)'}
@@ -4362,22 +4362,22 @@ $285.00
               </div>
             </div>
 
-            <div className="p-6 bg-gradient-to-r from-cyan-950/40 via-slate-900 to-emerald-950/30 border border-cyan-500/40 rounded-2xl space-y-4 shadow-xl">
+            <div className="p-6 bg-gradient-to-r from-cyan-50 dark:from-cyan-950/40 via-white dark:via-slate-900 to-emerald-950/30 border border-cyan-500/40 rounded-2xl space-y-4 shadow-xl">
               <div className="flex flex-col justify-between gap-4 h-full">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded bg-cyan-600 text-white font-black text-[11px] tracking-wider uppercase shadow-md">
                       LEILÃO MARKETPLACE 3
                     </span>
-                    <span className="px-2.5 py-0.5 rounded bg-slate-800 text-cyan-300 border border-cyan-500/30 font-mono text-[11px]">
+                    <span className="px-2.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 font-mono text-[11px]">
                       StockList 11/19
                     </span>
                   </div>
-                  <h2 className="text-lg font-black text-white tracking-tight">
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                     Planilha Marketplace 3 (Apple, Samsung & Google)
                   </h2>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Importa automaticamente <span className="text-cyan-300 font-mono">Marketplace_3_StockList_1119.csv</span> filtrando apenas aparelhos <span className="text-emerald-300 font-semibold">UNLOCKED</span> (exclui LOCKED e acessórios).
+                  <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                    Importa automaticamente <span className="text-cyan-700 dark:text-cyan-300 font-mono">Marketplace_3_StockList_1119.csv</span> filtrando apenas aparelhos <span className="text-emerald-700 dark:text-emerald-300 font-semibold">UNLOCKED</span> (exclui LOCKED e acessórios).
                   </p>
                 </div>
 
@@ -4389,9 +4389,9 @@ $285.00
                     className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/30 active:scale-95"
                   >
                     {isLoadingMarketplace3 ? (
-                      <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-slate-900 dark:text-white" />
                     ) : (
-                      <FileSpreadsheet className="w-4 h-4 text-white" />
+                      <FileSpreadsheet className="w-4 h-4 text-slate-900 dark:text-white" />
                     )}
                     <span>
                       {isLoadingMarketplace3 ? 'Lendo Marketplace 3...' : '⚡ Carregar Planilha Marketplace 3 (Anexo)'}
@@ -4402,11 +4402,11 @@ $285.00
             </div>
           </div>
 
-          <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-5">
+          <div className="p-6 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-5">
             {/* Format & Mode Selector Tabs */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <span className="text-xs font-bold text-slate-300 block">Formato de Importação:</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Formato de Importação:</span>
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <button
                     type="button"
@@ -4414,7 +4414,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'VERIZON'
                         ? 'bg-red-600 text-white shadow-md shadow-red-600/20'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>★ Padrão VERIZON (DNA, DNB, DNC, DND)</span>
@@ -4426,7 +4426,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'T_MOBILE'
                         ? 'bg-fuchsia-600 text-white shadow-md shadow-fuchsia-600/25 ring-1 ring-fuchsia-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>★ Leilão T-MOBILE (2 Abas / Mix)</span>
@@ -4438,7 +4438,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'ASSURANT'
                         ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 ring-1 ring-indigo-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>★ Leilão ASSURANT (XLSX / CSV)</span>
@@ -4450,7 +4450,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MARKETPLACE_1'
                         ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>★ Marketplace 1 (XLSX / CSV)</span>
@@ -4462,7 +4462,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MARKETPLACE_2'
                         ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>★ Marketplace 2 (XLSX / CSV)</span>
@@ -4474,7 +4474,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MARKETPLACE_3'
                         ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/25 ring-1 ring-cyan-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>★ Marketplace 3 (XLSX / CSV)</span>
@@ -4486,7 +4486,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'STOCK_APPLE'
                         ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/25 ring-1 ring-emerald-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>📦 Pronta Entrega (Caixa de Texto)</span>
@@ -4498,7 +4498,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'MACBOOKS'
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-1 ring-purple-400'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>💻 Leilão Macbooks (Caixa de Texto)</span>
@@ -4510,7 +4510,7 @@ $285.00
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
                       presetFormat === 'GENERIC'
                         ? 'bg-amber-400 text-slate-950 font-bold'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <span>Importador Planilha Genérica (CSV / XLSX)</span>
@@ -4525,8 +4525,8 @@ $285.00
                   onClick={() => setUploadMode('file')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
                     uploadMode === 'file'
-                      ? 'bg-slate-700 text-white font-bold'
-                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                      ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white font-bold'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
@@ -4538,8 +4538,8 @@ $285.00
                   onClick={() => setUploadMode('paste')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
                     uploadMode === 'paste'
-                      ? 'bg-slate-700 text-white font-bold'
-                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                      ? 'bg-slate-300 dark:bg-slate-700 text-slate-900 dark:text-white font-bold'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5" />
@@ -4553,7 +4553,7 @@ $285.00
               <div className="space-y-3">
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-slate-700 hover:border-red-500/80 rounded-2xl p-6 sm:p-10 text-center cursor-pointer bg-slate-950/40 hover:bg-slate-950/80 transition-all space-y-3"
+                className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-red-500/80 rounded-2xl p-6 sm:p-10 text-center cursor-pointer bg-slate-100/60 dark:bg-slate-950/40 hover:bg-slate-950/80 transition-all space-y-3"
               >
                 <input
                   type="file"
@@ -4562,23 +4562,23 @@ $285.00
                   accept=".xlsx, .xls, .xlx, .xlsm, .csv, .xml"
                   className="hidden"
                 />
-                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto">
                   <Upload className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-sm font-bold text-white block">
+                  <span className="text-sm font-bold text-slate-900 dark:text-white block">
                     {uploadedFileName ? `Arquivo Carregado: ${uploadedFileName}` : 'Clique para subir ou arraste sua planilha (CSV / Excel XLSX) aqui'}
                   </span>
-                  <span className="text-xs text-slate-400 block">
+                  <span className="text-xs text-slate-600 dark:text-slate-400 block">
                     Formatos aceitos com configuração idêntica: Excel (.xlsx, .xls, .xlsm), CSV (.csv) e XML (.xml)
                   </span>
                 </div>
               </div>
               {uploadedFileName && (
-                <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-emerald-950/30 border border-emerald-500/40 rounded-xl">
-                  <div className="text-xs text-emerald-200">
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-500/40 rounded-xl">
+                  <div className="text-xs text-emerald-800 dark:text-emerald-200">
                     <span className="font-bold block">Planilha pronta: {uploadedFileName}</span>
-                    <span className="text-[11px] text-emerald-400">
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
                       {(presetFormat === 'STOCK_APPLE' || presetFormat === 'ASSURANT' || presetFormat === 'MARKETPLACE_1' || presetFormat === 'MARKETPLACE_2' || presetFormat === 'MARKETPLACE_3' || presetFormat === 'MACBOOKS')
                         ? `${stockAppleAudit.approvedCount.toLocaleString()} itens/lotes prontos para carregar`
                         : `${parsedPreviewRows.length.toLocaleString()} linhas lidas`}
@@ -4600,9 +4600,9 @@ $285.00
               /* Mode 2: Paste Direct Text Import */
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label className="text-xs text-slate-300 block font-medium">
+                  <label className="text-xs text-slate-700 dark:text-slate-300 block font-medium">
                     Cole abaixo o texto formatado para{' '}
-                    <span className="font-bold text-white">
+                    <span className="font-bold text-slate-900 dark:text-white">
                       {presetFormat === 'MACBOOKS'
                         ? 'Leilão Macbooks'
                         : presetFormat === 'STOCK_APPLE'
@@ -4618,18 +4618,18 @@ $285.00
                         setPasteText(SAMPLE_MACBOOKS_TEXT);
                         setPresetFormat('MACBOOKS');
                       }}
-                      className="text-purple-400 hover:underline text-[11px] font-bold flex items-center gap-1"
+                      className="text-purple-600 dark:text-purple-400 hover:underline text-[11px] font-bold flex items-center gap-1"
                     >
                       <span>💻 Inserir Modelo Macbooks</span>
                     </button>
-                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-400 dark:text-slate-600">·</span>
                     <button
                       type="button"
                       onClick={() => {
                         setPasteText(SAMPLE_PRONTA_ENTREGA_TEXT);
                         setPresetFormat('STOCK_APPLE');
                       }}
-                      className="text-emerald-400 hover:underline text-[11px] font-bold flex items-center gap-1"
+                      className="text-emerald-600 dark:text-emerald-400 hover:underline text-[11px] font-bold flex items-center gap-1"
                     >
                       <span>📦 Inserir Modelo Pronta Entrega</span>
                     </button>
@@ -4638,13 +4638,13 @@ $285.00
 
                 {/* MacBook Margin Selection Control Banner */}
                 {presetFormat === 'MACBOOKS' && (
-                  <div className="p-3.5 bg-purple-950/40 border border-purple-500/35 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                  <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-500/35 rounded-xl flex flex-wrap items-center justify-between gap-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="px-2 py-0.5 rounded bg-purple-600 text-white font-black text-[10px] uppercase">
                         LEILÃO MACBOOKS
                       </span>
-                      <span className="text-xs text-purple-200 font-medium">
-                        Filtro ativo: <strong className="text-white">Apenas Processador M1 ou superior (M1, M2, M3, M4+)</strong> · Margem: &le; $500 acrescenta <strong className="text-white">+$25</strong> · &gt; $500 acrescenta <strong className="text-white">+$40</strong>
+                      <span className="text-xs text-purple-800 dark:text-purple-200 font-medium">
+                        Filtro ativo: <strong className="text-slate-900 dark:text-white">Apenas Processador M1 ou superior (M1, M2, M3, M4+)</strong> · Margem: &le; $500 acrescenta <strong className="text-slate-900 dark:text-white">+$25</strong> · &gt; $500 acrescenta <strong className="text-slate-900 dark:text-white">+$40</strong>
                       </span>
                     </div>
                     <button
@@ -4667,13 +4667,13 @@ $285.00
 
                 {/* Pronta Entrega Info Banner */}
                 {presetFormat === 'STOCK_APPLE' && (
-                  <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-200">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-xl flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-emerald-800 dark:text-emerald-200">
                       <span className="px-2 py-0.5 rounded bg-emerald-600 text-white font-black text-[10px] uppercase">
                         PRONTA ENTREGA
                       </span>
                       <span>
-                        Filtro automático ativo: apenas <strong className="text-white">iPhones</strong> nas <strong className="text-white">Grades A, AB e B</strong> com preço &gt; $0.00 e estoque positivo em Need/Have/OnPO (demais aparelhos e grades DEF, BLQ, C, etc. são excluídos).
+                        Filtro automático ativo: apenas <strong className="text-slate-900 dark:text-white">iPhones</strong> nas <strong className="text-slate-900 dark:text-white">Grades A, AB e B</strong> com preço &gt; $0.00 e estoque positivo em Need/Have/OnPO (demais aparelhos e grades DEF, BLQ, C, etc. são excluídos).
                       </span>
                     </div>
                   </div>
@@ -4690,7 +4690,7 @@ $285.00
                       ? "Cole aqui o texto do inventário Pronta Entrega:\nManage Products\n...\nManufacturer Name\tProduct Name\tSKU/Barcode\tCategory Name\tSelling Price\tNeed/Have/OnPO\nApple\nIphone 11 Pro Max 64 GB DEF\n1560144\nPhone\n$156.00\n0 / 1 / 0"
                       : "Cole aqui as linhas copiadas do Excel, CSV ou texto do leilão..."
                   }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-white placeholder:text-slate-600 focus:outline-none focus:border-red-400"
+                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-red-400"
                 />
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -4704,7 +4704,7 @@ $285.00
                   <button
                     type="button"
                     onClick={() => setPasteText('')}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs transition-colors"
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs transition-colors"
                   >
                     Limpar Campo
                   </button>
@@ -4712,14 +4712,14 @@ $285.00
               </div>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 pt-2 border-t border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-800">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 Compatível com exportações oficiais Verizon Wireless Returns, AT&T Liquidation e operadoras dos EUA.
               </span>
               <button
                 onClick={handleDownloadTemplate}
-                className="text-amber-400 hover:underline font-semibold"
+                className="text-amber-600 dark:text-amber-400 hover:underline font-semibold"
               >
                 Baixar Planilha Modelo Exemplo (.xlsx) ➔
               </button>
@@ -4730,7 +4730,7 @@ $285.00
           {/* STOCK APPLE / ASSURANT / MACBOOKS / PRONTA ENTREGA CONSOLE */}
           {/* ======================================================== */}
           {isStockFeedFormat(presetFormat) && stockAppleItems.length > 0 && (
-            <div className={`space-y-6 p-6 bg-slate-900/90 border rounded-2xl shadow-2xl ${
+            <div className={`space-y-6 p-6 bg-white/95 dark:bg-slate-900/90 border rounded-2xl shadow-2xl ${
               presetFormat === 'ASSURANT'
                 ? 'border-indigo-500/40'
                 : presetFormat === 'MACBOOKS'
@@ -4738,13 +4738,13 @@ $285.00
                 : 'border-emerald-500/40'
             }`}>
               {presetFormat === 'MACBOOKS' && (
-                <div className="p-3.5 bg-purple-950/40 border border-purple-500/35 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                <div className="p-3.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-500/35 rounded-xl flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span className="px-2 py-0.5 rounded bg-purple-600 text-white text-[10px] font-black uppercase">
                       MARGEM MACBOOKS
                     </span>
-                    <span className="text-xs text-purple-200 font-semibold">
-                      Até $500 USD acrescenta <strong className="text-white">+$25</strong> · Acima de $500 USD acrescenta <strong className="text-white">+$40</strong>
+                    <span className="text-xs text-purple-800 dark:text-purple-200 font-semibold">
+                      Até $500 USD acrescenta <strong className="text-slate-900 dark:text-white">+$25</strong> · Acima de $500 USD acrescenta <strong className="text-slate-900 dark:text-white">+$40</strong>
                     </span>
                   </div>
                   <button
@@ -4765,16 +4765,16 @@ $285.00
                 </div>
               )}
               {presetFormat === 'ASSURANT' && (
-                <div className="p-3.5 bg-indigo-950/40 border border-indigo-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3">
+                <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
                     <span className="px-2 py-0.5 rounded bg-indigo-600 text-white text-[10px] font-black uppercase">
                       LEILÃO ASSURANT
                     </span>
-                    <span className="text-xs text-indigo-200 font-semibold">
+                    <span className="text-xs text-indigo-800 dark:text-indigo-200 font-semibold">
                       Acréscimo automático de +$5 USD por aparelho nos valores importados (apenas UNLOCKED)
                     </span>
                   </div>
-                  <label className="flex items-center gap-2 text-xs font-bold text-white cursor-pointer select-none">
+                  <label className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white cursor-pointer select-none">
                     <input
                       type="checkbox"
                       checked={addAssurantFiveUsd}
@@ -4786,7 +4786,7 @@ $285.00
                 </div>
               )}
               {/* Header & Stats Banner */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`px-2.5 py-0.5 rounded text-white text-[10px] font-black uppercase flex items-center gap-1 shadow-sm ${
@@ -4813,7 +4813,7 @@ $285.00
                           : 'PRONTA ENTREGA • 100% UNLOCKED'}
                       </span>
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-mono">
                       {presetFormat === 'MACBOOKS'
                         ? 'Apple Silicon M1 ou Superior (M1, M2, M3, M4+)'
                         : presetFormat === 'STOCK_APPLE'
@@ -4821,7 +4821,7 @@ $285.00
                         : 'Apple, Samsung & Google Desbloqueados (Sem LOCKED)'}
                     </span>
                   </div>
-                  <h3 className="font-black text-white text-lg mt-1.5 flex items-center gap-2">
+                  <h3 className="font-black text-slate-900 dark:text-white text-lg mt-1.5 flex items-center gap-2">
                     <span>
                       {presetFormat === 'MARKETPLACE_1'
                         ? `Marketplace 1: ${stockAppleAudit.approvedCount.toLocaleString()} Lotes Aprovados`
@@ -4835,14 +4835,14 @@ $285.00
                         ? `Leilão Macbooks M1+: ${stockAppleAudit.approvedCount.toLocaleString()} MacBooks Prontos`
                         : `Pronta Entrega (iPhones): ${stockAppleAudit.approvedCount.toLocaleString()} iPhones Aprovados`}
                     </span>
-                    <span className="text-slate-400 text-sm font-normal">({stockAppleAudit.totalApprovedUnits.toLocaleString()} Unidades)</span>
+                    <span className="text-slate-600 dark:text-slate-400 text-sm font-normal">({stockAppleAudit.totalApprovedUnits.toLocaleString()} Unidades)</span>
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     {presetFormat === 'MACBOOKS'
-                      ? <>MacBooks filtrados apenas para <span className="text-purple-300 font-semibold">Apple Silicon M1 ou superior (M1, M2, M3, M4+)</span>, com specs completos e opção de margem (+$25 / +$40).</>
+                      ? <>MacBooks filtrados apenas para <span className="text-purple-700 dark:text-purple-300 font-semibold">Apple Silicon M1 ou superior (M1, M2, M3, M4+)</span>, com specs completos e opção de margem (+$25 / +$40).</>
                       : presetFormat === 'STOCK_APPLE'
-                      ? <>Itens de Pronta Entrega filtrados estritamente para <span className="text-emerald-300 font-semibold">apenas iPhones nas Grades A, AB e B</span> com preço maior que $0.00 e estoque positivo em Need/Have/OnPO.</>
-                      : <>Critério de seleção aplicado: Apenas smartphones, tablets e wearables desbloqueados (<span className="text-emerald-400 font-mono font-bold">UNLOCKED</span>). Todos os aparelhos bloqueados (<span className="text-rose-400 font-mono font-bold">LOCKED</span>) e acessórios foram automaticamente descartados.</>}
+                      ? <>Itens de Pronta Entrega filtrados estritamente para <span className="text-emerald-700 dark:text-emerald-300 font-semibold">apenas iPhones nas Grades A, AB e B</span> com preço maior que $0.00 e estoque positivo em Need/Have/OnPO.</>
+                      : <>Critério de seleção aplicado: Apenas smartphones, tablets e wearables desbloqueados (<span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">UNLOCKED</span>). Todos os aparelhos bloqueados (<span className="text-rose-600 dark:text-rose-400 font-mono font-bold">LOCKED</span>) e acessórios foram automaticamente descartados.</>}
                   </p>
                 </div>
 
@@ -4864,81 +4864,81 @@ $285.00
 
               {/* 4 Quick-Stat Audit Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 bg-emerald-950/25 border border-emerald-500/30 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/25 border border-emerald-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-bold">
                     <span>Aprovados (Desbloqueados)</span>
                     <CheckSquare className="w-4 h-4" />
                   </div>
-                  <div className="text-2xl font-black text-white font-mono">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                     {stockAppleAudit.approvedCount.toLocaleString()}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-300 font-medium pt-1 border-t border-emerald-500/20">
-                    <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-300">
+                  <div className="flex flex-wrap gap-1.5 text-[10px] text-slate-700 dark:text-slate-300 font-medium pt-1 border-t border-emerald-500/20">
+                    <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-700 dark:text-emerald-300">
                       📱 {stockAppleAudit.approvedIPhones.toLocaleString()} iPhones
                     </span>
-                    <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-300">
+                    <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-700 dark:text-emerald-300">
                       📲 {stockAppleAudit.approvedIPads.toLocaleString()} iPads
                     </span>
-                    <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-300">
+                    <span className="px-1.5 py-0.5 bg-emerald-500/20 rounded text-emerald-700 dark:text-emerald-300">
                       ⌚ {stockAppleAudit.approvedWatches.toLocaleString()} Watches
                     </span>
                     {stockAppleAudit.approvedMacBooks > 0 && (
-                      <span className="px-1.5 py-0.5 bg-purple-500/20 rounded text-purple-300">
+                      <span className="px-1.5 py-0.5 bg-purple-500/20 rounded text-purple-700 dark:text-purple-300">
                         💻 {stockAppleAudit.approvedMacBooks.toLocaleString()} MacBooks
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-xs text-blue-400 font-bold">
+                <div className="p-4 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs text-blue-600 dark:text-blue-400 font-bold">
                     <span>Total Unidades Físicas</span>
                     <Package className="w-4 h-4" />
                   </div>
-                  <div className="text-2xl font-black text-white font-mono">
+                  <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                     {stockAppleAudit.totalApprovedUnits.toLocaleString()}
                   </div>
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
                     Soma da quantidade disponível dos itens aprovados para arremate
                   </div>
                 </div>
 
-                <div className="p-4 bg-rose-950/20 border border-rose-500/30 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-xs text-rose-400 font-bold">
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs text-rose-600 dark:text-rose-400 font-bold">
                     <span>Descartados Bloqueados (LOCKED)</span>
-                    <Lock className="w-4 h-4 text-rose-400" />
+                    <Lock className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   </div>
-                  <div className="text-2xl font-black text-rose-300 font-mono">
+                  <div className="text-2xl font-black text-rose-700 dark:text-rose-300 font-mono">
                     {stockAppleAudit.discardedLockedCount.toLocaleString()}
                   </div>
-                  <div className="text-[11px] text-rose-300/80 font-medium">
+                  <div className="text-[11px] text-rose-700/80 dark:text-rose-300/80 font-medium">
                     100% filtrados para proteger o cliente de aparelhos bloqueados
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
-                  <div className="flex items-center justify-between text-xs text-amber-400 font-bold">
+                <div className="p-4 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-bold">
                     <span>Lotes Prontos para Publicação</span>
                     <Layers className="w-4 h-4" />
                   </div>
-                  <div className="text-2xl font-black text-amber-300 font-mono">
+                  <div className="text-2xl font-black text-amber-700 dark:text-amber-300 font-mono">
                     {stockAppleGroupMode === 'grouped' ? stockAppleGroupedLots.length.toLocaleString() : stockAppleAudit.approvedCount.toLocaleString()}
                   </div>
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400">
                     {stockAppleGroupMode === 'grouped' ? 'Agrupados por Modelo + Capacidade + Grade' : 'Individualmente linha a linha por Item #'}
                   </div>
                 </div>
               </div>
 
               {/* Price Multiplier & Mode Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-950 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-300 block">Modo de Consolidação de Lotes:</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Modo de Consolidação de Lotes:</label>
                   <div className="flex flex-col gap-2 text-xs">
                     <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                       stockAppleGroupMode === 'grouped'
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}>
                       <input
                         type="radio"
@@ -4952,8 +4952,8 @@ $285.00
 
                     <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                       stockAppleGroupMode === 'individual'
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}>
                       <input
                         type="radio"
@@ -4968,9 +4968,9 @@ $285.00
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span>Desconto Lance Inicial (%):</span>
-                    <span className="text-emerald-400 font-mono font-black">{stockAppleDiscountPercent}% OFF</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-mono font-black">{stockAppleDiscountPercent}% OFF</span>
                   </label>
                   <input
                     type="range"
@@ -4987,8 +4987,8 @@ $285.00
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300">Modo de Publicação no Catálogo:</label>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer bg-slate-900 p-2.5 rounded-lg border border-slate-800 hover:border-slate-700">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Modo de Publicação no Catálogo:</label>
+                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700">
                     <input
                       type="checkbox"
                       checked={replaceExistingLots}
@@ -5004,7 +5004,7 @@ $285.00
               </div>
 
               {/* Table Filter Tabs & Search Bar */}
-              <div className="space-y-3 pt-2 border-t border-slate-800">
+              <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
@@ -5013,7 +5013,7 @@ $285.00
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                         stockAppleFilterType === 'ALL'
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >
                       Todos Aprovados ({stockAppleAudit.approvedCount.toLocaleString()})
@@ -5024,7 +5024,7 @@ $285.00
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
                         stockAppleFilterType === 'IPHONE'
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >
                       <Smartphone className="w-3.5 h-3.5" />
@@ -5036,7 +5036,7 @@ $285.00
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
                         stockAppleFilterType === 'IPAD'
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >
                       <Tablet className="w-3.5 h-3.5" />
@@ -5048,7 +5048,7 @@ $285.00
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
                         stockAppleFilterType === 'WATCH'
                           ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >
                       <Watch className="w-3.5 h-3.5" />
@@ -5061,7 +5061,7 @@ $285.00
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
                           stockAppleFilterType === 'MACBOOK'
                             ? 'bg-purple-600 text-white'
-                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                         }`}
                       >
                         <Laptop className="w-3.5 h-3.5" />
@@ -5074,7 +5074,7 @@ $285.00
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 ${
                         stockAppleFilterType === 'DISCARDED_LOCKED'
                           ? 'bg-rose-600 text-white'
-                          : 'bg-rose-950/40 text-rose-400 hover:bg-rose-900/50 border border-rose-500/30'
+                          : 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-900/50 border border-rose-500/30'
                       }`}
                     >
                       <Lock className="w-3.5 h-3.5" />
@@ -5083,21 +5083,21 @@ $285.00
                   </div>
 
                   <div className="relative w-full sm:w-64">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Search className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
                       placeholder="Filtrar por modelo, cor, GB..."
                       value={stockAppleSearch}
                       onChange={e => { setStockAppleSearch(e.target.value); setStockApplePage(1); }}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
                     />
                   </div>
                 </div>
 
                 {/* Table of items */}
-                <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950/60 max-h-[460px] overflow-y-auto">
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-100/80 dark:bg-slate-950/60 max-h-[460px] overflow-y-auto">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-900/90 text-slate-400 text-[11px] font-bold uppercase sticky top-0 z-10 border-b border-slate-800">
+                    <thead className="bg-white/95 dark:bg-slate-900/90 text-slate-600 dark:text-slate-400 text-[11px] font-bold uppercase sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800">
                       <tr>
                         <th className="py-2.5 px-3">Item #</th>
                         <th className="py-2.5 px-3">Tipo</th>
@@ -5112,75 +5112,75 @@ $285.00
                         <th className="py-2.5 px-3 text-center">Filtro</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60">
+                    <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60">
                       {paginatedStockItems.map((item, idx) => {
                         const isApproved = item.status === 'APPROVED';
                         return (
                           <tr
                             key={item.id || idx}
-                            className={`hover:bg-slate-900/60 transition-colors ${
-                              !isApproved ? 'bg-rose-950/10' : ''
+                            className={`hover:bg-slate-100/80 dark:hover:bg-slate-900/60 transition-colors ${
+                              !isApproved ? 'bg-rose-50/70 dark:bg-rose-950/10' : ''
                             }`}
                           >
-                            <td className="py-2 px-3 font-mono text-[11px] text-slate-300 font-bold">
+                            <td className="py-2 px-3 font-mono text-[11px] text-slate-700 dark:text-slate-300 font-bold">
                               {item.itemNumber}
                             </td>
                             <td className="py-2 px-3">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-300 flex items-center gap-1 w-fit">
-                                {item.deviceType === 'iPhone' && <Smartphone className="w-3 h-3 text-blue-400" />}
-                                {item.deviceType === 'iPad' && <Tablet className="w-3 h-3 text-emerald-400" />}
-                                {item.deviceType === 'Apple Watch' && <Watch className="w-3 h-3 text-amber-400" />}
-                                {item.deviceType === 'MacBook' && <Laptop className="w-3 h-3 text-purple-400" />}
+                              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center gap-1 w-fit">
+                                {item.deviceType === 'iPhone' && <Smartphone className="w-3 h-3 text-blue-600 dark:text-blue-400" />}
+                                {item.deviceType === 'iPad' && <Tablet className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+                                {item.deviceType === 'Apple Watch' && <Watch className="w-3 h-3 text-amber-600 dark:text-amber-400" />}
+                                {item.deviceType === 'MacBook' && <Laptop className="w-3 h-3 text-purple-600 dark:text-purple-400" />}
                                 <span>{item.deviceType}</span>
                               </span>
                             </td>
-                            <td className="py-2 px-3 font-semibold text-white">
+                            <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">
                               <div>{item.model}</div>
-                              <div className="text-[10px] text-slate-400 font-mono">{item.capacity} · {item.modelNumber}</div>
+                              <div className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">{item.capacity} · {item.modelNumber}</div>
                             </td>
-                            <td className="py-2 px-3 text-slate-300">{item.color}</td>
+                            <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{item.color}</td>
                             <td className="py-2 px-3">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/30">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/10 text-amber-700 dark:text-amber-300 border border-amber-400/30">
                                 {item.grade}
                               </span>
                             </td>
                             <td className="py-2 px-3 text-center">
                               {isApproved ? (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 inline-flex items-center gap-1">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40 inline-flex items-center gap-1">
                                   <ShieldCheck className="w-3 h-3" />
                                   <span>UNLOCKED</span>
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/40 inline-flex items-center gap-1">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/40 inline-flex items-center gap-1">
                                   <Lock className="w-3 h-3" />
                                   <span>LOCKED</span>
                                 </span>
                               )}
                             </td>
-                            <td className="py-2 px-3 text-right font-mono font-bold text-white">
+                            <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white">
                               {item.availableQuantity}x
                             </td>
-                            <td className="py-2 px-3 text-right font-mono font-semibold text-cyan-300">
+                            <td className="py-2 px-3 text-right font-mono font-semibold text-cyan-700 dark:text-cyan-300">
                               {item.incrementsOf || 1} un.
                             </td>
-                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-400">
+                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                               <div>${item.listPrice.toFixed(2)}</div>
                               {typeof item.baseListPrice === 'number' && item.listPrice > item.baseListPrice && (
-                                <div className="text-[10px] text-purple-300 font-normal">
+                                <div className="text-[10px] text-purple-700 dark:text-purple-300 font-normal">
                                   Base ${item.baseListPrice.toFixed(2)} (+${(item.listPrice - item.baseListPrice).toFixed(0)})
                                 </div>
                               )}
                             </td>
-                            <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">
                               {item.warehouse}
                             </td>
                             <td className="py-2 px-3 text-center">
                               {isApproved ? (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-bold">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
                                   APROVADO
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-300 font-bold" title={item.discardReason}>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold" title={item.discardReason}>
                                   DESCARTADO
                                 </span>
                               )}
@@ -5200,7 +5200,7 @@ $285.00
                 </div>
 
                 {/* Pagination Controls */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 text-xs text-slate-400">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 text-xs text-slate-600 dark:text-slate-400">
                   <span>
                     Mostrando {filteredStockItems.length > 0 ? (stockApplePage - 1) * stockPageSize + 1 : 0} a {Math.min(stockApplePage * stockPageSize, filteredStockItems.length)} de {filteredStockItems.length.toLocaleString()} itens
                   </span>
@@ -5209,19 +5209,19 @@ $285.00
                       type="button"
                       disabled={stockApplePage <= 1}
                       onClick={() => setStockApplePage(p => Math.max(1, p - 1))}
-                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none rounded text-xs font-semibold text-white flex items-center gap-1"
+                      className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none rounded text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                       <span>Anterior</span>
                     </button>
-                    <span className="font-mono text-slate-300 font-bold px-2">
+                    <span className="font-mono text-slate-700 dark:text-slate-300 font-bold px-2">
                       Página {stockApplePage} de {totalStockPages}
                     </span>
                     <button
                       type="button"
                       disabled={stockApplePage >= totalStockPages}
                       onClick={() => setStockApplePage(p => Math.min(totalStockPages, p + 1))}
-                      className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none rounded text-xs font-semibold text-white flex items-center gap-1"
+                      className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none rounded text-xs font-semibold text-slate-900 dark:text-white flex items-center gap-1"
                     >
                       <span>Próxima</span>
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -5236,19 +5236,19 @@ $285.00
           {/* VERIZON PREVIEW & PUBLISH CONSOLE */}
           {/* ======================================================== */}
           {presetFormat === 'VERIZON' && verizonGroupedLots.length > 0 && (
-            <div className="space-y-6 p-6 bg-slate-900/90 border border-red-500/40 rounded-2xl shadow-2xl">
+            <div className="space-y-6 p-6 bg-white/95 dark:bg-slate-900/90 border border-red-500/40 rounded-2xl shadow-2xl">
               {/* Header & Stats Banner */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded bg-red-600 text-white text-[10px] font-black uppercase">
                       VERIZON OFICIAL PRONTO
                     </span>
-                    <h3 className="font-black text-white text-lg">
+                    <h3 className="font-black text-slate-900 dark:text-white text-lg">
                       {verizonGroupedLots.length} Lotes Agrupados Detectados ({verizonGroupedLots.reduce((acc, l) => acc + l.totalQty, 0).toLocaleString()} Aparelhos)
                     </h3>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     Cada lote foi unificado a partir de suas respectivas linhas de manifesto com IMEI mascarado, capacidade e operadora limpa.
                   </p>
                 </div>
@@ -5270,26 +5270,26 @@ $285.00
               </div>
 
               {/* Verizon Policy & Consolidation Mode Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-950 rounded-xl border border-slate-800">
-                <div className="space-y-1.5 p-3 rounded-lg bg-red-950/25 border border-red-500/30">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
+                <div className="space-y-1.5 p-3 rounded-lg bg-red-50 dark:bg-red-950/25 border border-red-500/30">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-red-300">Regra Exclusiva VERIZON</span>
+                    <span className="text-xs font-bold text-red-700 dark:text-red-300">Regra Exclusiva VERIZON</span>
                     <span className="px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-black uppercase">
                       SEM PREÇO FIXO
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Os lotes Verizon são publicados <strong className="text-white">sem preço predefinido</strong> (o cliente informa o valor desejado em USD) e com <strong className="text-amber-300">quantidade fixa</strong> (lote fechado). Grades convertidas para <strong className="text-emerald-300">DNA, DNB, DNC e DND</strong>.
+                  <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                    Os lotes Verizon são publicados <strong className="text-slate-900 dark:text-white">sem preço predefinido</strong> (o cliente informa o valor desejado em USD) e com <strong className="text-amber-700 dark:text-amber-300">quantidade fixa</strong> (lote fechado). Grades convertidas para <strong className="text-emerald-700 dark:text-emerald-300">DNA, DNB, DNC e DND</strong>.
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-slate-300 block">Modo de Consolidação de Lotes:</label>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Modo de Consolidação de Lotes:</label>
                   <div className="flex flex-col gap-1.5 text-xs">
                     <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                       verizonImportMode === 'grouped'
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}>
                       <input
                         type="radio"
@@ -5303,8 +5303,8 @@ $285.00
 
                     <label className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                       verizonImportMode === 'individual'
-                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300 font-bold'
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+                        ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-700 dark:text-emerald-300 font-bold'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}>
                       <input
                         type="radio"
@@ -5319,8 +5319,8 @@ $285.00
                 </div>
 
                 <div className="space-y-1.5">
-                  <span className="text-xs font-bold text-slate-300 block">Configurações Adicionais:</span>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer bg-slate-900 p-2.5 rounded-lg border border-slate-800 hover:border-slate-700">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Configurações Adicionais:</span>
+                  <label className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700">
                     <input
                       type="checkbox"
                       checked={replaceExistingLots}
@@ -5334,12 +5334,12 @@ $285.00
 
               {/* Grouped Lots Accordion Preview Table */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">Prévia dos Lotes Agrupados (Mix de Modelos, GBs e Cores):</span>
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Prévia dos Lotes Agrupados (Mix de Modelos, GBs e Cores):</span>
                   <span>Clique em &quot;Manifesto&quot; para expandir os detalhes</span>
                 </div>
 
-                <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 divide-y divide-slate-800/80 max-h-[500px] overflow-y-auto">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 divide-y divide-slate-200/80 dark:divide-slate-800/80 max-h-[500px] overflow-y-auto">
                   {verizonGroupedLots.map((lot, idx) => {
                     const isExpanded = verizonExpandedLot === lot.lotNumber;
                     const hasMix = lot.uniqueModels.length > 1 || lot.uniqueCapacities.length > 1 || lot.uniqueColors.length > 1;
@@ -5348,29 +5348,29 @@ $285.00
                         {/* Summary Row */}
                         <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <span className="font-mono text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/30 font-bold shrink-0">
+                            <span className="font-mono text-xs px-2 py-1 rounded bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/30 font-bold shrink-0">
                               #{idx + 1} · {lot.lotNumber}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                                 {lot.title}
                               </h4>
-                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-400">
-                                <span className="text-slate-300 font-medium">
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                                <span className="text-slate-700 dark:text-slate-300 font-medium">
                                   {lot.uniqueModels.length > 1 ? `Mix (${lot.uniqueModels.length} modelos)` : lot.primaryModel}
                                 </span>
                                 <span>·</span>
-                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 font-mono font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 font-mono font-bold">
                                   {lot.totalQty} un. (Qtd Fixa)
                                 </span>
                                 <span>·</span>
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold">
                                   {lot.mappedGrade}
                                 </span>
                                 {lot.uniqueCapacities.length > 0 && (
                                   <>
                                     <span>·</span>
-                                    <span className="text-cyan-300 font-mono">
+                                    <span className="text-cyan-700 dark:text-cyan-300 font-mono">
                                       {lot.uniqueCapacities.join(' / ')}
                                     </span>
                                   </>
@@ -5378,13 +5378,13 @@ $285.00
                                 {lot.uniqueColors.length > 0 && (
                                   <>
                                     <span>·</span>
-                                    <span className="text-slate-300">
+                                    <span className="text-slate-700 dark:text-slate-300">
                                       Cores: {lot.uniqueColors.slice(0, 4).join(', ')}{lot.uniqueColors.length > 4 ? ` (+${lot.uniqueColors.length - 4})` : ''}
                                     </span>
                                   </>
                                 )}
                                 {hasMix && (
-                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold text-[10px]">
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 font-bold text-[10px]">
                                     Lote Mesclado
                                   </span>
                                 )}
@@ -5394,10 +5394,10 @@ $285.00
 
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right">
-                              <span className="text-xs font-bold text-amber-300 block">
+                              <span className="text-xs font-bold text-amber-700 dark:text-amber-300 block">
                                 Sem Preço Fixo
                               </span>
-                              <span className="text-[10px] text-slate-400 block">
+                              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                                 Cliente escolhe o valor
                               </span>
                             </div>
@@ -5405,9 +5405,9 @@ $285.00
                             <button
                               type="button"
                               onClick={() => setVerizonExpandedLot(isExpanded ? null : lot.lotNumber)}
-                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                             >
-                              <Layers className="w-3.5 h-3.5 text-amber-400" />
+                              <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               <span>{isExpanded ? 'Ocultar' : `Manifesto (${lot.manifest.length})`}</span>
                             </button>
                           </div>
@@ -5416,10 +5416,10 @@ $285.00
                         {/* Expanded Manifest Accordion */}
                         <div className={`grid transition-all duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                           <div className="overflow-hidden">
-                            <div className="p-4 bg-slate-900/80 border-t border-slate-800 space-y-3">
+                            <div className="p-4 bg-white/90 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 space-y-3">
                               <div className="flex items-center justify-between text-xs">
-                                <span className="font-bold text-white flex items-center gap-1.5">
-                                  <Smartphone className="w-3.5 h-3.5 text-amber-400" />
+                                <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                  <Smartphone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                                   Itens e Especificações de Peças do Lote {lot.lotNumber}
                                 </span>
                                 {lot.url && (
@@ -5427,17 +5427,17 @@ $285.00
                                     href={lot.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
+                                    className="text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 text-[11px]"
                                   >
                                     <span>Ver anúncio oficial do lote ↗</span>
                                   </a>
                                 )}
                               </div>
 
-                              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-800">
-                                <table className="w-full text-left text-[11px] border-collapse bg-slate-950">
+                              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                                <table className="w-full text-left text-[11px] border-collapse bg-slate-100 dark:bg-slate-950">
                                   <thead>
-                                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-900/90">
+                                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 bg-white/95 dark:bg-slate-900/90">
                                       <th className="py-1.5 px-2.5">Qtd</th>
                                       <th className="py-1.5 px-2.5">Modelo</th>
                                       <th className="py-1.5 px-2.5">Memória</th>
@@ -5448,23 +5448,23 @@ $285.00
                                       <th className="py-1.5 px-2.5">Grade</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                  <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                                     {lot.manifest.map((item, mIdx) => (
                                       <tr key={mIdx} className="hover:bg-slate-900/50">
-                                        <td className="py-1.5 px-2.5 font-mono text-amber-400 font-bold">{item.qty || 1}x</td>
-                                        <td className="py-1.5 px-2.5 font-medium text-white">{item.model}</td>
-                                        <td className="py-1.5 px-2.5 font-mono text-cyan-300">{item.storage}</td>
-                                        <td className="py-1.5 px-2.5 text-slate-200">{item.color || '-'}</td>
-                                        <td className="py-1.5 px-2.5 font-mono text-slate-400">{item.partNumber || '-'}</td>
-                                        <td className="py-1.5 px-2.5 text-slate-300 truncate max-w-[200px]" title={item.itemDescription}>
+                                        <td className="py-1.5 px-2.5 font-mono text-amber-600 dark:text-amber-400 font-bold">{item.qty || 1}x</td>
+                                        <td className="py-1.5 px-2.5 font-medium text-slate-900 dark:text-white">{item.model}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-cyan-700 dark:text-cyan-300">{item.storage}</td>
+                                        <td className="py-1.5 px-2.5 text-slate-800 dark:text-slate-200">{item.color || '-'}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-slate-600 dark:text-slate-400">{item.partNumber || '-'}</td>
+                                        <td className="py-1.5 px-2.5 text-slate-700 dark:text-slate-300 truncate max-w-[200px]" title={item.itemDescription}>
                                           {item.itemDescription || '-'}
                                         </td>
                                         <td className="py-1.5 px-2.5">
-                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300">
+                                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                                             {item.inventorySource || 'Return'}
                                           </span>
                                         </td>
-                                        <td className="py-1.5 px-2.5 font-bold text-emerald-300">{item.grade}</td>
+                                        <td className="py-1.5 px-2.5 font-bold text-emerald-700 dark:text-emerald-300">{item.grade}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -5485,18 +5485,18 @@ $285.00
           {/* T-MOBILE MIX PREVIEW & PUBLISH CONSOLE                   */}
           {/* ======================================================== */}
           {presetFormat === 'T_MOBILE' && tMobileGroupedLots.length > 0 && (
-            <div className="space-y-6 p-6 bg-slate-900/90 border border-fuchsia-500/40 rounded-2xl shadow-2xl">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div className="space-y-6 p-6 bg-white/95 dark:bg-slate-900/90 border border-fuchsia-500/40 rounded-2xl shadow-2xl">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2.5 py-0.5 rounded bg-fuchsia-600 text-white text-[10px] font-black uppercase">
                       T-MOBILE COPPELL PRONTO
                     </span>
-                    <h3 className="font-black text-white text-lg">
+                    <h3 className="font-black text-slate-900 dark:text-white text-lg">
                       {tMobileGroupedLots.length} Lotes Agrupados Detectados ({tMobileGroupedLots.reduce((acc, l) => acc + l.totalQty, 0).toLocaleString()} Aparelhos)
                     </h3>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                     Lotes agrupados por Lot ID no mesmo padrão Mix da Verizon: cores detalhadas por coluna, modelos combinados na aba MIXED e lance inicial unitário oficial.
                   </p>
                 </div>
@@ -5515,47 +5515,47 @@ $285.00
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300">Prévia dos Lotes T-Mobile Agrupados (Mix de Modelos, GBs e Cores):</span>
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Prévia dos Lotes T-Mobile Agrupados (Mix de Modelos, GBs e Cores):</span>
                   <span>Clique em &quot;Manifesto&quot; para expandir as cores e itens</span>
                 </div>
 
-                <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950 divide-y divide-slate-800/80 max-h-[500px] overflow-y-auto">
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-950 divide-y divide-slate-200/80 dark:divide-slate-800/80 max-h-[500px] overflow-y-auto">
                   {tMobileGroupedLots.map((lot, idx) => {
                     const isExpanded = tMobileExpandedLot === lot.lotNumber;
                     return (
                       <div key={lot.lotNumber} className="transition-colors hover:bg-slate-900/40">
                         <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
                           <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <span className="font-mono text-xs px-2 py-1 rounded bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30 font-bold shrink-0">
+                            <span className="font-mono text-xs px-2 py-1 rounded bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300 border border-fuchsia-500/30 font-bold shrink-0">
                               #{idx + 1} · {lot.lotNumber}
                             </span>
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+                              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
                                 {lot.title}
                               </h4>
-                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-400">
-                                <span className="text-slate-300 font-medium">
+                              <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                                <span className="text-slate-700 dark:text-slate-300 font-medium">
                                   {lot.uniqueModels.length > 1 ? `Mix (${lot.uniqueModels.length} modelos)` : lot.primaryModel}
                                 </span>
                                 <span>·</span>
-                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-400 font-mono font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 font-mono font-bold">
                                   {lot.totalQty.toLocaleString()} un.
                                 </span>
                                 <span>·</span>
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-bold">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold">
                                   {lot.mappedGrade}
                                 </span>
                                 {lot.uniqueCapacities.length > 0 && (
                                   <>
                                     <span>·</span>
-                                    <span className="text-cyan-300 font-mono">{lot.uniqueCapacities.join(' / ')}</span>
+                                    <span className="text-cyan-700 dark:text-cyan-300 font-mono">{lot.uniqueCapacities.join(' / ')}</span>
                                   </>
                                 )}
                                 {lot.uniqueColors.length > 0 && (
                                   <>
                                     <span>·</span>
-                                    <span className="text-slate-300">
+                                    <span className="text-slate-700 dark:text-slate-300">
                                       {lot.uniqueColors.length} Cores ({lot.uniqueColors.slice(0, 4).join(', ')}{lot.uniqueColors.length > 4 ? ` +${lot.uniqueColors.length - 4}` : ''})
                                     </span>
                                   </>
@@ -5566,10 +5566,10 @@ $285.00
 
                           <div className="flex items-center gap-3 shrink-0">
                             <div className="text-right font-mono">
-                              <span className="text-xs font-black text-amber-400 block">
+                              <span className="text-xs font-black text-amber-600 dark:text-amber-400 block">
                                 ${lot.unitPriceUsd.toLocaleString()} USD / un.
                               </span>
-                              <span className="text-[10px] text-slate-400 block">
+                              <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                                 Total: ${lot.totalStartPriceUsd.toLocaleString()} USD
                               </span>
                             </div>
@@ -5577,9 +5577,9 @@ $285.00
                             <button
                               type="button"
                               onClick={() => setTMobileExpandedLot(isExpanded ? null : lot.lotNumber)}
-                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
                             >
-                              <Layers className="w-3.5 h-3.5 text-amber-400" />
+                              <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                               <span>{isExpanded ? 'Ocultar' : `Manifesto (${lot.manifest.length})`}</span>
                             </button>
                           </div>
@@ -5587,11 +5587,11 @@ $285.00
 
                         <div className={`grid transition-all duration-300 ease-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                           <div className="overflow-hidden">
-                            <div className="p-4 bg-slate-900/80 border-t border-slate-800 space-y-2">
-                              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-800">
-                                <table className="w-full text-left text-[11px] border-collapse bg-slate-950">
+                            <div className="p-4 bg-white/90 dark:bg-slate-900/80 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                              <div className="overflow-x-auto max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                                <table className="w-full text-left text-[11px] border-collapse bg-slate-100 dark:bg-slate-950">
                                   <thead>
-                                    <tr className="border-b border-slate-800 text-slate-400 bg-slate-900/90">
+                                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 bg-white/95 dark:bg-slate-900/90">
                                       <th className="py-1.5 px-2.5">Qtd</th>
                                       <th className="py-1.5 px-2.5">Modelo</th>
                                       <th className="py-1.5 px-2.5">Memória</th>
@@ -5601,16 +5601,16 @@ $285.00
                                       <th className="py-1.5 px-2.5">Grade</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                                  <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                                     {lot.manifest.map((item, mIdx) => (
                                       <tr key={mIdx} className="hover:bg-slate-900/50">
-                                        <td className="py-1.5 px-2.5 font-mono text-amber-400 font-bold">{item.qty || 1}x</td>
-                                        <td className="py-1.5 px-2.5 font-medium text-white">{item.model}</td>
-                                        <td className="py-1.5 px-2.5 font-mono text-cyan-300">{item.storage}</td>
-                                        <td className="py-1.5 px-2.5 text-slate-200 font-semibold">{item.color}</td>
-                                        <td className="py-1.5 px-2.5 font-mono text-slate-400">{item.partNumber || '-'}</td>
-                                        <td className="py-1.5 px-2.5 text-emerald-300">{item.carrierStatus}</td>
-                                        <td className="py-1.5 px-2.5 font-bold text-amber-300">{item.grade}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-amber-600 dark:text-amber-400 font-bold">{item.qty || 1}x</td>
+                                        <td className="py-1.5 px-2.5 font-medium text-slate-900 dark:text-white">{item.model}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-cyan-700 dark:text-cyan-300">{item.storage}</td>
+                                        <td className="py-1.5 px-2.5 text-slate-800 dark:text-slate-200 font-semibold">{item.color}</td>
+                                        <td className="py-1.5 px-2.5 font-mono text-slate-600 dark:text-slate-400">{item.partNumber || '-'}</td>
+                                        <td className="py-1.5 px-2.5 text-emerald-700 dark:text-emerald-300">{item.carrierStatus}</td>
+                                        <td className="py-1.5 px-2.5 font-bold text-amber-700 dark:text-amber-300">{item.grade}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -5631,13 +5631,13 @@ $285.00
           {/* GENERIC PREVIEW & MAPPING CONSOLE */}
           {/* ======================================================== */}
           {presetFormat === 'GENERIC' && parsedPreviewRows.length > 0 && (
-            <div className="space-y-4 p-6 bg-slate-900/70 border border-amber-500/30 rounded-2xl">
+            <div className="space-y-4 p-6 bg-white/85 dark:bg-slate-900/70 border border-amber-500/30 rounded-2xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h3 className="font-bold text-white text-base">
+                  <h3 className="font-bold text-slate-900 dark:text-white text-base">
                     Mapeamento de Colunas ({parsedPreviewRows.length} linhas prontas)
                   </h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Confira se os campos da sua planilha correspondem aos atributos do leilão
                   </p>
                 </div>
@@ -5653,90 +5653,90 @@ $285.00
               </div>
 
               {/* Mapping Selectors Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs p-4 bg-slate-950 rounded-xl border border-slate-800">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs p-4 bg-slate-100 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800">
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Lote / ID:</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Lote / ID:</label>
                   <select
                     value={columnMapping.lotNumber}
                     onChange={e => setColumnMapping({ ...columnMapping, lotNumber: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Título do Lote:</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Título do Lote:</label>
                   <select
                     value={columnMapping.title}
                     onChange={e => setColumnMapping({ ...columnMapping, title: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Modelo Aparelho:</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Modelo Aparelho:</label>
                   <select
                     value={columnMapping.modelFamily}
                     onChange={e => setColumnMapping({ ...columnMapping, modelFamily: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Grade (A+, A, B, C):</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Grade (A+, A, B, C):</label>
                   <select
                     value={columnMapping.grade}
                     onChange={e => setColumnMapping({ ...columnMapping, grade: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Quantidade (Qtd):</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Quantidade (Qtd):</label>
                   <select
                     value={columnMapping.quantity}
                     onChange={e => setColumnMapping({ ...columnMapping, quantity: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Lance Atual USD ($):</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Lance Atual USD ($):</label>
                   <select
                     value={columnMapping.currentBidUsd}
                     onChange={e => setColumnMapping({ ...columnMapping, currentBidUsd: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Casa de Leilão:</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Casa de Leilão:</label>
                   <select
                     value={columnMapping.auctionHouse}
                     onChange={e => setColumnMapping({ ...columnMapping, auctionHouse: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-slate-400 block mb-1 font-medium">Localização / Galpão:</label>
+                  <label className="text-slate-600 dark:text-slate-400 block mb-1 font-medium">Localização / Galpão:</label>
                   <select
                     value={columnMapping.location}
                     onChange={e => setColumnMapping({ ...columnMapping, location: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-1.5 text-xs text-white"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg p-1.5 text-xs text-slate-900 dark:text-white"
                   >
                     {rawHeaders.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
@@ -5744,10 +5744,10 @@ $285.00
               </div>
 
               {/* Preview Table of Rows */}
-              <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950 max-h-64 overflow-y-auto">
+              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-100 dark:bg-slate-950 max-h-64 overflow-y-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 text-[11px]">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-[11px]">
                       <th className="py-2 px-3">#</th>
                       <th className="py-2 px-3">Lote</th>
                       <th className="py-2 px-3">Título</th>
@@ -5757,16 +5757,16 @@ $285.00
                       <th className="py-2 px-3">Lance USD</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                  <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                     {parsedPreviewRows.slice(0, 10).map((row, idx) => (
                       <tr key={idx} className="hover:bg-slate-900/40">
                         <td className="py-2 px-3 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="py-2 px-3 font-mono font-bold text-amber-400">{row[columnMapping.lotNumber] || '-'}</td>
-                        <td className="py-2 px-3 font-semibold text-white truncate max-w-[200px]">{row[columnMapping.title] || '-'}</td>
+                        <td className="py-2 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">{row[columnMapping.lotNumber] || '-'}</td>
+                        <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white truncate max-w-[200px]">{row[columnMapping.title] || '-'}</td>
                         <td className="py-2 px-3">{row[columnMapping.modelFamily] || '-'}</td>
                         <td className="py-2 px-3 font-mono">{row[columnMapping.quantity] || '1'}</td>
                         <td className="py-2 px-3">{row[columnMapping.grade] || 'Grade A'}</td>
-                        <td className="py-2 px-3 font-mono text-emerald-400">${row[columnMapping.currentBidUsd] || '0'}</td>
+                        <td className="py-2 px-3 font-mono text-emerald-600 dark:text-emerald-400">${row[columnMapping.currentBidUsd] || '0'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -5824,8 +5824,8 @@ $285.00
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-white">Catálogo de Leilões em Andamento ({auctions.length} Lotes)</h2>
-                <p className="text-xs text-slate-400">Edite lances atuais, altere grades ou remova lotes encerrados com navegação rápida</p>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Catálogo de Leilões em Andamento ({auctions.length} Lotes)</h2>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Edite lances atuais, altere grades ou remova lotes encerrados com navegação rápida</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -5839,7 +5839,7 @@ $285.00
                     });
                     showNotice(`Excel estilizado gerado com ${targetLots.length} lote(s)!`, 'success');
                   }}
-                  className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                  className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/35 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   <span>Exportar Leilões (Excel)</span>
@@ -5855,7 +5855,7 @@ $285.00
                     });
                     showNotice(`PDF estilizado gerado com ${targetLots.length} lote(s)!`, 'success');
                   }}
-                  className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                  className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/35 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Exportar Leilões (PDF)</span>
@@ -5872,12 +5872,12 @@ $285.00
                     URL.revokeObjectURL(url);
                     showNotice('Catálogo exportado! Abra esse arquivo no celular em "Importar Catálogo (.json)".', 'success');
                   }}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Exportar Catálogo (.json)</span>
                 </button>
-                <label className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer">
+                <label className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-sky-300 border border-sky-500/30 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer">
                   <Upload className="w-3.5 h-3.5" />
                   <span>Importar Catálogo (.json)</span>
                   <input
@@ -5936,12 +5936,12 @@ $285.00
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
                     adminSourceFilter === pill.key
                       ? 'bg-amber-400 text-slate-950 shadow-sm'
-                      : 'bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800'
+                      : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200/80 dark:hover:bg-slate-800'
                   }`}
                 >
                   <span>{pill.label}</span>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
-                    adminSourceFilter === pill.key ? 'bg-slate-950/15 text-slate-950' : 'bg-slate-800 text-slate-400'
+                    adminSourceFilter === pill.key ? 'bg-slate-950/15 text-slate-950' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}>
                     {pill.count.toLocaleString()}
                   </span>
@@ -5950,9 +5950,9 @@ $285.00
             </div>
 
             {/* Quick Search Bar for Admin Lots */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white/90 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
               <div className="relative flex-1 w-full">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <Search className="w-4 h-4 text-slate-600 dark:text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
                   value={adminLotSearch}
@@ -5961,36 +5961,36 @@ $285.00
                     setAdminLotPage(1);
                   }}
                   placeholder="Filtrar por lote (#VZ-01), modelo (iPhone 16), título ou leilão..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
+                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-400"
                 />
               </div>
 
               {/* Admin Pagination Controls */}
               <div className="flex items-center gap-2 text-xs font-semibold shrink-0">
-                <span className="text-slate-400">
+                <span className="text-slate-600 dark:text-slate-400">
                   {filteredAdminLots.length} lotes ({currentPage}/{totalPages})
                 </span>
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setAdminLotPage(p => Math.max(1, p - 1))}
-                  className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-lg transition-colors"
+                  className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-800 dark:text-slate-200 rounded-lg transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   disabled={currentPage >= totalPages}
                   onClick={() => setAdminLotPage(p => Math.min(totalPages, p + 1))}
-                  className="p-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-lg transition-colors"
+                  className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-800 dark:text-slate-200 rounded-lg transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-900/60">
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white/80 dark:bg-slate-900/60">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 text-[11px]">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 text-[11px]">
                     <th className="py-3 px-3">Lote</th>
                     <th className="py-3 px-3">Título</th>
                     <th className="py-3 px-3">Qtd</th>
@@ -6001,20 +6001,20 @@ $285.00
                     <th className="py-3 px-3 text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                   {paginatedAdminLots.map(lot => {
                     const isEditing = editingLotId === lot.id;
                     return (
-                      <tr key={lot.id} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-amber-400">{lot.lotNumber}</td>
+                      <tr key={lot.id} className="hover:bg-slate-200/50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="py-3 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">{lot.lotNumber}</td>
                         <td className="py-3 px-3">
-                          <span className="font-semibold text-white block truncate max-w-[240px]">{lot.title}</span>
-                          <span className="text-[10px] text-slate-400">{lot.modelFamily} · {lot.primaryStorage}</span>
+                          <span className="font-semibold text-slate-900 dark:text-white block truncate max-w-[240px]">{lot.title}</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400">{lot.modelFamily} · {lot.primaryStorage}</span>
                         </td>
                         <td className="py-3 px-3 font-mono">
                           <span>{lot.quantity} un</span>
                           {isAssurantLot(lot) && (
-                            <span className="block text-[10px] text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
+                            <span className="block text-[10px] text-cyan-700 dark:text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
                           )}
                         </td>
                         <td className="py-3 px-3">
@@ -6022,7 +6022,7 @@ $285.00
                             <select
                               value={isVerizonLot(lot) ? mapVerizonGradeStrict(editGrade) : editGrade}
                               onChange={e => setEditGrade(e.target.value as GradeType)}
-                              className="bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-xs text-white"
+                              className="bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-xs text-slate-900 dark:text-white"
                             >
                               {isVerizonLot(lot) ? (
                                 VERIZON_GRADES.map(g => (
@@ -6042,7 +6042,7 @@ $285.00
                               )}
                             </select>
                           ) : (
-                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-800 border border-slate-700">
+                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700">
                               {isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade}
                             </span>
                           )}
@@ -6053,27 +6053,27 @@ $285.00
                               type="number"
                               value={editPriceUsd}
                               onChange={e => setEditPriceUsd(Number(e.target.value))}
-                              className="w-24 bg-slate-950 border border-slate-700 rounded px-2 py-1 font-mono text-emerald-400"
+                              className="w-24 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 font-mono text-emerald-600 dark:text-emerald-400"
                             />
                           ) : isVerizonLot(lot) && lot.currentBidUsd === 0 ? (
-                            <span className="text-[11px] font-bold text-amber-300">
+                            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
                               Sem Preço (Cliente Escolhe)
                             </span>
                           ) : (
-                            <span className="font-mono font-bold text-emerald-400">
+                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                               ${lot.currentBidUsd.toLocaleString()} USD
                               {isAssurantLot(lot) && lot.quantity > 1 && (
-                                <span className="text-[10px] font-normal text-slate-400"> / un.</span>
+                                <span className="text-[10px] font-normal text-slate-600 dark:text-slate-400"> / un.</span>
                               )}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 font-mono text-slate-300">
+                        <td className="py-3 px-3 font-mono text-slate-700 dark:text-slate-300">
                           {isVerizonLot(lot) && lot.estimatedBrazilRetailBrl === 0
                             ? <span className="text-slate-500">Valor Livre</span>
                             : `aprox. R$ ${lot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}${isAssurantLot(lot) && lot.quantity > 1 ? ' / un.' : ''}`}
                         </td>
-                        <td className="py-3 px-3 text-slate-400 truncate max-w-[120px]">
+                        <td className="py-3 px-3 text-slate-600 dark:text-slate-400 truncate max-w-[120px]">
                           {lot.location}
                         </td>
                         <td className="py-3 px-3 text-right">
@@ -6087,7 +6087,7 @@ $285.00
                               </button>
                               <button
                                 onClick={() => setEditingLotId(null)}
-                                className="px-2 py-1 bg-slate-800 text-slate-300 rounded text-[11px]"
+                                className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded text-[11px]"
                               >
                                 Cancelar
                               </button>
@@ -6096,14 +6096,14 @@ $285.00
                             <div className="flex items-center justify-end gap-2">
                               <button
                                 onClick={() => handleStartEdit(lot)}
-                                className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition-colors"
+                                className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-amber-400 hover:bg-slate-200/80 dark:hover:bg-slate-800 rounded transition-colors"
                                 title="Editar preço e grade"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => handleDeleteLot(lot.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition-colors"
+                                className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-slate-200/80 dark:hover:bg-slate-800 rounded transition-colors"
                                 title="Excluir lote"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -6119,21 +6119,21 @@ $285.00
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between text-xs text-slate-400 pt-2">
+              <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 pt-2">
                 <span>Exibindo <strong>{startIndex + 1}</strong> a <strong>{Math.min(startIndex + ADMIN_LOTS_PER_PAGE, filteredAdminLots.length)}</strong> de <strong>{filteredAdminLots.length}</strong> lotes no catálogo</span>
                 <div className="flex items-center gap-1.5">
                   <button
                     disabled={currentPage === 1}
                     onClick={() => setAdminLotPage(p => Math.max(1, p - 1))}
-                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold rounded-lg"
+                    className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-800 dark:text-slate-200 font-bold rounded-lg"
                   >
                     Anterior
                   </button>
-                  <span className="px-2 font-mono text-amber-400 font-bold">{currentPage} / {totalPages}</span>
+                  <span className="px-2 font-mono text-amber-600 dark:text-amber-400 font-bold">{currentPage} / {totalPages}</span>
                   <button
                     disabled={currentPage >= totalPages}
                     onClick={() => setAdminLotPage(p => Math.min(totalPages, p + 1))}
-                    className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold rounded-lg"
+                    className="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-800 dark:text-slate-200 font-bold rounded-lg"
                   >
                     Próxima
                   </button>
@@ -6177,26 +6177,26 @@ $285.00
         <div className="space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold text-white">Central de Ofertas Computadas (Offers)</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Central de Ofertas Computadas (Offers)</h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Lances e ofertas enviadas pelos arrematantes brasileiros em tempo real · Filtre por cliente para exportar ou faturar Invoice
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5">
-                <Users className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1.5">
+                <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                 <select
                   value={selectedOfferClientFilter}
                   onChange={e => setSelectedOfferClientFilter(e.target.value)}
-                  className="bg-transparent text-xs text-white font-semibold focus:outline-none max-w-[240px]"
+                  className="bg-transparent text-xs text-slate-900 dark:text-white font-semibold focus:outline-none max-w-[240px]"
                   title="Filtrar ofertas computadas por cliente"
                 >
-                  <option value="all" className="bg-slate-950">
+                  <option value="all" className="bg-slate-100 dark:bg-slate-950">
                     Todos os Clientes ({offersList.length})
                   </option>
                   {offerClientOptions.map(opt => (
-                    <option key={opt.key} value={opt.key} className="bg-slate-950">
+                    <option key={opt.key} value={opt.key} className="bg-slate-100 dark:bg-slate-950">
                       {opt.label} · {opt.count}
                     </option>
                   ))}
@@ -6206,7 +6206,7 @@ $285.00
               <button
                 type="button"
                 onClick={() => handleExportOffersExcel(selectedOfferClientFilter)}
-                className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                className="px-3 py-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/35 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
               >
                 <FileSpreadsheet className="w-3.5 h-3.5" />
                 <span>{selectedOfferClientFilter === 'all' ? 'Exportar Ofertas (Excel)' : 'Excel do Cliente'}</span>
@@ -6215,7 +6215,7 @@ $285.00
               <button
                 type="button"
                 onClick={() => handleExportOffersPdf(selectedOfferClientFilter)}
-                className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                className="px-3 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/35 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>{selectedOfferClientFilter === 'all' ? 'Exportar Ofertas (PDF)' : 'PDF do Cliente'}</span>
@@ -6237,20 +6237,20 @@ $285.00
           {/* E-mails para Novas Ofertas & Teste de Envio WhatsApp */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Cadastro de E-mails */}
-            <div className="p-4 bg-slate-900/70 border border-slate-800 rounded-2xl space-y-3">
+            <div className="p-4 bg-white/85 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5 text-amber-400" />
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     <span>E-mails para Receber Novas Ofertas & Compras Diretas</span>
                   </h3>
-                  <p className="text-[11px] text-slate-400">Cadastre os e-mails sincronizados no servidor para alerta automático.</p>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400">Cadastre os e-mails sincronizados no servidor para alerta automático.</p>
                 </div>
                 <button
                   type="button"
                   onClick={handleSendTestEmail}
                   disabled={isSendingTestEmail || notificationEmails.length === 0}
-                  className="px-2.5 py-1 bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 text-cyan-300 border border-cyan-500/35 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                  className="px-2.5 py-1 bg-cyan-500/15 hover:bg-cyan-500/25 disabled:opacity-40 text-cyan-700 dark:text-cyan-300 border border-cyan-500/35 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
                   title="Enviar um e-mail de teste agora"
                 >
                   <Send className="w-3 h-3" />
@@ -6258,14 +6258,14 @@ $285.00
                 </button>
               </div>
               {mailProviderConfigured === false && (
-                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 leading-relaxed">
-                  <strong>Atenção (Servidor de E-mail):</strong> Defina <code className="font-mono text-amber-300">RESEND_API_KEY</code> ou{' '}
-                  <code className="font-mono text-amber-300">SMTP_HOST</code> / <code className="font-mono text-amber-300">SMTP_USER</code> / <code className="font-mono text-amber-300">SMTP_PASS</code>{' '}
-                  (ou <code className="font-mono text-amber-300">GMAIL_USER</code> / <code className="font-mono text-amber-300">GMAIL_APP_PASSWORD</code>) nas variáveis de ambiente para efetivar o disparo.
+                <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200 leading-relaxed">
+                  <strong>Atenção (Servidor de E-mail):</strong> Defina <code className="font-mono text-amber-700 dark:text-amber-300">RESEND_API_KEY</code> ou{' '}
+                  <code className="font-mono text-amber-700 dark:text-amber-300">SMTP_HOST</code> / <code className="font-mono text-amber-700 dark:text-amber-300">SMTP_USER</code> / <code className="font-mono text-amber-700 dark:text-amber-300">SMTP_PASS</code>{' '}
+                  (ou <code className="font-mono text-amber-700 dark:text-amber-300">GMAIL_USER</code> / <code className="font-mono text-amber-700 dark:text-amber-300">GMAIL_APP_PASSWORD</code>) nas variáveis de ambiente para efetivar o disparo.
                 </div>
               )}
               {mailProviderConfigured === true && mailProviderSummary && (
-                <div className="text-[11px] text-emerald-400 font-medium flex items-center gap-1.5">
+                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   <span>{mailProviderSummary}</span>
                 </div>
@@ -6276,7 +6276,7 @@ $285.00
                   value={newNotificationEmail}
                   onChange={e => setNewNotificationEmail(e.target.value)}
                   placeholder="exemplo@empresa.com"
-                  className="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+                  className="flex-1 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white"
                 />
                 <button
                   type="button"
@@ -6288,12 +6288,12 @@ $285.00
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {notificationEmails.map(email => (
-                  <span key={email} className="px-2.5 py-1 bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-slate-200 flex items-center gap-1.5">
+                  <span key={email} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-[11px] text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                     <span>{email}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveNotificationEmail(email)}
-                      className="text-slate-400 hover:text-rose-400 font-bold"
+                      className="text-slate-600 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-400 font-bold"
                       title="Remover e-mail"
                     >
                       ✕
@@ -6304,10 +6304,10 @@ $285.00
             </div>
 
             {/* Testar Envio WhatsApp */}
-            <div className="p-4 bg-slate-900/70 border border-slate-800 rounded-2xl space-y-3">
+            <div className="p-4 bg-white/85 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
               <div>
-                <h3 className="text-xs font-bold text-emerald-400">Testar Envio para WhatsApp (Status da Oferta)</h3>
-                <p className="text-[11px] text-slate-400">Simule o envio da mensagem de status da oferta para o WhatsApp do cliente.</p>
+                <h3 className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Testar Envio para WhatsApp (Status da Oferta)</h3>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">Simule o envio da mensagem de status da oferta para o WhatsApp do cliente.</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <input
@@ -6315,12 +6315,12 @@ $285.00
                   value={testWhatsappPhone}
                   onChange={e => setTestWhatsappPhone(e.target.value)}
                   placeholder="5511999999999"
-                  className="w-40 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white font-mono"
+                  className="w-40 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono"
                 />
                 <select
                   value={testWhatsappStatus}
                   onChange={e => setTestWhatsappStatus(e.target.value as AdminOffer['status'])}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                  className="bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white"
                 >
                   <option value="Aceita">Aceita</option>
                   <option value="Em Análise">Em Análise</option>
@@ -6338,8 +6338,8 @@ $285.00
                   Testar Envio WhatsApp
                 </a>
               </div>
-              <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="flex items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+              <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-[11px] text-slate-700 dark:text-slate-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={autoSendWhatsapp}
@@ -6358,16 +6358,16 @@ $285.00
                     } catch (err) {}
                   }}
                   placeholder="Webhook API (opcional: Evolution/Z-API)"
-                  className="sm:w-56 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-[11px] text-white font-mono"
+                  className="sm:w-56 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-[11px] text-slate-900 dark:text-white font-mono"
                 />
               </div>
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-900/60">
+          <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white/80 dark:bg-slate-900/60">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 text-[11px]">
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 text-[11px]">
                   <th className="py-3 px-3">Data / Hora</th>
                   <th className="py-3 px-3">Lote</th>
                   <th className="py-3 px-3">Modelo</th>
@@ -6382,57 +6382,57 @@ $285.00
                   <th className="py-3 px-3 text-right">Gerenciar</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-slate-300">
+              <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                 {filteredOffersList.map(offer => {
                   const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
                   return (
-                  <tr key={offer.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-3 text-slate-400">{offer.timestamp}</td>
+                  <tr key={offer.id} className="hover:bg-slate-200/50 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{offer.timestamp}</td>
                     <td className="py-3 px-3">
-                      <span className="font-mono font-bold text-amber-400 block">{offer.lotNumber}</span>
-                      <span className="text-[10px] text-slate-400 truncate max-w-[140px] block">{offer.lotTitle}</span>
+                      <span className="font-mono font-bold text-amber-600 dark:text-amber-400 block">{offer.lotNumber}</span>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 truncate max-w-[140px] block">{offer.lotTitle}</span>
                     </td>
-                    <td className="py-3 px-3 font-semibold text-white">
+                    <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white">
                       {lot?.modelFamily || offer.lotTitle}
                     </td>
-                    <td className="py-3 px-3 font-mono text-slate-200">
+                    <td className="py-3 px-3 font-mono text-slate-800 dark:text-slate-200">
                       {lot?.quantity ? `${lot.quantity} un.` : '-'}
                     </td>
                     <td className="py-3 px-3">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-mono text-[11px]">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-amber-300 font-mono text-[11px]">
                         {lot?.grade || '-'}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-slate-300">
+                    <td className="py-3 px-3 text-slate-700 dark:text-slate-300">
                       {lot?.colorHighlights?.join(', ') || '-'}
                     </td>
-                    <td className="py-3 px-3 font-mono text-emerald-400">
+                    <td className="py-3 px-3 font-mono text-emerald-600 dark:text-emerald-400">
                       +$25 USD
                       {lot && isAssurantLot(lot) && (
-                        <span className="block text-[10px] text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
+                        <span className="block text-[10px] text-cyan-700 dark:text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
                       )}
                     </td>
                     <td className="py-3 px-3">
-                      <span className="font-semibold text-white block">{offer.clientName}</span>
-                      <span className="text-[10px] text-slate-400">{offer.clientEmail}</span>
+                      <span className="font-semibold text-slate-900 dark:text-white block">{offer.clientName}</span>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400">{offer.clientEmail}</span>
                     </td>
-                    <td className="py-3 px-3 font-mono font-bold text-amber-400">
+                    <td className="py-3 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">
                       ${offer.amountUsd.toLocaleString()} USD
                     </td>
-                    <td className="py-3 px-3 font-mono text-slate-200">
+                    <td className="py-3 px-3 font-mono text-slate-800 dark:text-slate-200">
                       aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </td>
                     <td className="py-3 px-3">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
                         offer.status === 'Aceita' || offer.status === 'Vencendo'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                           : offer.status === 'Contra-Oferta'
                           ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40'
                           : offer.status === 'Em Análise' || offer.status === 'Homologada / Arrematada'
-                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
                           : offer.status === 'Recusada'
-                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'
                       }`}>
                         {offer.status}
                       </span>
@@ -6442,7 +6442,7 @@ $285.00
                         </div>
                       )}
                       {offer.adminNote && (
-                        <div className="text-[10px] text-slate-400 mt-0.5 max-w-[180px] truncate" title={offer.adminNote}>
+                        <div className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 max-w-[180px] truncate" title={offer.adminNote}>
                           Obs: {offer.adminNote}
                         </div>
                       )}
@@ -6496,7 +6496,7 @@ $285.00
                               className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
                                 isHighlighted
                                   ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-300 shadow-lg shadow-emerald-500/30 animate-pulse'
-                                  : 'bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 hover:text-slate-950 border border-emerald-500/40'
+                                  : 'bg-emerald-500/20 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-slate-950 border border-emerald-500/40'
                               }`}
                               title="Enviar aviso no WhatsApp do cliente"
                             >
@@ -6515,20 +6515,20 @@ $285.00
                         </button>
                       </div>
                       {counterOfferEditingId === offer.id && (
-                        <div className="mt-2 p-2.5 bg-slate-950 border border-indigo-500/40 rounded-lg flex flex-col sm:flex-row items-center justify-end gap-2">
+                        <div className="mt-2 p-2.5 bg-slate-100 dark:bg-slate-950 border border-indigo-500/40 rounded-lg flex flex-col sm:flex-row items-center justify-end gap-2">
                           <input
                             type="number"
                             value={counterOfferUsdInput}
                             onChange={(e) => setCounterOfferUsdInput(e.target.value)}
                             placeholder="Valor USD"
-                            className="w-28 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono"
+                            className="w-28 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white font-mono"
                           />
                           <input
                             type="text"
                             value={counterOfferNoteInput}
                             onChange={(e) => setCounterOfferNoteInput(e.target.value)}
                             placeholder="Observação opcional..."
-                            className="w-44 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
+                            className="w-44 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white"
                           />
                           <button
                             onClick={() => {
@@ -6566,17 +6566,17 @@ $285.00
           <div className="p-5 bg-amber-500/5 border border-amber-500/30 rounded-2xl space-y-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <Clock className="w-5 h-5 animate-pulse" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-white">Cadastros Pendentes de Análise</h2>
+                    <h2 className="text-base font-bold text-slate-900 dark:text-white">Cadastros Pendentes de Análise</h2>
                     <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-xs font-mono">
                       {clientsList.filter(c => c.approvalStatus === 'PENDING' || (!c.verifiedStatus && c.approvalStatus !== 'APPROVED')).length} Pendentes
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Escolha o tipo de acesso (Cliente Normal, Admin Credenciado ou Admin Geral) antes de aprovar o cadastro.
                   </p>
                 </div>
@@ -6584,14 +6584,14 @@ $285.00
             </div>
 
             {clientsList.filter(c => c.approvalStatus === 'PENDING' || (!c.verifiedStatus && c.approvalStatus !== 'APPROVED')).length === 0 ? (
-              <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-400 text-center">
+              <div className="p-4 bg-slate-100/80 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 text-center">
                 ✓ Nenhum cadastro pendente de aprovação no momento. Todos os clientes ativos foram revisados.
               </div>
             ) : (
-              <div className="overflow-x-auto border border-amber-500/20 rounded-xl bg-slate-950/80">
+              <div className="overflow-x-auto border border-amber-500/20 rounded-xl bg-slate-100/90 dark:bg-slate-950/80">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800 text-slate-400 text-[11px] bg-slate-900/80">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] bg-white/90 dark:bg-slate-900/80">
                       <th className="py-2.5 px-3">Nome / Razão Social</th>
                       <th className="py-2.5 px-3">E-mail</th>
                       <th className="py-2.5 px-3">Documento ID</th>
@@ -6602,7 +6602,7 @@ $285.00
                       <th className="py-2.5 px-3 text-right">Ação de Credenciamento</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/80 text-slate-300">
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/80 text-slate-700 dark:text-slate-300">
                     {clientsList.filter(c => c.approvalStatus === 'PENDING' || (!c.verifiedStatus && c.approvalStatus !== 'APPROVED')).map((client, idx) => {
                       const selectedPendingType: UserAccessType =
                         pendingUserTypeMap[client.email] ||
@@ -6612,15 +6612,15 @@ $285.00
 
                       return (
                       <tr key={client.id || idx} className="hover:bg-slate-900/50 transition-colors">
-                        <td className="py-3 px-3 font-bold text-white flex items-center gap-2">
+                        <td className="py-3 px-3 font-bold text-slate-900 dark:text-white flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                           {client.name}
                         </td>
                         <td className="py-3 px-3 text-amber-200/90 font-mono">{client.email}</td>
                         <td className="py-3 px-3 font-mono">{client.cpfCnpj}</td>
-                        <td className="py-3 px-3 text-slate-300">{client.consultantName || '-'}</td>
-                        <td className="py-3 px-3 font-mono text-slate-300">{client.phone}</td>
-                        <td className="py-3 px-3 text-slate-400">{client.registeredDate || 'Recente'}</td>
+                        <td className="py-3 px-3 text-slate-700 dark:text-slate-300">{client.consultantName || '-'}</td>
+                        <td className="py-3 px-3 font-mono text-slate-700 dark:text-slate-300">{client.phone}</td>
+                        <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{client.registeredDate || 'Recente'}</td>
                         <td className="py-3 px-3">
                           <select
                             value={selectedPendingType}
@@ -6630,7 +6630,7 @@ $285.00
                                 [client.email]: e.target.value as UserAccessType
                               }))
                             }
-                            className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] text-white font-semibold focus:outline-none focus:border-amber-400"
+                            className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-[11px] text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-amber-400"
                           >
                             <option value="client">Cliente Normal</option>
                             <option value="admin_credenciado">Admin Credenciado</option>
@@ -6648,7 +6648,7 @@ $285.00
                             </button>
                             <button
                               onClick={() => handleRejectClient(client.email)}
-                              className="px-2.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-semibold rounded-lg text-xs transition-colors"
+                              className="px-2.5 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-700 dark:text-rose-300 border border-rose-500/30 font-semibold rounded-lg text-xs transition-colors"
                             >
                               <span>Rejeitar</span>
                             </button>
@@ -6667,20 +6667,20 @@ $285.00
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-white">Base Completa de Usuários &amp; Arrematantes Credenciados</h2>
-                <p className="text-xs text-slate-400">
+                <h2 className="text-base font-bold text-slate-900 dark:text-white">Base Completa de Usuários &amp; Arrematantes Credenciados</h2>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Gerencie permissões de acesso (Cliente Normal, Admin Credenciado ou Admin Geral) e status de habilitação
                 </p>
               </div>
-              <div className="text-xs font-mono text-slate-400">
-                Total: <strong className="text-white">{clientsList.length}</strong> · Aprovados: <strong className="text-emerald-400">{clientsList.filter(c => c.verifiedStatus || c.approvalStatus === 'APPROVED').length}</strong>
+              <div className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                Total: <strong className="text-slate-900 dark:text-white">{clientsList.length}</strong> · Aprovados: <strong className="text-emerald-600 dark:text-emerald-400">{clientsList.filter(c => c.verifiedStatus || c.approvalStatus === 'APPROVED').length}</strong>
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-2xl bg-slate-900/60">
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white/80 dark:bg-slate-900/60">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 text-[11px]">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 text-[11px]">
                     <th className="py-3 px-3">Arrematante / Razão Social</th>
                     <th className="py-3 px-3">E-mail</th>
                     <th className="py-3 px-3">Documento ID</th>
@@ -6692,7 +6692,7 @@ $285.00
                     <th className="py-3 px-3 text-right">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
                   {clientsList.map((client, idx) => {
                     const isApproved = Boolean(client.verifiedStatus || client.approvalStatus === 'APPROVED');
                     const effectiveDisplayType: UserAccessType = isApproved
@@ -6700,12 +6700,12 @@ $285.00
                       : (pendingUserTypeMap[client.email] || client.requestedUserType || client.userType || 'client');
 
                     return (
-                    <tr key={client.id || idx} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-3 font-semibold text-white">{client.name}</td>
-                      <td className="py-3 px-3 text-slate-400">{client.email}</td>
+                    <tr key={client.id || idx} className="hover:bg-slate-200/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white">{client.name}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{client.email}</td>
                       <td className="py-3 px-3 font-mono">{client.cpfCnpj}</td>
-                      <td className="py-3 px-3 text-slate-300">{client.consultantName || '-'}</td>
-                      <td className="py-3 px-3 font-mono text-slate-300">{client.phone}</td>
+                      <td className="py-3 px-3 text-slate-700 dark:text-slate-300">{client.consultantName || '-'}</td>
+                      <td className="py-3 px-3 font-mono text-slate-700 dark:text-slate-300">{client.phone}</td>
                       <td className="py-3 px-3">
                         <select
                           value={effectiveDisplayType}
@@ -6716,10 +6716,10 @@ $285.00
                           }}
                           className={`rounded-lg px-2 py-1 text-[11px] font-bold border focus:outline-none ${
                             effectiveDisplayType === 'admin_geral'
-                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                              ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40'
                               : effectiveDisplayType === 'admin_credenciado'
-                              ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
-                              : 'bg-slate-950 text-slate-200 border-slate-700'
+                              ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/40'
+                              : 'bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700'
                           }`}
                         >
                           <option value="client">Cliente Normal</option>
@@ -6727,16 +6727,16 @@ $285.00
                           <option value="admin_geral">Admin Geral</option>
                         </select>
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-amber-400">
+                      <td className="py-3 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">
                         ${client.biddingLimitUsd.toLocaleString()} USD
                       </td>
                       <td className="py-3 px-3">
                         <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
                           isApproved
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                             : client.approvalStatus === 'REJECTED'
-                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                         }`}>
                           {isApproved
                             ? '● Habilitado / Aprovado'
@@ -6778,7 +6778,7 @@ $285.00
                                   }
                                   handleExportOffersExcel(key);
                                 }}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-semibold transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded text-[11px] font-semibold transition-colors"
                                 title="Exportar ofertas deste cliente em Excel"
                               >
                                 <FileSpreadsheet className="w-3 h-3" />
@@ -6797,7 +6797,7 @@ $285.00
                                   }
                                   handleExportOffersPdf(key);
                                 }}
-                                className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded text-[11px] font-semibold transition-colors"
+                                className="inline-flex items-center gap-1 px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded text-[11px] font-semibold transition-colors"
                                 title="Exportar ofertas deste cliente em PDF"
                               >
                                 <FileText className="w-3 h-3" />
@@ -6806,7 +6806,7 @@ $285.00
                               {isApproved ? (
                                 <button
                                   onClick={() => handleRejectClient(client.email)}
-                                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium transition-colors"
+                                  className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-[11px] font-medium transition-colors"
                                 >
                                   Suspender
                                 </button>
@@ -6821,7 +6821,7 @@ $285.00
 
                               {!isSelf && (
                                 isConfirming ? (
-                                  <div className="inline-flex items-center gap-1 bg-rose-950/80 border border-rose-500/40 rounded px-1.5 py-0.5">
+                                  <div className="inline-flex items-center gap-1 bg-rose-50 dark:bg-rose-950/80 border border-rose-500/40 rounded px-1.5 py-0.5">
                                     <button
                                       type="button"
                                       disabled={isDeleting}
@@ -6834,7 +6834,7 @@ $285.00
                                       type="button"
                                       disabled={isDeleting}
                                       onClick={() => setConfirmDeleteClientKey(null)}
-                                      className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[11px] font-medium transition-colors"
+                                      className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded text-[11px] font-medium transition-colors"
                                     >
                                       Cancelar
                                     </button>
@@ -6843,7 +6843,7 @@ $285.00
                                   <button
                                     type="button"
                                     onClick={() => setConfirmDeleteClientKey(clientKey)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded text-[11px] font-semibold transition-colors"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-500/15 hover:bg-rose-600 text-rose-700 dark:text-rose-300 hover:text-white border border-rose-500/30 rounded text-[11px] font-semibold transition-colors"
                                     title="Excluir usuário permanentemente"
                                   >
                                     <Trash2 className="w-3 h-3" />
@@ -6869,15 +6869,15 @@ $285.00
       {/* TAB 5: CONFIGURAÇÕES GERAIS */}
       {/* ======================================================== */}
       {isAdminGeral && adminTab === 'settings' && (
-        <div className="max-w-2xl space-y-6 p-6 bg-slate-900/60 border border-slate-800 rounded-2xl">
-          <h2 className="text-lg font-bold text-white">Parâmetros Operacionais do Sistema</h2>
+        <div className="max-w-2xl space-y-6 p-6 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Parâmetros Operacionais do Sistema</h2>
           
           <div className="space-y-4 text-xs">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="text-slate-300 font-semibold flex items-center gap-2">
+                <label className="text-slate-700 dark:text-slate-300 font-semibold flex items-center gap-2">
                   <span>Cotação PTAX Dólar Comercial (USD / BRL):</span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                     Dólar Online
                   </span>
@@ -6903,21 +6903,21 @@ $285.00
                   step="0.01"
                   value={usdRate}
                   onChange={e => onUpdateUsdRate(parseFloat(e.target.value) || 5.75)}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-amber-400 focus:outline-none focus:border-amber-400"
+                  className="bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-amber-600 dark:text-amber-400 focus:outline-none focus:border-amber-400"
                 />
-                <span className="text-slate-400">Usado para cálculo em reais de todos os leilões e invoices</span>
+                <span className="text-slate-600 dark:text-slate-400">Usado para cálculo em reais de todos os leilões e invoices</span>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-800">
-              <label className="text-slate-300 block mb-1 font-semibold">
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+              <label className="text-slate-700 dark:text-slate-300 block mb-1 font-semibold">
                 Endereço do Galpão de Recebimento em Miami:
               </label>
               <input
                 type="text"
                 disabled
                 value="8350 NW 53rd Street, Suite 302, Doral, FL 33166"
-                className="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-400"
+                className="w-full bg-slate-100/80 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-600 dark:text-slate-400"
               />
             </div>
           </div>

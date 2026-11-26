@@ -56,24 +56,24 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Top Glow Accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-amber-300 to-amber-500" />
 
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
               <Lock className="w-7 h-7" />
             </div>
             <div>
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/20">
                 Acesso Restrito
               </span>
-              <h2 className="text-2xl font-black text-white tracking-tight mt-2">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-2">
                 Painel Administrativo
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Controle de ofertas e gestão de leilões.
               </p>
             </div>
@@ -81,8 +81,8 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -90,7 +90,7 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-slate-300 text-xs font-semibold block mb-1.5">
+              <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1.5">
                 E-mail do Administrador:
               </label>
               <div className="relative">
@@ -102,13 +102,13 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="Digite seu e-mail"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
+                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-slate-300 text-xs font-semibold block mb-1.5">
+              <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1.5">
                 Senha de Acesso:
               </label>
               <div className="relative">
@@ -120,12 +120,12 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Digite sua senha"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-10 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
+                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300"
+                  className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-900 dark:hover:text-slate-300"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -150,11 +150,11 @@ export const AdminLoginGate: React.FC<AdminLoginGateProps> = ({
           </form>
 
           {/* Footer Back Button */}
-          <div className="pt-4 border-t border-slate-800 text-center">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
             <button
               type="button"
               onClick={onCancel}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1.5"
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors inline-flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Voltar para a página inicial</span>
@@ -277,29 +277,29 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
   if (showPendingSuccessModal) {
     return (
       <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-6">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
+        <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/10">
             <Clock className="w-8 h-8 animate-pulse" />
           </div>
 
           <div className="space-y-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
               CADASTRO ENVIADO PARA ANÁLISE
             </span>
-            <h3 className="text-xl font-black text-white tracking-tight pt-2">
+            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight pt-2">
               Seu Cadastro foi Recebido com Sucesso!
             </h3>
-            <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
-              Olá <strong className="text-white">{pendingUserRegisteredName}</strong>, recebemos os seus dados de credenciamento.
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed max-w-sm mx-auto">
+              Olá <strong className="text-slate-900 dark:text-white">{pendingUserRegisteredName}</strong>, recebemos os seus dados de credenciamento.
             </p>
           </div>
 
-          <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-left text-xs space-y-2">
-            <div className="flex items-start gap-2 text-amber-300 font-semibold">
-              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="p-4 bg-slate-100/90 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-2xl text-left text-xs space-y-2">
+            <div className="flex items-start gap-2 text-amber-700 dark:text-amber-300 font-semibold">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <span>O que acontece agora?</span>
             </div>
-            <p className="text-slate-400 leading-relaxed text-[11px]">
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-[11px]">
               Seus dados foram encaminhados para análise cadastral da nossa equipe. Assim que o Administrador aprovar o seu cadastro no painel, o seu acesso completo aos leilões e lances será liberado.
             </p>
           </div>
@@ -323,24 +323,24 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
         {/* Top Glow Accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-amber-400 to-emerald-500" />
 
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/10">
               <UserCheck className="w-7 h-7" />
             </div>
             <div>
-              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded border border-emerald-500/20">
                 {isLiveContext ? 'Transmissão ao Vivo' : 'Portal do Arrematante'}
               </span>
-              <h2 className="text-2xl font-black text-white tracking-tight mt-2">
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-2">
                 {isLiveContext ? 'Live de Leilões ao Vivo' : 'Sistema de Leilões dos EUA'}
               </h2>
-              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-md mx-auto">
                 {isLiveContext
                   ? 'Entre com as mesmas credenciais do Painel do Cliente para assistir à transmissão ao vivo e participar do bate-papo.'
                   : 'Acesse sua conta para consultar laudos detalhados de IMEI, verificar lotes e enviar lances em tempo real.'}
@@ -349,14 +349,14 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
           </div>
 
           {/* Tab Selector */}
-          <div className="grid grid-cols-2 p-1 bg-slate-950 border border-slate-800 rounded-xl text-xs font-bold">
+          <div className="grid grid-cols-2 p-1 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold">
             <button
               type="button"
               onClick={() => { setTab('login'); setErrorMessage(null); }}
               className={`py-2 rounded-lg transition-all ${
                 tab === 'login'
                   ? 'bg-amber-400 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
               }`}
             >
               Já Possuo Cadastro (Entrar)
@@ -367,7 +367,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
               className={`py-2 rounded-lg transition-all ${
                 tab === 'register'
                   ? 'bg-emerald-500 text-slate-950 shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
               }`}
             >
               Criar Nova Conta (Grátis)
@@ -376,8 +376,8 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
           {/* Error Notice */}
           {errorMessage && (
-            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -388,7 +388,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
           {tab === 'login' && (
             <form onSubmit={handleClientLogin} className="space-y-4">
               <div>
-                <label className="text-slate-300 text-xs font-semibold block mb-1.5">
+                <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1.5">
                   E-mail ou Documento ID do Arrematante:
                 </label>
                 <div className="relative">
@@ -400,13 +400,13 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     value={loginEmailOrDoc}
                     onChange={e => setLoginEmailOrDoc(e.target.value)}
                     placeholder="Digite seu e-mail ou Documento ID"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-300 text-xs font-semibold block mb-1.5">
+                <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1.5">
                   Senha:
                 </label>
                 <div className="relative">
@@ -418,12 +418,12 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     value={loginPassword}
                     onChange={e => setLoginPassword(e.target.value)}
                     placeholder="Digite sua senha"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-10 py-2.5 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-10 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300"
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-900 dark:hover:text-slate-300"
                     tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -431,11 +431,11 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end text-xs text-slate-400 pt-1">
+              <div className="flex items-center justify-end text-xs text-slate-600 dark:text-slate-400 pt-1">
                 <button
                   type="button"
                   onClick={() => setTab('register')}
-                  className="text-amber-400 hover:text-amber-300 transition-colors"
+                  className="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
                 >
                   Não tem conta? Cadastre-se
                 </button>
@@ -464,7 +464,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
           {tab === 'register' && (
             <form onSubmit={handleClientRegister} className="space-y-3.5">
               <div>
-                <label className="text-slate-300 text-xs font-semibold block mb-1">
+                <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                   Nome Completo ou Razão Social: *
                 </label>
                 <div className="relative">
@@ -475,14 +475,14 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     value={regName}
                     onChange={e => setRegName(e.target.value)}
                     placeholder="Nome completo ou razão social"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                     E-mail Comercial: *
                   </label>
                   <div className="relative">
@@ -493,13 +493,13 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       value={regEmail}
                       onChange={e => setRegEmail(e.target.value)}
                       placeholder="Digite seu e-mail"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                     Documento ID: *
                   </label>
                   <div className="relative">
@@ -510,7 +510,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       value={regDoc}
                       onChange={e => setRegDoc(e.target.value)}
                       placeholder="Digite seu Documento ID"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
                 </div>
@@ -518,7 +518,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                     WhatsApp com DDD: *
                   </label>
                   <div className="relative">
@@ -529,13 +529,13 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       value={regPhone}
                       onChange={e => setRegPhone(e.target.value)}
                       placeholder="Digite seu WhatsApp com DDD"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                     Consultor Responsável: *
                   </label>
                   <div className="relative">
@@ -546,21 +546,21 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                       value={regConsultant}
                       onChange={e => setRegConsultant(e.target.value)}
                       placeholder="Nome do consultor responsável"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-300 text-xs font-semibold block mb-1">
+                <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                   Tipo de Cadastro / Acesso Solicitado: *
                 </label>
                 <select
                   required
                   value={regUserType}
                   onChange={e => setRegUserType(e.target.value as UserAccessType)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors"
+                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-400 transition-colors"
                 >
                   <option value="client">Cliente Normal (Painel do Cliente)</option>
                   <option value="admin_credenciado">Admin Credenciado (Dashboard Geral e Ofertas Computadas)</option>
@@ -572,12 +572,12 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
               </div>
 
               <div>
-                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-emerald-400 select-none font-medium">
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] text-emerald-600 dark:text-emerald-400 select-none font-medium">
                   <input
                     type="checkbox"
                     checked={regWhatsappNotify}
                     onChange={e => setRegWhatsappNotify(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-0 bg-slate-950"
+                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-0 bg-slate-100 dark:bg-slate-950"
                   />
                   <span>Receber avisos imediatos de ofertas no WhatsApp (aceitas, recusadas e contra-ofertas)</span>
                 </label>
@@ -585,7 +585,7 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                     Criar Senha: *
                   </label>
                   <input
@@ -594,12 +594,12 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     value={regPassword}
                     onChange={e => setRegPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-300 text-xs font-semibold block mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
                     Confirmar Senha: *
                   </label>
                   <input
@@ -608,19 +608,19 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     value={regConfirmPassword}
                     onChange={e => setRegConfirmPassword(e.target.value)}
                     placeholder="Repita a senha"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                 </div>
               </div>
 
               <div className="pt-1">
-                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-400 select-none">
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600 dark:text-slate-400 select-none">
                   <input
                     type="checkbox"
                     required
                     checked={regAcceptTerms}
                     onChange={e => setRegAcceptTerms(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-700 text-emerald-500 focus:ring-0 bg-slate-950 mt-0.5"
+                    className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-0 bg-slate-100 dark:bg-slate-950 mt-0.5"
                   />
                   <span>
                     Concordo com a política de arrematação oficial e laudo de conferência de 30 pontos. *
@@ -646,11 +646,11 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
           )}
 
           {/* Footer Back Button */}
-          <div className="pt-4 border-t border-slate-800 text-center">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-center">
             <button
               type="button"
               onClick={onCancel}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors inline-flex items-center gap-1.5"
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors inline-flex items-center gap-1.5"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Voltar para a página inicial</span>

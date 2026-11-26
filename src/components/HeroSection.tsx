@@ -15,7 +15,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   totalAuctionsCount
 }) => {
   return (
-    <section className="relative overflow-hidden border-b border-slate-800 bg-[#0b0f17]">
+    <section className="relative overflow-hidden border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0b0f17]">
       {/* Background glow effects */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -25,20 +25,20 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           {/* Left Column: Headlines & 2 Primary System Links */}
           <div className="lg:col-span-7 space-y-6">
             {/* Trust Kicker */}
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-700/80 text-xs text-slate-300">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-700/80 text-xs text-slate-700 dark:text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Hub Oficial de Leilões Atacadistas dos Estados Unidos</span>
-              <span className="text-slate-600">·</span>
-              <span className="font-mono text-amber-400 font-bold">{totalAuctionsCount} Lotes Ativos</span>
+              <span className="text-slate-400 dark:text-slate-600">·</span>
+              <span className="font-mono text-amber-600 dark:text-amber-400 font-bold">{totalAuctionsCount} Lotes Ativos</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.15] text-balance">
-              Leilões Americanos de Eletrônicos com <span className="text-amber-400">Gradeamento Oficial</span> e Lances Ao Vivo
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.15] text-balance">
+              Leilões Americanos de Eletrônicos com <span className="text-amber-600 dark:text-amber-400">Gradeamento Oficial</span> e Lances Ao Vivo
             </h1>
 
             {/* Subtitle */}
-            <p className="text-sm sm:text-base text-slate-300 max-w-2xl leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 max-w-2xl leading-relaxed">
               Arremate paletes e unidades avulsas de iPhones direto dos maiores leilões com planilhas e manifestos auditados dos EUA (Verizon e Assurant Wholesale Hubs). Com manifestos completos de IMEI, laudo de 30 pontos e despacho via galpão de Miami.
             </p>
 
@@ -54,28 +54,28 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               <button
                 onClick={() => onOpenSystem('register')}
-                className="py-3 px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm border border-slate-700 hover:border-emerald-500/50 rounded-xl transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
+                className="py-3 px-6 bg-white dark:bg-slate-900 hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm border border-slate-300 dark:border-slate-700 hover:border-emerald-500/50 rounded-xl transition-all flex items-center justify-center gap-2.5 active:scale-[0.98]"
               >
-                <UserPlus className="w-4 h-4 text-emerald-400" />
+                <UserPlus className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Cadastrar no Sistema de Leilões</span>
               </button>
             </div>
 
             {/* Secondary actions: Grading Guide & Calculator */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 pt-1">
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-400 pt-1">
               <button
                 onClick={onOpenGradingGuide}
-                className="hover:text-amber-300 transition-colors inline-flex items-center gap-1.5 underline underline-offset-4"
+                className="hover:text-amber-700 dark:hover:text-amber-300 transition-colors inline-flex items-center gap-1.5 underline underline-offset-4"
               >
-                <Layers className="w-3.5 h-3.5 text-amber-400" />
+                <Layers className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 <span>Ver Padrão de Grades (A+, A, B, C)</span>
               </button>
 
               <button
                 onClick={onOpenCalculator}
-                className="hover:text-emerald-300 transition-colors inline-flex items-center gap-1.5 underline underline-offset-4"
+                className="hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors inline-flex items-center gap-1.5 underline underline-offset-4"
               >
-                <Calculator className="w-3.5 h-3.5 text-emerald-400" />
+                <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Simulador de Lucro & Tributos</span>
               </button>
             </div>
@@ -114,43 +114,43 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
 
         {/* 4-Column KPI Trust Strip */}
-        <div className="mt-12 pt-8 border-t border-slate-800/80 grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-          <div className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-xl space-y-1">
-            <div className="flex items-center gap-2 text-white font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="mt-12 pt-8 border-t border-slate-200/80 dark:border-slate-800/80 grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          <div className="p-3.5 bg-white/75 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 rounded-xl space-y-1">
+            <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Clean IMEI & FMI OFF</span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
               Zero aparelhos bloqueados. Todos consultados na GSMA e aptos para ativação global. Caso necessite desbloqueio, temos uma equipe de auxílio.
             </p>
           </div>
 
-          <div className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-xl space-y-1">
-            <div className="flex items-center gap-2 text-white font-bold">
-              <Layers className="w-4 h-4 text-cyan-400" />
+          <div className="p-3.5 bg-white/75 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 rounded-xl space-y-1">
+            <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+              <Layers className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <span>Gradeamento Rigoroso A+ / A / B / C / ETC.</span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
               Trabalhamos com os maiores leilões americanos que certificam a procedência e disponibilizam seus critérios de escalação.
             </p>
           </div>
 
-          <div className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-xl space-y-1">
-            <div className="flex items-center gap-2 text-white font-bold">
-              <MapPin className="w-4 h-4 text-amber-400" />
+          <div className="p-3.5 bg-white/75 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 rounded-xl space-y-1">
+            <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+              <MapPin className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>Armazém Próprio em Miami</span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
               Consolidação de lotes, inspeção física (Pronta Entrega Testados), e despacho aéreo seguro para o Brasil. Somos os únicos que enviamos para o destino final em apenas 7 dias úteis.
             </p>
           </div>
 
-          <div className="p-3.5 bg-slate-900/40 border border-slate-800/80 rounded-xl space-y-1">
-            <div className="flex items-center gap-2 text-white font-bold">
-              <Gavel className="w-4 h-4 text-amber-400" />
+          <div className="p-3.5 bg-white/75 dark:bg-slate-900/40 border border-slate-200/80 dark:border-slate-800/80 rounded-xl space-y-1">
+            <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold">
+              <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               <span>Sistema Oficial de Lances</span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-600 dark:text-slate-400">
               Lances automáticos e credenciamento sem exigência de SSN americano para brasileiros. Somos os únicos que disponibilizamos sistema onde voce mesmo poderá dar os seus lances.
             </p>
           </div>

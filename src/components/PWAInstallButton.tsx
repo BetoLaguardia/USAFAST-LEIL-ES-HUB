@@ -31,30 +31,30 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           onClick={() => {
             void install();
           }}
-          className={`${buttonBaseClass} bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-sm`}
+          className={`${buttonBaseClass} bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-sm`}
           title="Instalar aplicativo USAFAST Hub na tela inicial"
         >
-          <Download className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{compact ? 'App' : 'Instalar App'}</span>
         </button>
       ) : isIOS ? (
         <button
           type="button"
           onClick={() => setGuidePlatform('ios')}
-          className={`${buttonBaseClass} bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700`}
+          className={`${buttonBaseClass} bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700`}
           title="Como instalar no iPhone / iPad"
         >
-          <Smartphone className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <Smartphone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
           <span>{compact ? 'App' : 'Instalar no iOS'}</span>
         </button>
       ) : isAndroid ? (
         <button
           type="button"
           onClick={() => setGuidePlatform('android')}
-          className={`${buttonBaseClass} bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40`}
+          className={`${buttonBaseClass} bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40`}
           title="Como instalar o app no Android"
         >
-          <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <span>{compact ? 'App' : 'App Android'}</span>
         </button>
       ) : null}
@@ -65,49 +65,49 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
           onClick={() => setGuidePlatform(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-700 p-6 shadow-2xl text-slate-100"
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-6 shadow-2xl text-slate-900 dark:text-slate-100"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
-                  <Smartphone className="w-4 h-4 text-amber-400" />
+                  <Smartphone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
                   {guidePlatform === 'ios' ? 'Instalar no iPhone / iPad' : 'Instalar App no Android'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setGuidePlatform(null)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white rounded-lg hover:bg-slate-200/80 dark:hover:bg-slate-800"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {guidePlatform === 'ios' ? (
-              <ol className="space-y-2 text-xs text-slate-300 leading-relaxed list-decimal list-inside">
+              <ol className="space-y-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed list-decimal list-inside">
                 <li>
-                  Toque no botão <strong className="text-white">Compartilhar</strong> na barra do Safari.
+                  Toque no botão <strong className="text-slate-900 dark:text-white">Compartilhar</strong> na barra do Safari.
                 </li>
                 <li>
-                  Role para baixo e toque em <strong className="text-white">Adicionar à Tela de Início</strong>.
+                  Role para baixo e toque em <strong className="text-slate-900 dark:text-white">Adicionar à Tela de Início</strong>.
                 </li>
                 <li>
-                  Confirme em <strong className="text-amber-400">Adicionar</strong> para abrir em tela cheia.
+                  Confirme em <strong className="text-amber-600 dark:text-amber-400">Adicionar</strong> para abrir em tela cheia.
                 </li>
               </ol>
             ) : (
-              <ol className="space-y-2 text-xs text-slate-300 leading-relaxed list-decimal list-inside">
+              <ol className="space-y-2 text-xs text-slate-700 dark:text-slate-300 leading-relaxed list-decimal list-inside">
                 <li>
-                  Abra o site diretamente no <strong className="text-white">Google Chrome</strong> (fora de pré-visualizações em janela).
+                  Abra o site diretamente no <strong className="text-slate-900 dark:text-white">Google Chrome</strong> (fora de pré-visualizações em janela).
                 </li>
                 <li>
-                  Toque no menu <strong className="text-white">⋮</strong> no canto superior direito do Chrome.
+                  Toque no menu <strong className="text-slate-900 dark:text-white">⋮</strong> no canto superior direito do Chrome.
                 </li>
                 <li>
-                  Selecione <strong className="text-emerald-400">Instalar aplicativo</strong> ou <strong className="text-white">Adicionar à tela inicial</strong>.
+                  Selecione <strong className="text-emerald-600 dark:text-emerald-400">Instalar aplicativo</strong> ou <strong className="text-slate-900 dark:text-white">Adicionar à tela inicial</strong>.
                 </li>
               </ol>
             )}

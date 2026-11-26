@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Header, AppPage } from './components/Header';
+import type { AppTheme } from './components/ThemeSelectorPanel';
 import { HeroSection } from './components/HeroSection';
 import { AuctionCard } from './components/AuctionCard';
 import { AuctionDetailModal } from './components/AuctionDetailModal';
@@ -110,6 +111,30 @@ export default function App() {
     } catch (e) {}
     return 'pt';
   });
+
+  const [theme, setTheme] = useState<AppTheme>(() => {
+    try {
+      const saved = localStorage.getItem('us_iphone_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch (e) {}
+    return 'dark';
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', theme === 'dark' ? '#0b0f17' : '#f8fafc');
+    }
+  }, [theme]);
+
+  const handleSelectTheme = (nextTheme: AppTheme) => {
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem('us_iphone_theme', nextTheme);
+    } catch (e) {}
+  };
 
   const [expandedMixLotIds, setExpandedMixLotIds] = useState<Record<string, boolean>>({});
   const toggleMixExpand = (lotId: string, e?: React.MouseEvent) => {
@@ -1022,11 +1047,11 @@ export default function App() {
   }, [filteredAuctions, auctionsPage]);
 
   return (
-    <div className="min-h-screen bg-[#0b0f17] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 p-4 bg-emerald-600 text-white rounded-xl shadow-2xl flex items-center gap-3 border border-emerald-400/40 animate-in slide-in-from-bottom duration-200">
-          <CheckCircle2 className="w-5 h-5 text-emerald-200 shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-emerald-800 dark:text-emerald-200 shrink-0" />
           <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
       )}
@@ -1050,6 +1075,8 @@ export default function App() {
         clientName={currentUser.name}
         language={language}
         onSelectLanguage={handleSelectLanguage}
+        theme={theme}
+        onSelectTheme={handleSelectTheme}
       />
 
       <main className="flex-1">
@@ -1067,11 +1094,11 @@ export default function App() {
 
             {/* Quick Banner: Only show Admin Panel / Spreadsheet import link to logged in Admins */}
             {isAdminAuthenticated ? (
-              <div className="bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 border-y border-amber-500/20 py-3.5 px-4">
+              <div className="bg-gradient-to-r from-white dark:from-slate-900 via-amber-50 dark:via-amber-950/40 to-slate-50 dark:to-slate-900 border-y border-amber-500/20 py-3.5 px-4">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
-                    <List className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="font-semibold text-white">
+                    <List className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span className="font-semibold text-slate-900 dark:text-white">
                       Modo Administrador: Gestão de leilões, arrematantes e importação de planilhas ativas.
                     </span>
                   </div>
@@ -1087,12 +1114,12 @@ export default function App() {
                 </div>
               </div>
             ) : isClientAuthenticated ? (
-              <div className="bg-gradient-to-r from-slate-950 via-emerald-950/30 to-slate-950 border-y border-emerald-500/20 py-3 px-4">
+              <div className="bg-gradient-to-r from-slate-50 dark:from-slate-950 via-emerald-950/30 to-slate-100 dark:to-slate-950 border-y border-emerald-500/20 py-3 px-4">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <UserCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>
-                      Bem-vindo ao Portal do Arrematante, <strong className="text-white">{currentUser.name || 'Cliente Credenciado'}</strong>! Seu limite de lances está liberado.
+                      Bem-vindo ao Portal do Arrematante, <strong className="text-slate-900 dark:text-white">{currentUser.name || 'Cliente Credenciado'}</strong>! Seu limite de lances está liberado.
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1107,10 +1134,10 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-y border-slate-800 py-3 px-4">
+              <div className="bg-gradient-to-r from-slate-50 dark:from-slate-950 via-white dark:via-slate-900 to-slate-100 dark:to-slate-950 border-y border-slate-200 dark:border-slate-800 py-3 px-4">
                 <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                    <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                     <span>
                       Área de Leilões dos EUA: Para visualizar lotes completos, laudos de IMEI e dar lances, faça seu login.
                     </span>
@@ -1154,43 +1181,43 @@ export default function App() {
             />
 
             {/* Como Funciona na Home */}
-            <section className="bg-slate-950 border-t border-slate-800 py-16">
+            <section className="bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 py-16">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
                 <div className="text-center max-w-3xl mx-auto space-y-2">
-                  <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
                     PASSO A PASSO
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     Como Arrematar iPhones nos EUA pelo Nosso Sistema
                   </h2>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-xs">
-                  <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">
-                    <span className="font-mono text-amber-400 font-bold text-sm block">01. Cadastro</span>
-                    <h3 className="text-sm font-bold text-white">Habilitação - Verificação do cadastro.</h3>
-                    <p className="text-slate-400 leading-relaxed">
+                  <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2">
+                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold text-sm block">01. Cadastro</span>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Habilitação - Verificação do cadastro.</h3>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                       Cadastre seu Documento ID no topo para liberar limite em dólares e sua suíte de recebimento em Miami.
                     </p>
                   </div>
-                  <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">
-                    <span className="font-mono text-amber-400 font-bold text-sm block">02. Seleção</span>
-                    <h3 className="text-sm font-bold text-white">Análise de Grades</h3>
-                    <p className="text-slate-400 leading-relaxed">
+                  <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2">
+                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold text-sm block">02. Seleção</span>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Análise de Grades</h3>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                       Escolha lotes com base no laudo técnico de 30 pontos e consulte os IMEIs antes de lançar.
                     </p>
                   </div>
-                  <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">
-                    <span className="font-mono text-amber-400 font-bold text-sm block">03. Arrematação</span>
-                    <h3 className="text-sm font-bold text-white">Lances ou Sniper</h3>
-                    <p className="text-slate-400 leading-relaxed">
+                  <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2">
+                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold text-sm block">03. Arrematação</span>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Lances ou Sniper</h3>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                       Dê lances manuais ou ative o robô para cobrir concorrentes no último segundo do leilão.
                     </p>
                   </div>
-                  <div className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">
-                    <span className="font-mono text-amber-400 font-bold text-sm block">04. Despacho</span>
-                    <h3 className="text-sm font-bold text-white">Envio Aéreo ao Brasil</h3>
-                    <p className="text-slate-400 leading-relaxed">
+                  <div className="p-5 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-2">
+                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold text-sm block">04. Despacho</span>
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">Envio Aéreo ao Brasil</h3>
+                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
                       Recebemos no galpão parceiro de Miami e enviamos com seguro para seu endereço no Brasil.
                     </p>
                   </div>
@@ -1219,14 +1246,14 @@ export default function App() {
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 mb-1">
+                <div className="flex items-center gap-2 text-xs font-semibold text-amber-600 dark:text-amber-400 mb-1">
                   <Gavel className="w-4 h-4" />
                   <span>CATÁLOGO OFICIAL DE LEILÕES DOS EUA</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                   Modelos de iPhones Disponíveis para Arrematação
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-xl">
                   Filtragem oficial por leilão (Verizon e Assurant), modelos importados, grade técnica e capacidade.
                 </p>
               </div>
@@ -1234,17 +1261,17 @@ export default function App() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleOpenSystem('terminal')}
-                  className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
+                  className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2"
                 >
-                  <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                  <Gavel className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                   <span>Terminal de Lances</span>
                 </button>
                 {isAdminAuthenticated && (
                   <button
                     onClick={() => setCurrentPage('admin')}
-                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-2"
+                    className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg text-xs font-medium transition-colors flex items-center gap-2"
                   >
-                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Importar Planilha (Admin)</span>
                   </button>
                 )}
@@ -1252,21 +1279,21 @@ export default function App() {
             </div>
 
             {/* Search & Filter Controls */}
-            <div className="p-4 sm:p-5 bg-slate-900/80 border border-slate-800 rounded-2xl space-y-4 shadow-lg shadow-black/20">
+            <div className="p-4 sm:p-5 bg-white/90 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 shadow-lg shadow-black/20">
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <Search className="w-4 h-4 text-slate-600 dark:text-slate-400 absolute left-3.5 top-3" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder={t.searchPlaceholder}
-                    className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
+                    className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300/80 dark:border-slate-700/80 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-amber-400 transition-colors"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-2.5 text-xs text-slate-500 hover:text-slate-300"
+                      className="absolute right-3 top-2.5 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-300"
                     >
                       Limpar
                     </button>
@@ -1274,11 +1301,11 @@ export default function App() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-slate-400 hidden sm:inline">{t.sortLabel}</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400 hidden sm:inline">{t.sortLabel}</span>
                   <select
                     value={sortBy}
                     onChange={e => setSortBy(e.target.value as any)}
-                    className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-400 font-medium"
+                    className="bg-slate-100 dark:bg-slate-950 border border-slate-300/80 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-amber-400 font-medium"
                   >
                     <option value="endingSoon">{t.endingSoon}</option>
                     <option value="profitDesc">{t.highestProfit}</option>
@@ -1290,15 +1317,15 @@ export default function App() {
               </div>
 
               {/* Clean Structured Filter Controls */}
-              <div className="pt-3 border-t border-slate-800/80 space-y-3 text-xs">
+              <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800/80 space-y-3 text-xs">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
                   {/* Leilão Segmented Bar */}
                   <div className="lg:col-span-5 space-y-1.5">
-                    <span className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
-                      <Gavel className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Gavel className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       <span>{t.auctionFilter}</span>
                     </span>
-                    <div className="flex flex-wrap items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                    <div className="flex flex-wrap items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800">
                       <button
                         type="button"
                         onClick={() => {
@@ -1308,7 +1335,7 @@ export default function App() {
                         className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                           filterAuctionHouse === 'all'
                             ? 'bg-amber-400 text-slate-950 font-bold'
-                            : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                            : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
                         }`}
                       >
                         {t.allAuctionsFilter} ({auctions.length.toLocaleString('pt-BR')} Lotes)
@@ -1327,7 +1354,7 @@ export default function App() {
                         className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                           filterAuctionHouse === 'VERIZON'
                             ? 'bg-red-600 text-white font-bold'
-                            : 'text-red-300 hover:bg-red-500/15'
+                            : 'text-red-700 dark:text-red-300 hover:bg-red-500/15'
                         }`}
                       >
                         {t.verizonBadge} ({auctions.filter(isVerizonLot).length.toLocaleString('pt-BR')} Lotes)
@@ -1342,7 +1369,7 @@ export default function App() {
                         className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                           filterAuctionHouse === 'ASSURANT'
                             ? 'bg-blue-600 text-white font-bold'
-                            : 'text-blue-300 hover:bg-blue-500/15'
+                            : 'text-blue-700 dark:text-blue-300 hover:bg-blue-500/15'
                         }`}
                       >
                         {t.assurantBadge} ({auctions.filter(a => a.sourceType === 'ASSURANT' || /assurant/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Lotes)
@@ -1357,7 +1384,7 @@ export default function App() {
                         className={`px-3 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                           filterAuctionHouse === 'T_MOBILE'
                             ? 'bg-fuchsia-600 text-white font-bold'
-                            : 'text-fuchsia-300 hover:bg-fuchsia-500/15'
+                            : 'text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-500/15'
                         }`}
                       >
                         T-MOBILE ({auctions.filter(isTMobileLot).length.toLocaleString('pt-BR')} Lotes)
@@ -1378,7 +1405,7 @@ export default function App() {
                             className={`px-2.5 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                               filterAuctionHouse === mktKey
                                 ? 'bg-cyan-600 text-white font-bold'
-                                : 'text-cyan-300 hover:bg-cyan-500/15'
+                                : 'text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/15'
                             }`}
                           >
                             {label}
@@ -1396,7 +1423,7 @@ export default function App() {
                           className={`px-2.5 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                             filterAuctionHouse === 'STOCK_APPLE'
                               ? 'bg-emerald-600 text-white font-bold'
-                              : 'text-emerald-300 hover:bg-emerald-500/15'
+                              : 'text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15'
                           }`}
                         >
                           Pronta Entrega ({auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Modelos)
@@ -1413,7 +1440,7 @@ export default function App() {
                           className={`px-2.5 py-1.5 rounded-lg font-semibold transition-colors whitespace-nowrap shrink-0 ${
                             filterAuctionHouse === 'MACBOOKS'
                               ? 'bg-purple-600 text-white font-bold'
-                              : 'text-purple-300 hover:bg-purple-500/15'
+                              : 'text-purple-700 dark:text-purple-300 hover:bg-purple-500/15'
                           }`}
                         >
                           MacBooks ({auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Modelos)
@@ -1444,7 +1471,7 @@ export default function App() {
                             className={`px-2.5 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap shrink-0 ${
                               filterAuctionHouse === house
                                 ? 'bg-slate-200 text-slate-950 font-bold'
-                                : 'text-slate-300 hover:text-white hover:bg-slate-900'
+                                : 'text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900'
                             }`}
                           >
                             {house.length > 20 ? house.slice(0, 18) + '...' : house}
@@ -1455,8 +1482,8 @@ export default function App() {
 
                   {/* Modelo Dropdown (All 60+ models cleanly organized) */}
                   <div className="lg:col-span-3 space-y-1.5">
-                    <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+                    <label className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                       <span>
                         Modelo {filterAuctionHouse === 'VERIZON' ? '(Verizon)' : filterAuctionHouse === 'ASSURANT' ? '(Assurant)' : filterAuctionHouse === 'T_MOBILE' ? '(T-Mobile)' : filterAuctionHouse === 'MARKETPLACE_1' ? '(Marketplace 1)' : filterAuctionHouse === 'MARKETPLACE_2' ? '(Marketplace 2)' : filterAuctionHouse === 'MARKETPLACE_3' ? '(Marketplace 3)' : filterAuctionHouse === 'STOCK_APPLE' ? '(Pronta Entrega)' : filterAuctionHouse === 'MACBOOKS' ? '(MacBooks)' : ''}
                       </span>
@@ -1464,7 +1491,7 @@ export default function App() {
                     <select
                       value={filterModel}
                       onChange={e => setFilterModel(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400 tabular-nums"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300/80 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-amber-400 tabular-nums"
                     >
                       <option value="all">
                         Todos os Modelos ({availableImportedModels.reduce((acc, m) => acc + m.totalUnits, 0).toLocaleString('pt-BR')} un)
@@ -1479,14 +1506,14 @@ export default function App() {
 
                   {/* Grade Dropdown */}
                   <div className="lg:col-span-2 space-y-1.5">
-                    <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
-                      <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-400" />
+                    <label className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                       <span>{t.gradeFilter.replace(':', '')}</span>
                     </label>
                     <select
                       value={filterGrade}
                       onChange={e => setFilterGrade(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300/80 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-amber-400"
                     >
                       <option value="all">{t.allGradesFilter}</option>
                       {availableGrades.map(gradeKey => (
@@ -1499,14 +1526,14 @@ export default function App() {
 
                   {/* Capacidade Dropdown */}
                   <div className="lg:col-span-2 space-y-1.5">
-                    <label className="text-[11px] text-slate-400 font-semibold flex items-center gap-1.5">
-                      <Package className="w-3.5 h-3.5 text-emerald-400" />
+                    <label className="text-[11px] text-slate-600 dark:text-slate-400 font-semibold flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>{t.capacityFilter.replace(':', '')}</span>
                     </label>
                     <select
                       value={filterCapacity}
                       onChange={e => setFilterCapacity(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-100 font-medium focus:outline-none focus:border-amber-400"
+                      className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300/80 dark:border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-medium focus:outline-none focus:border-amber-400"
                     >
                       <option value="all">{t.allCapacitiesFilter}</option>
                       {['64GB', '128GB', '256GB', '512GB', '1TB'].map(cap => (
@@ -1520,7 +1547,7 @@ export default function App() {
 
                 {/* Single-line Top Models Quick Strip (max 6 primary models, zero vertical wall) */}
                 {availableImportedModels.length > 0 && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60 overflow-x-auto pb-0.5">
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 overflow-x-auto pb-0.5">
                     <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap shrink-0">
                       Principais modelos:
                     </span>
@@ -1529,8 +1556,8 @@ export default function App() {
                       onClick={() => setFilterModel('all')}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors whitespace-nowrap shrink-0 tabular-nums ${
                         filterModel === 'all'
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/70'
+                          ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/40'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/70 dark:hover:bg-slate-800/70'
                       }`}
                     >
                       Todos · {availableImportedModels.reduce((acc, m) => acc + m.totalUnits, 0).toLocaleString('pt-BR')}
@@ -1549,7 +1576,7 @@ export default function App() {
                             className={`px-2.5 py-1 rounded-lg text-[11px] transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5 tabular-nums ${
                               isActive
                                 ? 'bg-amber-400 text-slate-950 font-bold'
-                                : 'bg-slate-950/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                                : 'bg-slate-100/90 dark:bg-slate-950/80 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
                             }`}
                           >
                             <span>{item.model}</span>
@@ -1577,17 +1604,17 @@ export default function App() {
             </div>
 
             {/* View Mode Switcher & Selection Toolbar Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/70 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/85 dark:bg-slate-900/70 p-3 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
               <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-300 font-bold">Modo de Exibição:</span>
-                <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-bold">Modo de Exibição:</span>
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={() => setAuctionsViewMode('list')}
                     className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                       auctionsViewMode === 'list'
                         ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                        : 'text-slate-400 hover:text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                     }`}
                   >
                     <List className="w-3.5 h-3.5" />
@@ -1600,7 +1627,7 @@ export default function App() {
                     className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all ${
                       auctionsViewMode === 'cards'
                         ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                        : 'text-slate-400 hover:text-white'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                     }`}
                   >
                     <LayoutGrid className="w-3.5 h-3.5" />
@@ -1613,7 +1640,7 @@ export default function App() {
               <div className="flex flex-wrap items-center gap-2">
                 {selectedLotIds.length > 0 ? (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                    <span className="font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-lg">
                       {selectedLotIds.length} modelo(s) selecionado(s) na lista
                     </span>
                     <button
@@ -1625,13 +1652,13 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => setSelectedLotIds([])}
-                      className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg transition-colors"
+                      className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white rounded-lg transition-colors"
                     >
                       Limpar
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-xs text-slate-400 gap-3">
+                  <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 gap-3">
                     <span>
                       Exibindo <strong>{filteredAuctions.length}</strong> lotes/modelos de leilão
                     </span>
@@ -1645,7 +1672,7 @@ export default function App() {
                           setFilterLotType('all');
                           setSearchQuery('');
                         }}
-                        className="text-amber-400 hover:underline font-semibold"
+                        className="text-amber-600 dark:text-amber-400 hover:underline font-semibold"
                       >
                         Limpar filtros
                       </button>
@@ -1668,7 +1695,7 @@ export default function App() {
                         });
                         showToast('Planilha Excel dos leilões gerada com sucesso!');
                       }}
-                      className="px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                      className="px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                       title="Exportar leilões exibidos em Excel estilizado"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -1687,7 +1714,7 @@ export default function App() {
                         });
                         showToast('PDF do catálogo de leilões pronto para salvar/imprimir!');
                       }}
-                      className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                      className="px-2.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                       title="Exportar leilões exibidos em PDF com layout executivo"
                     >
                       <FileText className="w-3.5 h-3.5" />
@@ -1700,9 +1727,9 @@ export default function App() {
 
             {/* Results Display: List View or Grid View */}
             {filteredAuctions.length === 0 ? (
-              <div className="p-12 text-center bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl space-y-3">
-                <Package className="w-10 h-10 text-slate-600 mx-auto" />
-                <h3 className="text-base font-bold text-white">Nenhum modelo encontrado com estes filtros</h3>
+              <div className="p-12 text-center bg-white/75 dark:bg-slate-900/40 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
+                <Package className="w-10 h-10 text-slate-400 dark:text-slate-600 mx-auto" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">Nenhum modelo encontrado com estes filtros</h3>
                 <button
                   onClick={() => {
                     setFilterGrade('all');
@@ -1712,7 +1739,7 @@ export default function App() {
                     setFilterLotType('all');
                     setSearchQuery('');
                   }}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-semibold"
                 >
                   Restaurar Todos os Leilões
                 </button>
@@ -1723,9 +1750,9 @@ export default function App() {
                   /* ======================================================== */
                   /* LIST VIEW: TABELA & SELEÇÃO DE MODELOS                   */
                   /* ======================================================== */
-                  <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
                     {/* Mobile List View (< md) */}
-                    <div className="md:hidden divide-y divide-slate-800/80">
+                    <div className="md:hidden divide-y divide-slate-200/80 dark:divide-slate-800/80">
                       {paginatedAuctions.map(lot => {
                         const isSelected = selectedLotIds.includes(lot.id);
                         const isMixExpanded = !!expandedMixLotIds[lot.id];
@@ -1743,12 +1770,12 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => handleToggleSelectLot(lot.id)}
-                                className="mt-1 text-slate-400 hover:text-amber-400 shrink-0"
+                                className="mt-1 text-slate-600 dark:text-slate-400 hover:text-amber-400 shrink-0"
                               >
                                 {isSelected ? (
-                                  <CheckSquare className="w-5 h-5 text-amber-400" />
+                                  <CheckSquare className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                 ) : (
-                                  <Square className="w-5 h-5 text-slate-600" />
+                                  <Square className="w-5 h-5 text-slate-400 dark:text-slate-600" />
                                 )}
                               </button>
                               <img
@@ -1758,16 +1785,16 @@ export default function App() {
                                   (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
                                 }}
                                 onClick={() => setSelectedLotForDetail(lot)}
-                                className="w-16 h-16 rounded-xl object-cover border border-slate-700 shrink-0 cursor-pointer"
+                                className="w-16 h-16 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-mono font-bold text-amber-400 text-xs">{lot.lotNumber}</span>
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
+                                  <span className="font-mono font-bold text-amber-600 dark:text-amber-400 text-xs">{lot.lotNumber}</span>
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${gradeInfo?.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
                                     {lot.grade}
                                   </span>
-                                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-bold flex items-center gap-1">
-                                    {isVerizon && <Lock className="w-2.5 h-2.5 text-red-400" />}
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+                                    {isVerizon && <Lock className="w-2.5 h-2.5 text-red-600 dark:text-red-400" />}
                                     <span>{lot.quantity} un.{isVerizon ? ' fixas' : ''}</span>
                                   </span>
                                   {isVerizon && (
@@ -1798,11 +1825,11 @@ export default function App() {
                                 </div>
                                 <h4
                                   onClick={() => setSelectedLotForDetail(lot)}
-                                  className="text-xs font-bold text-white mt-1 line-clamp-2 cursor-pointer hover:text-amber-300"
+                                  className="text-xs font-bold text-slate-900 dark:text-white mt-1 line-clamp-2 cursor-pointer hover:text-amber-700 dark:hover:text-amber-300"
                                 >
                                   {cleanTitle}
                                 </h4>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">{lot.auctionHouse}</span>
+                                <span className="text-[10px] text-slate-600 dark:text-slate-400 block mt-0.5">{lot.auctionHouse}</span>
                                 <LotMixBadgesAndTrigger
                                   lot={lot}
                                   isExpanded={isMixExpanded}
@@ -1818,28 +1845,28 @@ export default function App() {
                               onSelectLot={l => setSelectedLotForDetail(l)}
                             />
 
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
                               {isVerizon && lot.currentBidUsd === 0 ? (
                                 <div>
-                                  <span className="text-[10px] text-slate-400 block">Preço Verizon:</span>
-                                  <span className="font-bold text-emerald-400 text-sm block">Sem Preço Fixo</span>
-                                  <span className="text-[10px] text-amber-300 font-semibold block">
+                                  <span className="text-[10px] text-slate-600 dark:text-slate-400 block">Preço Verizon:</span>
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm block">Sem Preço Fixo</span>
+                                  <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold block">
                                     Cliente escolhe o valor · Qtd Fixa
                                   </span>
                                 </div>
                               ) : (
                                 <div>
-                                  <span className="text-[10px] text-slate-400 block">
+                                  <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                                     {isProntaEntrega ? 'Preço Fixo (Pronta Entrega):' : isVerizon ? 'Última Oferta (Valor Livre):' : isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual:'}
                                   </span>
-                                  <span className={`font-mono font-bold text-sm ${isProntaEntrega ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  <span className={`font-mono font-bold text-sm ${isProntaEntrega ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                     ${(isProntaEntrega ? unitPriceUsd : lot.currentBidUsd).toLocaleString()} USD{(isProntaEntrega || (isAssurant && lot.quantity > 1)) ? ' / un.' : ''}
                                   </span>
-                                  <span className="text-[10px] text-slate-400 font-mono ml-1.5">
+                                  <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono ml-1.5">
                                     (aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
                                   </span>
                                   {isAssurant && (
-                                    <span className="text-[10px] text-cyan-300 font-mono font-semibold block">
+                                    <span className="text-[10px] text-cyan-700 dark:text-cyan-300 font-mono font-semibold block">
                                       Incremento: {getLotIncrementSize(lot)} un.
                                     </span>
                                   )}
@@ -1849,7 +1876,7 @@ export default function App() {
                                 <button
                                   type="button"
                                   onClick={() => setSelectedLotForDetail(lot)}
-                                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-xs transition-colors"
+                                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold rounded-xl text-xs transition-colors"
                                 >
                                   Detalhes
                                 </button>
@@ -1874,17 +1901,17 @@ export default function App() {
                     {/* Desktop Table View (>= md) */}
                     <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-950/90 text-slate-400 font-mono uppercase text-[10px] border-b border-slate-800 tracking-wider">
+                        <thead className="bg-slate-100/95 dark:bg-slate-950/90 text-slate-600 dark:text-slate-400 font-mono uppercase text-[10px] border-b border-slate-200 dark:border-slate-800 tracking-wider">
                           <tr>
                             <th className="p-3.5 w-10 text-center">
                               <button
                                 type="button"
                                 onClick={handleSelectAllOnPage}
-                                className="text-slate-400 hover:text-white"
+                                className="text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white"
                                 title="Selecionar todos da página"
                               >
                                 {paginatedAuctions.length > 0 && paginatedAuctions.every(l => selectedLotIds.includes(l.id)) ? (
-                                  <CheckSquare className="w-4 h-4 text-amber-400" />
+                                  <CheckSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                                 ) : (
                                   <Square className="w-4 h-4 text-slate-500" />
                                 )}
@@ -1900,7 +1927,7 @@ export default function App() {
                             <th className="p-3.5 text-right">Ação</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60 font-sans">
+                        <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 font-sans">
                           {paginatedAuctions.map(lot => {
                             const isSelected = selectedLotIds.includes(lot.id);
                             const isMixExpanded = !!expandedMixLotIds[lot.id];
@@ -1915,17 +1942,17 @@ export default function App() {
 
                             return (
                               <React.Fragment key={lot.id}>
-                                <tr className={`hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
+                                <tr className={`hover:bg-slate-200/50 dark:hover:bg-slate-800/40 transition-colors ${isSelected ? 'bg-amber-500/5' : ''}`}>
                                   <td className="p-3.5 text-center">
                                     <button
                                       type="button"
                                       onClick={() => handleToggleSelectLot(lot.id)}
-                                      className="text-slate-400 hover:text-amber-400"
+                                      className="text-slate-600 dark:text-slate-400 hover:text-amber-400"
                                     >
                                       {isSelected ? (
-                                        <CheckSquare className="w-4 h-4 text-amber-400" />
+                                        <CheckSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                                       ) : (
-                                        <Square className="w-4 h-4 text-slate-600" />
+                                        <Square className="w-4 h-4 text-slate-400 dark:text-slate-600" />
                                       )}
                                     </button>
                                   </td>
@@ -1934,7 +1961,7 @@ export default function App() {
                                   <td className="p-3.5">
                                     <div
                                       onClick={() => setSelectedLotForDetail(lot)}
-                                      className="w-14 h-14 rounded-xl bg-slate-950 overflow-hidden border border-slate-800 cursor-pointer relative group shrink-0"
+                                      className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-950 overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer relative group shrink-0"
                                     >
                                       <img
                                         src={lot.imageUrl}
@@ -1951,19 +1978,19 @@ export default function App() {
                                   <td className="p-3.5">
                                     <div className="space-y-0.5">
                                       <span
-                                        className="font-bold text-white text-sm block hover:text-amber-400 cursor-pointer transition-colors"
+                                        className="font-bold text-slate-900 dark:text-white text-sm block hover:text-amber-400 cursor-pointer transition-colors"
                                         onClick={() => setSelectedLotForDetail(lot)}
                                       >
                                         {lot.modelFamily}
                                       </span>
-                                      <span className="text-[11px] text-slate-300 font-medium line-clamp-1">
+                                      <span className="text-[11px] text-slate-700 dark:text-slate-300 font-medium line-clamp-1">
                                         {cleanTitle}
                                       </span>
                                       <div className="flex items-center gap-2 pt-0.5">
-                                        <span className="font-mono text-[10px] text-amber-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                                        <span className="font-mono text-[10px] text-amber-700 dark:text-amber-300 bg-slate-100 dark:bg-slate-950 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                                           {lot.lotNumber}
                                         </span>
-                                        <span className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 truncate max-w-[150px]">
                                           {lot.location}
                                         </span>
                                       </div>
@@ -1999,7 +2026,7 @@ export default function App() {
                                         MARKETPLACE {getMarketplaceNumber(lot)}
                                       </span>
                                     ) : (
-                                      <span className="px-2 py-1 rounded bg-slate-800 text-slate-300 font-bold text-[10px] inline-block">
+                                      <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px] inline-block">
                                         {lot.auctionHouse}
                                       </span>
                                     )}
@@ -2007,7 +2034,7 @@ export default function App() {
 
                                   {/* Grade */}
                                   <td className="p-3.5">
-                                    <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${gradeInfo?.badgeColor || 'bg-slate-800 text-slate-200'}`}>
+                                    <span className={`px-2.5 py-1 rounded text-xs font-bold border inline-block ${gradeInfo?.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
                                       {lot.grade}
                                     </span>
                                   </td>
@@ -2015,30 +2042,30 @@ export default function App() {
                                   {/* Qtd & Storage */}
                                   <td className="p-3.5">
                                     <div className="font-mono">
-                                      <span className="text-white font-bold flex items-center gap-1">
-                                        {isVerizon && <Lock className="w-3 h-3 text-red-400 shrink-0" />}
+                                      <span className="text-slate-900 dark:text-white font-bold flex items-center gap-1">
+                                        {isVerizon && <Lock className="w-3 h-3 text-red-600 dark:text-red-400 shrink-0" />}
                                         <span>{lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}</span>
                                       </span>
                                       {isVerizon && (
-                                        <span className="text-[10px] text-red-300 font-semibold block">Qtd Fixa (Fechado)</span>
+                                        <span className="text-[10px] text-red-700 dark:text-red-300 font-semibold block">Qtd Fixa (Fechado)</span>
                                       )}
                                       {isAssurant && (
-                                        <span className="text-[10px] text-cyan-300 font-semibold block">
+                                        <span className="text-[10px] text-cyan-700 dark:text-cyan-300 font-semibold block">
                                           Inc: {getLotIncrementSize(lot)} un.
                                         </span>
                                       )}
-                                      <span className="text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
+                                      <span className="text-slate-600 dark:text-slate-400 text-[11px] block">{lot.primaryStorage}</span>
                                     </div>
                                   </td>
 
                                   {/* Status */}
                                   <td className="p-3.5">
                                     <div className="space-y-0.5 text-[11px]">
-                                      <div className="flex items-center gap-1 text-emerald-400 font-medium">
+                                      <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                                         <CheckCircle2 className="w-3 h-3 shrink-0" />
                                         <span>Clean ESN / FMI OFF</span>
                                       </div>
-                                      <span className="text-slate-400 font-mono text-[10px] block">
+                                      <span className="text-slate-600 dark:text-slate-400 font-mono text-[10px] block">
                                         Bat: {lot.batteryHealthRange}
                                       </span>
                                     </div>
@@ -2048,19 +2075,19 @@ export default function App() {
                                   <td className="p-3.5">
                                     {isVerizon && lot.currentBidUsd === 0 ? (
                                       <div>
-                                        <span className="font-bold text-emerald-400 text-sm block">
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm block">
                                           Sem Preço Fixo
                                         </span>
-                                        <span className="text-[10px] text-amber-300 font-semibold block">
+                                        <span className="text-[10px] text-amber-700 dark:text-amber-300 font-semibold block">
                                           Cliente escolhe o valor
                                         </span>
                                       </div>
                                     ) : isProntaEntrega ? (
                                       <div>
-                                        <span className="font-mono font-bold text-emerald-400 text-sm block">
+                                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm block">
                                           ${unitPriceUsd.toLocaleString()} USD / un.
                                         </span>
-                                        <span className="text-[10px] text-slate-400 font-mono block">
+                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono block">
                                           aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
                                         </span>
                                         <span className="text-[10px] text-emerald-300/80 font-semibold block">
@@ -2069,10 +2096,10 @@ export default function App() {
                                       </div>
                                     ) : (
                                       <div>
-                                        <span className="font-mono font-bold text-amber-400 text-sm block">
+                                        <span className="font-mono font-bold text-amber-600 dark:text-amber-400 text-sm block">
                                           ${lot.currentBidUsd.toLocaleString()} USD{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                         </span>
-                                        <span className="text-[10px] text-slate-400 font-mono">
+                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">
                                           aprox. R$ {currentBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                                         </span>
                                         {!isAssurant && (
@@ -2090,10 +2117,10 @@ export default function App() {
                                       <button
                                         type="button"
                                         onClick={() => handleOpenCalculatorForLot(lot)}
-                                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                        className="p-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white rounded-lg transition-colors"
                                         title="Calcular Lucro deste lote"
                                       >
-                                        <Calculator className="w-3.5 h-3.5 text-emerald-400" />
+                                        <Calculator className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                       </button>
                                       <button
                                         type="button"
@@ -2111,7 +2138,7 @@ export default function App() {
                                 </tr>
 
                                 {mixSummary.hasExpandableDetails && (
-                                  <tr className={isMixExpanded ? 'bg-slate-950/50' : '!border-t-0'}>
+                                  <tr className={isMixExpanded ? 'bg-slate-100/70 dark:bg-slate-950/50' : '!border-t-0'}>
                                     <td colSpan={9} className={isMixExpanded ? 'px-4 pb-4 pt-0' : 'p-0 border-0'}>
                                       <LotMixExpandablePanel
                                         lot={lot}
@@ -2146,9 +2173,9 @@ export default function App() {
 
                 {/* Ultra-Fast Responsive Pagination Bar */}
                 {totalAuctionsPages > 1 && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-800 text-xs text-slate-400">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400">
                     <div>
-                      Exibindo <strong className="text-white">{(auctionsPage - 1) * ITEMS_PER_PAGE + 1}</strong> a <strong className="text-white">{Math.min(auctionsPage * ITEMS_PER_PAGE, filteredAuctions.length)}</strong> de <strong className="text-white">{filteredAuctions.length}</strong> lotes legíveis
+                      Exibindo <strong className="text-slate-900 dark:text-white">{(auctionsPage - 1) * ITEMS_PER_PAGE + 1}</strong> a <strong className="text-slate-900 dark:text-white">{Math.min(auctionsPage * ITEMS_PER_PAGE, filteredAuctions.length)}</strong> de <strong className="text-slate-900 dark:text-white">{filteredAuctions.length}</strong> lotes legíveis
                     </div>
 
                     <div className="flex flex-wrap items-center gap-1.5 font-semibold">
@@ -2158,7 +2185,7 @@ export default function App() {
                           setAuctionsPage(p => Math.max(1, p - 1));
                           window.scrollTo({ top: 200, behavior: 'smooth' });
                         }}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-lg transition-colors"
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-800 dark:text-slate-200 rounded-lg transition-colors"
                       >
                         Anterior
                       </button>
@@ -2173,7 +2200,7 @@ export default function App() {
                           className={`w-8 h-8 rounded-lg transition-all font-mono text-xs ${
                             auctionsPage === p
                               ? 'bg-amber-400 text-slate-950 font-bold shadow-md shadow-amber-400/20'
-                              : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                              : 'bg-white dark:bg-slate-900 hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
                           }`}
                         >
                           {p}
@@ -2186,7 +2213,7 @@ export default function App() {
                           setAuctionsPage(p => Math.min(totalAuctionsPages, p + 1));
                           window.scrollTo({ top: 200, behavior: 'smooth' });
                         }}
-                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 rounded-lg transition-colors"
+                        className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-800 dark:text-slate-200 rounded-lg transition-colors"
                       >
                         Próximo
                       </button>
@@ -2307,10 +2334,10 @@ export default function App() {
       </main>
 
       {/* Global Footer */}
-      <footer className="border-t border-slate-800 bg-[#080c13] py-8 text-xs text-slate-500">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-[#080c13] py-8 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-slate-300">USAFAST LEILÕES HUB</span>
+            <span className="font-bold text-slate-700 dark:text-slate-300">USAFAST LEILÕES HUB</span>
             <span>·</span>
             <span>Assessoria de Leilões em Miami & Plataforma Oficial de Arrematação</span>
           </div>
@@ -2318,42 +2345,42 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-4">
             <button
               onClick={() => setCurrentPage('quem-somos')}
-              className="hover:text-slate-300 transition-colors"
+              className="hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
             >
               Quem Somos
             </button>
             <span>·</span>
             <button
               onClick={() => setCurrentPage('live')}
-              className="text-rose-400 hover:underline font-semibold"
+              className="text-rose-600 dark:text-rose-400 hover:underline font-semibold"
             >
               Live ao Vivo
             </button>
             <span>·</span>
             <button
               onClick={() => setCurrentPage('leiloes')}
-              className="hover:text-slate-300 transition-colors"
+              className="hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
             >
               Leilões
             </button>
             <span>·</span>
             <button
               onClick={() => setCurrentPage('gradeamento')}
-              className="hover:text-slate-300 transition-colors"
+              className="hover:text-slate-900 dark:hover:text-slate-300 transition-colors"
             >
               Gradeamento
             </button>
             <span>·</span>
             <button
               onClick={() => setCurrentPage('cliente')}
-              className="text-emerald-400 hover:underline font-semibold"
+              className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
             >
               Painel do Cliente
             </button>
             <span>·</span>
             <button
               onClick={() => setCurrentPage('admin')}
-              className="text-amber-400 hover:underline font-semibold"
+              className="text-amber-600 dark:text-amber-400 hover:underline font-semibold"
             >
               Painel Admin (Excel)
             </button>

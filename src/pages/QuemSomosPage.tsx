@@ -11,17 +11,17 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
   onOpenSystem
 }) => {
   return (
-    <div className="space-y-16 py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-slate-200">
+    <div className="space-y-16 py-8 sm:py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-slate-800 dark:text-slate-200">
       {/* Hero Quem Somos */}
       <div className="space-y-6 text-center max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-700/80 text-xs text-amber-400 font-semibold">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-700/80 text-xs text-amber-600 dark:text-amber-400 font-semibold">
           <Building2 className="w-4 h-4" />
           <span>Assessoria & Plataforma de Importação de Leilões dos EUA</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight">
-          Conectando o Lojista Brasileiro às <span className="text-amber-400">Maiores Liquidações da Apple nos EUA</span>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+          Conectando o Lojista Brasileiro às <span className="text-amber-600 dark:text-amber-400">Maiores Liquidações da Apple nos EUA</span>
         </h1>
-        <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
           Nascemos para desmistificar a importação de iPhones através de leilões atacadistas americanos. Eliminamos intermediários abusivos e oferecemos suporte integral com infraestrutura própria em Miami para conferência física, laudos de 30 pontos e despacho aéreo seguro até o Brasil.
         </p>
       </div>
@@ -50,32 +50,32 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
         </div>
 
         <div className="lg:col-span-5 space-y-4">
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+          <div className="p-4 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
               <Globe2 className="w-4 h-4" />
               <span>Acesso Direto sem Exigência de SSN</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               As grandes plataformas e leilões corporativos dos EUA exigem registros corporativos e identificação fiscal americana. Com nosso sistema, compradores e revendedores brasileiros participam através de credenciamento legal com CPF ou CNPJ nacional.
             </p>
           </div>
 
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+          <div className="p-4 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
               <ShieldCheck className="w-4 h-4" />
               <span>Conferência de 100% dos Manifestos</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Não arrematamos "lotes às cegas". Cada lote listado em nossa plataforma é acompanhado do manifesto com IMEI, laudo de bateria e confirmação de FMI OFF (iCloud desativado) e Clean ESN.
             </p>
           </div>
 
-          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-xl space-y-2">
-            <div className="flex items-center gap-2 text-cyan-400 font-bold text-sm">
+          <div className="p-4 bg-white/80 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+            <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-sm">
               <Truck className="w-4 h-4" />
               <span>Logística Reversa & Consolidação em Miami</span>
             </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               Após o encerramento do leilão, os iPhones são entregues em nosso centro de distribuição na Flórida, onde são fotografados, reembalados com proteção antiestática e enviados via frete aéreo prioritário ao Brasil.
             </p>
           </div>
@@ -84,32 +84,32 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
 
       {/* Números da Operação */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl text-center space-y-1">
-          <span className="text-3xl sm:text-4xl font-black text-amber-400 font-mono">+18.400</span>
-          <span className="text-xs text-slate-400 block font-medium">iPhones Arrematados</span>
+        <div className="p-6 bg-white/75 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl text-center space-y-1">
+          <span className="text-3xl sm:text-4xl font-black text-amber-600 dark:text-amber-400 font-mono">+18.400</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 block font-medium">iPhones Arrematados</span>
         </div>
-        <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl text-center space-y-1">
-          <span className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">100%</span>
-          <span className="text-xs text-slate-400 block font-medium">Aparelhos com Clean ESN</span>
+        <div className="p-6 bg-white/75 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl text-center space-y-1">
+          <span className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 font-mono">100%</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 block font-medium">Aparelhos com Clean ESN</span>
         </div>
-        <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl text-center space-y-1">
-          <span className="text-3xl sm:text-4xl font-black text-cyan-400 font-mono">98.8%</span>
-          <span className="text-xs text-slate-400 block font-medium">Aprovação dos Lojistas</span>
+        <div className="p-6 bg-white/75 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl text-center space-y-1">
+          <span className="text-3xl sm:text-4xl font-black text-cyan-600 dark:text-cyan-400 font-mono">98.8%</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 block font-medium">Aprovação dos Lojistas</span>
         </div>
-        <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-2xl text-center space-y-1">
-          <span className="text-3xl sm:text-4xl font-black text-white font-mono">48h</span>
-          <span className="text-xs text-slate-400 block font-medium">Tempo Médio de Inspeção</span>
+        <div className="p-6 bg-white/75 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800 rounded-2xl text-center space-y-1">
+          <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white font-mono">48h</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 block font-medium">Tempo Médio de Inspeção</span>
         </div>
       </div>
 
       {/* Nossa Equipe e Infraestrutura */}
-      <div className="p-6 sm:p-8 bg-slate-900/50 border border-slate-800 rounded-2xl space-y-6">
+      <div className="p-6 sm:p-8 bg-white/80 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-white tracking-tight">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
               Infraestrutura Bilíngue e Suporte Dedicado
             </h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
               Equipe técnica de analistas de hardware em Miami e especialistas aduaneiros em São Paulo
             </p>
           </div>
@@ -121,22 +121,22 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-300">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-700 dark:text-slate-300">
           <div className="space-y-2">
-            <span className="font-semibold text-white block text-sm">1. Equipe Técnica Especializada Apple</span>
-            <p className="text-slate-400 leading-relaxed">
+            <span className="font-semibold text-slate-900 dark:text-white block text-sm">1. Equipe Técnica Especializada Apple</span>
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
               Técnicos treinados realizam a triagem física de telas, integridade de bateria, ausência de contas iCloud ativas e validação de peças 100% originais.
             </p>
           </div>
           <div className="space-y-2">
-            <span className="font-semibold text-white block text-sm">2. Desembaraço e Tributação</span>
-            <p className="text-slate-400 leading-relaxed">
+            <span className="font-semibold text-slate-900 dark:text-white block text-sm">2. Desembaraço e Tributação</span>
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
               Orientamos nossos clientes quanto à melhor modalidade de importação formal ou simplificada junto à Receita Federal para maximizar a margem líquida.
             </p>
           </div>
           <div className="space-y-2">
-            <span className="font-semibold text-white block text-sm">3. Garantia de Entrega e Seguro</span>
-            <p className="text-slate-400 leading-relaxed">
+            <span className="font-semibold text-slate-900 dark:text-white block text-sm">3. Garantia de Entrega e Seguro</span>
+            <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
               Todas as cargas aéreas saem dos EUA com seguro total contra extravio ou avaria até a conferência em solo nacional.
             </p>
           </div>
@@ -144,9 +144,9 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
       </div>
 
       {/* Call to action */}
-      <div className="text-center p-8 bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/40 border border-amber-500/20 rounded-2xl space-y-4">
-        <h3 className="text-xl font-bold text-white">Pronto para arrematar lotes com nossa assessoria?</h3>
-        <p className="text-xs text-slate-400 max-w-lg mx-auto">
+      <div className="text-center p-8 bg-gradient-to-r from-amber-50 dark:from-amber-950/40 via-white dark:via-slate-900 to-amber-50 dark:to-amber-950/40 border border-amber-500/20 rounded-2xl space-y-4">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Pronto para arrematar lotes com nossa assessoria?</h3>
+        <p className="text-xs text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
           Explore os leilões em andamento agora mesmo ou entre em contato com nosso time de atendimento pelo sistema.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -159,9 +159,9 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
           </button>
           <button
             onClick={() => onOpenSystem('terminal')}
-            className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2"
           >
-            <Gavel className="w-4 h-4 text-amber-400" />
+            <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" />
             <span>Acessar Sistema de Leilões</span>
           </button>
         </div>

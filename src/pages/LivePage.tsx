@@ -120,41 +120,41 @@ export const LivePage: React.FC<LivePageProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
       {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             <button
               type="button"
               onClick={onNavigateHome}
-              className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Início</span>
             </button>
-            <span className="text-slate-700">/</span>
-            <span className="text-amber-400 font-semibold">
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-amber-600 dark:text-amber-400 font-semibold">
               Live de Leilões ao Vivo
             </span>
           </div>
 
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             {liveStatus.title || 'Leilão ao Vivo — USAFAST Hub'}
           </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs">
-            <Users className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-mono tabular-nums font-bold text-white">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs">
+            <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">
               {liveStatus.viewerCount}
             </span>
-            <span className="text-slate-400">assistindo</span>
+            <span className="text-slate-600 dark:text-slate-400">assistindo</span>
           </div>
 
           <button
             type="button"
             onClick={onNavigateAuctions}
-            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap"
+            className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap"
           >
             Ver Lotes Ativos
           </button>
@@ -162,7 +162,7 @@ export const LivePage: React.FC<LivePageProps> = ({
           <button
             type="button"
             onClick={onLogout}
-            className="px-3 py-2 bg-slate-900 hover:bg-rose-500/15 text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/30 rounded-xl text-xs font-semibold transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+            className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-rose-500/15 text-slate-700 dark:text-slate-300 hover:text-rose-700 dark:hover:text-rose-300 border border-slate-200 dark:border-slate-800 hover:border-rose-500/30 rounded-xl text-xs font-semibold transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
             title={`Conectado como ${currentUser.name || currentUser.email}`}
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -173,8 +173,8 @@ export const LivePage: React.FC<LivePageProps> = ({
 
       {/* Connection error alert if any */}
       {connectionError && (
-        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-200 text-xs flex items-center gap-2.5">
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <span>{connectionError}</span>
         </div>
       )}
@@ -319,28 +319,28 @@ export const LivePage: React.FC<LivePageProps> = ({
           </div>
 
           {/* Stream Metadata Strip */}
-          <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0">
                 <Radio
                   className={`w-4 h-4 ${
-                    liveStatus.isLive ? 'text-rose-400' : 'text-slate-500'
+                    liveStatus.isLive ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500'
                   }`}
                 />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-white truncate">
+                <div className="font-bold text-slate-900 dark:text-white truncate">
                   {liveStatus.isLive
                     ? `Transmitido por ${liveStatus.broadcasterName || 'Admin Geral'}`
                     : `Logado como ${currentUser.name || currentUser.email}`}
                 </div>
-                <div className="text-slate-400 truncate">
+                <div className="text-slate-600 dark:text-slate-400 truncate">
                   Fonte: {modeLabel}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-slate-400 shrink-0 font-mono text-[11px]">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 shrink-0 font-mono text-[11px]">
               <span
                 className={`h-2 w-2 rounded-full ${
                   connectionState === 'connected'

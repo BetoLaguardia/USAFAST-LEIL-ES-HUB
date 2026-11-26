@@ -55,15 +55,15 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
   const isConnected = connectionState === 'connected';
 
   return (
-    <aside className="flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden h-[440px] lg:h-full lg:min-h-[540px]">
+    <aside className="flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden h-[440px] lg:h-full lg:min-h-[540px]">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between gap-2 shrink-0">
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-950/60 flex items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <MessageSquare className="w-4 h-4 text-amber-400 shrink-0" />
-          <h3 className="text-sm font-bold text-white truncate">
+          <MessageSquare className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate">
             Bate-papo ao Vivo
           </h3>
-          <span className="text-xs font-mono tabular-nums text-slate-400">
+          <span className="text-xs font-mono tabular-nums text-slate-600 dark:text-slate-400">
             ({messages.length})
           </span>
         </div>
@@ -72,7 +72,7 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
           <button
             type="button"
             onClick={onClearChat}
-            className="px-2.5 py-1.5 text-[11px] font-semibold text-rose-300 hover:text-rose-200 hover:bg-rose-500/15 border border-rose-500/25 rounded-lg transition-colors shrink-0"
+            className="px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 dark:text-rose-300 hover:text-rose-800 dark:hover:text-rose-200 hover:bg-rose-500/15 border border-rose-500/25 rounded-lg transition-colors shrink-0"
           >
             Limpar chat
           </button>
@@ -86,7 +86,7 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
       >
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center px-4 py-8 text-slate-500 space-y-2">
-            <MessageSquare className="w-7 h-7 text-slate-700" />
+            <MessageSquare className="w-7 h-7 text-slate-300 dark:text-slate-700" />
             <p className="text-xs leading-relaxed max-w-[240px]">
               Nenhuma mensagem ainda. Envie perguntas ou comentários sobre os lotes em exibição.
             </p>
@@ -103,24 +103,24 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
                   isAdminMsg
                     ? 'bg-amber-500/10 border-amber-500/30'
                     : isSelf
-                    ? 'bg-slate-800/80 border-slate-700'
-                    : 'bg-slate-950/70 border-slate-800/90'
+                    ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-300 dark:border-slate-700'
+                    : 'bg-slate-100/80 dark:bg-slate-950/70 border-slate-200/90 dark:border-slate-800/90'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <div className="flex items-center gap-1.5 min-w-0">
                     {isAdminMsg && (
-                      <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
                     )}
                     <span
                       className={`font-bold truncate ${
-                        isAdminMsg ? 'text-amber-300' : 'text-slate-200'
+                        isAdminMsg ? 'text-amber-700 dark:text-amber-300' : 'text-slate-800 dark:text-slate-200'
                       }`}
                     >
                       {msg.senderName}
                     </span>
                     {isAdminMsg && (
-                      <span className="text-[10px] font-mono uppercase font-bold text-amber-400 shrink-0">
+                      <span className="text-[10px] font-mono uppercase font-bold text-amber-600 dark:text-amber-400 shrink-0">
                         Admin
                       </span>
                     )}
@@ -135,7 +135,7 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
                         type="button"
                         onClick={() => onDeleteMessage(msg.id)}
                         title="Remover mensagem"
-                        className="p-1 text-slate-500 hover:text-rose-400 transition-colors"
+                        className="p-1 text-slate-500 hover:text-rose-700 dark:hover:text-rose-400 transition-colors"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -143,7 +143,7 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
                   </div>
                 </div>
 
-                <p className="text-slate-200 leading-relaxed break-words whitespace-pre-wrap">
+                <p className="text-slate-800 dark:text-slate-200 leading-relaxed break-words whitespace-pre-wrap">
                   {msg.text}
                 </p>
               </div>
@@ -155,7 +155,7 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
       {/* Message Input */}
       <form
         onSubmit={handleSubmit}
-        className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center gap-2 shrink-0"
+        className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 flex items-center gap-2 shrink-0"
       >
         <input
           type="text"
@@ -168,7 +168,7 @@ export const LiveChatPanel: React.FC<LiveChatPanelProps> = ({
               ? 'Escreva sua mensagem no bate-papo...'
               : 'Conectando ao bate-papo...'
           }
-          className="flex-1 min-h-[44px] bg-slate-900 border border-slate-800 focus:border-amber-400 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none transition-colors disabled:opacity-50"
+          className="flex-1 min-h-[44px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-amber-400 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-colors disabled:opacity-50"
         />
         <button
           type="submit"

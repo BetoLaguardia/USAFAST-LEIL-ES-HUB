@@ -19,6 +19,17 @@
         } catch (e) {
           // ignore if environment restricts redefinition
         }
+        // Apply saved theme immediately before first paint (default: dark)
+        try {
+          var savedTheme = localStorage.getItem('us_iphone_theme');
+          if (savedTheme === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
         // Prevent browser extension background errors from breaking the page
         window.addEventListener('error', function(e) {
           if (e && e.filename && e.filename.indexOf('chrome-extension://') !== -1) {
@@ -47,7 +58,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-[#0b0f17] text-slate-100 antialiased font-sans selection:bg-amber-500/20 selection:text-amber-300">
+  <body class="bg-slate-50 dark:bg-[#0b0f17] text-slate-900 dark:text-slate-100 antialiased font-sans selection:bg-amber-500/20 selection:text-amber-700 dark:selection:text-amber-300 transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

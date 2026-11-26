@@ -102,8 +102,8 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
   const displayLotGrade = verizon ? mapVerizonGradeStrict(lot.grade) : lot.grade;
   const gradeInfo = GRADE_EXPLANATIONS[displayLotGrade] || {
-    badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/40',
-    textColor: 'text-amber-300',
+    badgeColor: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/40',
+    textColor: 'text-amber-700 dark:text-amber-300',
     label: displayLotGrade,
     description: ''
   };
@@ -182,13 +182,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-150">
       <div
-        className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden"
+        className="bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-700/80 rounded-2xl w-full max-w-5xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/70">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-950/70">
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-amber-400 font-bold">
+            <span className="font-mono text-xs px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-amber-600 dark:text-amber-400 font-bold">
               {lot.lotNumber}
             </span>
             {verizon && (
@@ -211,11 +211,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 MARKETPLACE {mktNum}
               </span>
             )}
-            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+            <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
               <span>{lot.auctionHouse}</span>
               <span>·</span>
-              <span className="flex items-center gap-1 text-slate-300">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" />
+              <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                 {lot.location}
               </span>
             </div>
@@ -227,7 +227,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 href={lot.originalListingUrl || lot.listingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-300 rounded-lg text-xs font-semibold transition-colors"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/40 text-red-700 dark:text-red-300 rounded-lg text-xs font-semibold transition-colors"
                 title="Abrir anúncio oficial do lote"
               >
                 <span>Ver Anúncio Oficial ↗</span>
@@ -235,7 +235,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             )}
             <button
               onClick={handleDownloadXlsx}
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold transition-colors"
               title="Baixar planilha XLSX USAFAST LEILÕES com todos os aparelhos"
             >
               <Download className="w-3.5 h-3.5" />
@@ -243,7 +243,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             </button>
             <button
               onClick={handleDownloadPdf}
-              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-lg text-xs font-semibold transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-semibold transition-colors"
               title="Exportar Manifesto Técnico Oficial em PDF"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -251,7 +251,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white hover:bg-slate-200/80 dark:hover:bg-slate-800 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -259,17 +259,17 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-200 text-xs">
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800 dark:text-slate-200 text-xs">
           {bidStatus && (
-            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 flex items-center gap-2 animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-700 dark:text-emerald-300 flex items-center gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span className="font-medium">{bidStatus}</span>
             </div>
           )}
 
           {bidError && (
-            <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 flex items-center gap-2 animate-in fade-in">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-700 dark:text-rose-300 flex items-center gap-2 animate-in fade-in">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
               <span className="font-medium">{bidError}</span>
             </div>
           )}
@@ -311,7 +311,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       key={idx}
                       onClick={() => setActiveImage(img)}
                       className={`w-16 h-12 rounded-lg overflow-hidden border transition-all ${
-                        activeImage === img ? 'border-amber-400 scale-95' : 'border-slate-800 opacity-60 hover:opacity-100'
+                        activeImage === img ? 'border-amber-400 scale-95' : 'border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'
                       }`}
                     >
                       <img
@@ -328,31 +328,31 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
               )}
 
               {/* Diagnostic 30-points summary */}
-              <div className="p-3 bg-slate-950/70 border border-slate-800 rounded-xl space-y-2">
-                <span className="font-semibold text-slate-300 block">Laudo de Inspeção Técnica:</span>
+              <div className="p-3 bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 block">Laudo de Inspeção Técnica:</span>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Clean IMEI / ESN OK</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>iCloud / FMI OFF</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Face ID 100% Ativo</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>True Tone Original</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Sem Bloqueio MDM</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Câmeras Testadas</span>
                   </div>
                 </div>
@@ -362,68 +362,68 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             {/* Bidding & Spec Module (7 cols) */}
             <div className="lg:col-span-7 space-y-4">
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-snug">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight leading-snug">
                   {stripLotPrefix(lot.title)}
                 </h1>
-                <p className="text-slate-400 text-xs mt-1.5 leading-relaxed">
+                <p className="text-slate-600 dark:text-slate-400 text-xs mt-1.5 leading-relaxed">
                   {lot.description}
                 </p>
               </div>
 
               {/* Specs Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-950/50 border border-slate-800 rounded-xl text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-100/70 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 rounded-xl text-xs">
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Classificação / Grade</span>
+                  <span className="text-slate-600 dark:text-slate-400 block text-[11px]">Classificação / Grade</span>
                   <span className={`font-bold font-mono ${gradeInfo.textColor}`}>{displayLotGrade}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Saúde de Bateria</span>
-                  <span className="font-semibold text-white font-mono flex items-center gap-1">
-                    <Battery className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-slate-600 dark:text-slate-400 block text-[11px]">Saúde de Bateria</span>
+                  <span className="font-semibold text-slate-900 dark:text-white font-mono flex items-center gap-1">
+                    <Battery className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     {lot.batteryHealthRange}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Armazenamento</span>
-                  <span className="font-semibold text-white">{lot.primaryStorage}</span>
+                  <span className="text-slate-600 dark:text-slate-400 block text-[11px]">Armazenamento</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">{lot.primaryStorage}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Status Operadora</span>
-                  <span className="font-semibold text-emerald-400">{lot.carrierStatus}</span>
+                  <span className="text-slate-600 dark:text-slate-400 block text-[11px]">Status Operadora</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{lot.carrierStatus}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Casa de Leilão EUA</span>
-                  <span className="font-semibold text-slate-200">{lot.auctionHouse}</span>
+                  <span className="text-slate-600 dark:text-slate-400 block text-[11px]">Casa de Leilão EUA</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{lot.auctionHouse}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block text-[11px]">Localização EUA</span>
-                  <span className="font-semibold text-slate-200">{lot.location}</span>
+                  <span className="text-slate-600 dark:text-slate-400 block text-[11px]">Localização EUA</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{lot.location}</span>
                 </div>
               </div>
 
               {/* Price & Bidding / Direct Purchase Form Box */}
-              <div className={`p-4 bg-gradient-to-br from-slate-950 to-slate-900 border rounded-xl space-y-4 ${isProntaEntrega ? 'border-emerald-500/40' : 'border-amber-500/30'}`}>
+              <div className={`p-4 bg-gradient-to-br from-slate-50 dark:from-slate-950 to-slate-50 dark:to-slate-900 border rounded-xl space-y-4 ${isProntaEntrega ? 'border-emerald-500/40' : 'border-amber-500/30'}`}>
                 {verizon ? (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <span className="text-[11px] text-slate-400 uppercase font-semibold block">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 uppercase font-semibold block">
                         {lot.currentBidUsd === 0 ? 'Modelo de Lance Verizon:' : 'Última Oferta Registrada:'}
                       </span>
                       {lot.currentBidUsd === 0 ? (
                         <>
-                          <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight block">
+                          <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight block">
                             Sem Preço Fixo
                           </span>
-                          <span className="text-xs text-amber-300 font-semibold block">
+                          <span className="text-xs text-amber-700 dark:text-amber-300 font-semibold block">
                             O cliente escolhe o valor da oferta (em USD)
                           </span>
                         </>
                       ) : (
                         <>
-                          <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+                          <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
                             {formattedCurrentPrice}
                           </span>
-                          <span className="text-[11px] text-slate-400 block font-mono">
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400 block font-mono">
                             {currency === 'USD' ? `aprox. R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}` : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD`}
                           </span>
                         </>
@@ -431,11 +431,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                     </div>
 
                     <div className="text-right space-y-1">
-                      <span className="px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-200 font-bold text-[11px] inline-flex items-center gap-1.5">
-                        <Lock className="w-3 h-3 text-red-400" />
+                      <span className="px-2.5 py-1 rounded-lg bg-red-600/20 border border-red-500/40 text-red-800 dark:text-red-200 font-bold text-[11px] inline-flex items-center gap-1.5">
+                        <Lock className="w-3 h-3 text-red-600 dark:text-red-400" />
                         <span>Qtd Fixa: {lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}</span>
                       </span>
-                      <span className="text-[11px] text-slate-400 block">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 block">
                         Lote fechado — sem escolha de quantidade
                       </span>
                     </div>
@@ -443,23 +443,23 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 ) : isProntaEntrega ? (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <span className="text-[11px] text-emerald-300 uppercase font-semibold block">
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-300 uppercase font-semibold block">
                         Preço Unitário Fixo (Pronta Entrega):
                       </span>
-                      <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
-                        $ {unitReferenceUsd.toLocaleString()} USD <span className="text-sm font-normal text-slate-400">/ un.</span>
+                      <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                        $ {unitReferenceUsd.toLocaleString()} USD <span className="text-sm font-normal text-slate-600 dark:text-slate-400">/ un.</span>
                       </span>
-                      <span className="text-[11px] text-slate-400 block font-mono">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 block font-mono">
                         aprox. R$ {Math.round(unitReferenceUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} / un.
                       </span>
                     </div>
 
                     <div className="text-right">
-                      <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 font-bold text-[11px] inline-flex items-center gap-1.5">
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] inline-flex items-center gap-1.5">
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>Compra Direta · Preço Fixo</span>
                       </span>
-                      <span className="text-[11px] text-slate-400 block mt-1">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 block mt-1">
                         Disponível: {lot.quantity} {lot.quantity === 1 ? 'unidade' : 'unidades'}
                       </span>
                     </div>
@@ -467,16 +467,16 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 ) : (
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <span className="text-[11px] text-slate-400 uppercase font-semibold block">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 uppercase font-semibold block">
                         {isAssurant && lot.quantity > 1 ? 'Valor Unitário (Assurant):' : 'Lance Atual no Leilão:'}
                       </span>
-                      <span className="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+                      <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
                         {formattedCurrentPrice}
                         {isAssurant && lot.quantity > 1 && (
-                          <span className="text-sm font-normal text-slate-400"> / un.</span>
+                          <span className="text-sm font-normal text-slate-600 dark:text-slate-400"> / un.</span>
                         )}
                       </span>
-                      <span className="text-[11px] text-slate-400 block font-mono">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 block font-mono">
                         {currency === 'USD'
                           ? `aprox. R$ ${(lot.currentBidUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`
                           : `≈ $ ${lot.currentBidUsd.toLocaleString()} USD${isAssurant && lot.quantity > 1 ? ' / un.' : ''}`}
@@ -485,13 +485,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
                     {hasRetailEstimate && (
                       <div className="text-right">
-                        <span className="text-[11px] text-slate-400 block">
+                        <span className="text-[11px] text-slate-600 dark:text-slate-400 block">
                           Revenda Estimada Brasil{isAssurant && lot.quantity > 1 ? ' (/ un.)' : ''}:
                         </span>
-                        <span className="text-base font-bold text-white font-mono">
+                        <span className="text-base font-bold text-slate-900 dark:text-white font-mono">
                           {formattedRetailPrice}
                         </span>
-                        <span className="text-[10px] text-emerald-400 font-semibold block">
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold block">
                           Margem Bruta Estimada: aprox. R$ {(lot.estimatedBrazilRetailBrl - (lot.currentBidUsd * usdRate)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}{isAssurant && lot.quantity > 1 ? ' / un.' : ''}
                         </span>
                       </div>
@@ -500,54 +500,54 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 )}
 
                 {verizon ? (
-                  <div className="p-2.5 bg-red-950/30 border border-red-500/30 rounded-lg text-[11px] text-red-200 flex flex-wrap items-center justify-between gap-2">
+                  <div className="p-2.5 bg-red-50 dark:bg-red-950/30 border border-red-500/30 rounded-lg text-[11px] text-red-800 dark:text-red-200 flex flex-wrap items-center justify-between gap-2">
                     <span>Regra Verizon: Escolha livremente o valor em USD para arrematar o lote completo.</span>
-                    <span className="font-mono font-bold text-emerald-300">Sem mínimo obrigatório</span>
+                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">Sem mínimo obrigatório</span>
                   </div>
                 ) : isProntaEntrega ? (
-                  <div className="p-2.5 bg-emerald-950/35 border border-emerald-500/35 rounded-lg text-[11px] text-emerald-200 flex flex-wrap items-center justify-between gap-2">
+                  <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/35 border border-emerald-500/35 rounded-lg text-[11px] text-emerald-800 dark:text-emerald-200 flex flex-wrap items-center justify-between gap-2">
                     <span>Compra Direta (Pronta Entrega): valor unitário fixo. Altere apenas a quantidade desejada.</span>
-                    <span className="font-mono font-bold text-emerald-300 flex items-center gap-1">
+                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
                       <Lock className="w-3 h-3" />
                       Preço bloqueado
                     </span>
                   </div>
                 ) : isAssurant ? (
-                  <div className="p-2.5 bg-blue-950/40 border border-blue-500/30 rounded-lg text-xs space-y-1.5">
+                  <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 border border-blue-500/30 rounded-lg text-xs space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-blue-200 font-semibold">Média lance aprovado arremate anterior:</span>
-                      <span className="font-mono font-bold text-blue-300 text-sm">
-                        ${getAssurantPreviousApprovedBid(lot).toLocaleString()} USD <span className="text-[10px] text-slate-400 font-normal">/ un.</span>
+                      <span className="text-blue-800 dark:text-blue-200 font-semibold">Média lance aprovado arremate anterior:</span>
+                      <span className="font-mono font-bold text-blue-700 dark:text-blue-300 text-sm">
+                        ${getAssurantPreviousApprovedBid(lot).toLocaleString()} USD <span className="text-[10px] text-slate-600 dark:text-slate-400 font-normal">/ un.</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-blue-500/20">
-                      <span className="text-cyan-200 font-semibold">Incremento (Assurant):</span>
-                      <span className="font-mono font-bold text-cyan-300">
+                      <span className="text-cyan-800 dark:text-cyan-200 font-semibold">Incremento (Assurant):</span>
+                      <span className="font-mono font-bold text-cyan-700 dark:text-cyan-300">
                         {incrementSize} {incrementSize === 1 ? 'unidade' : 'unidades'}
                       </span>
                     </div>
                   </div>
                 ) : isDiscountAuction ? (
-                  <div className="p-2.5 bg-cyan-950/30 border border-cyan-500/30 rounded-lg text-[11px] text-cyan-200 flex flex-wrap items-center justify-between gap-2">
+                  <div className="p-2.5 bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-500/30 rounded-lg text-[11px] text-cyan-800 dark:text-cyan-200 flex flex-wrap items-center justify-between gap-2">
                     <span>Oferta livre ({effectiveQty} un.): você pode enviar um preço menor para análise.</span>
-                    <span className="font-mono font-bold text-emerald-300">Valor atual: ${baseBidUsd.toLocaleString()} USD</span>
+                    <span className="font-mono font-bold text-emerald-700 dark:text-emerald-300">Valor atual: ${baseBidUsd.toLocaleString()} USD</span>
                   </div>
                 ) : (
-                  <div className="text-[11px] text-slate-400 flex items-center justify-between font-medium px-1">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 flex items-center justify-between font-medium px-1">
                     <span>Valor Base / Mínimo ({effectiveQty} un.):</span>
-                    <span className="text-amber-400 font-mono font-bold">${minBid.toLocaleString()} USD</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-mono font-bold">${minBid.toLocaleString()} USD</span>
                   </div>
                 )}
 
-                <form onSubmit={handleBidSubmit} className="pt-2 border-t border-slate-800/80 space-y-3">
+                <form onSubmit={handleBidSubmit} className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 space-y-3">
                   {/* Quantity selector for non-Verizon lots */}
                   {!verizon && (
-                    <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                    <div className="p-2.5 rounded-lg bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <span className="text-[11px] font-semibold text-slate-300 block">
+                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block">
                           {isProntaEntrega ? 'Quantidade para Compra Direta:' : 'Quantidade de Aparelhos para Lance:'}
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-[10px] text-slate-600 dark:text-slate-400">
                           Disponível {isProntaEntrega ? 'em estoque' : 'no lote'}: {lot.quantity} {lot.quantity === 1 ? 'aparelho' : 'aparelhos'}
                           {isAssurant ? ` · Incremento: ${incrementSize} un.` : ''}
                         </span>
@@ -558,7 +558,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                           type="button"
                           onClick={() => handleChangeBidQuantity(effectiveQty - qtyStep)}
                           disabled={effectiveQty <= qtyStep}
-                          className="w-7 h-7 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center transition-colors"
+                          className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-900 dark:text-white font-bold text-sm flex items-center justify-center transition-colors"
                           aria-label="Diminuir quantidade"
                         >
                           -
@@ -570,13 +570,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                           step={qtyStep}
                           value={effectiveQty}
                           onChange={e => handleChangeBidQuantity(Number(e.target.value))}
-                          className={`w-16 bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-center text-xs font-mono font-bold focus:outline-none ${isProntaEntrega ? 'text-emerald-300 focus:border-emerald-400' : 'text-amber-300 focus:border-amber-400'}`}
+                          className={`w-16 bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 text-center text-xs font-mono font-bold focus:outline-none ${isProntaEntrega ? 'text-emerald-700 dark:text-emerald-300 focus:border-emerald-400' : 'text-amber-700 dark:text-amber-300 focus:border-amber-400'}`}
                         />
                         <button
                           type="button"
                           onClick={() => handleChangeBidQuantity(effectiveQty + qtyStep)}
                           disabled={effectiveQty >= lot.quantity}
-                          className="w-7 h-7 rounded-md bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center transition-colors"
+                          className="w-7 h-7 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-900 dark:text-white font-bold text-sm flex items-center justify-center transition-colors"
                           aria-label="Aumentar quantidade"
                         >
                           +
@@ -587,8 +587,8 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                             onClick={() => handleChangeBidQuantity(lot.quantity)}
                             className={`ml-1 px-2 py-1 rounded border text-[10px] font-bold transition-colors ${
                               isProntaEntrega
-                                ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300'
-                                : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300'
+                                ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-700 dark:text-amber-300'
                             }`}
                           >
                             {isProntaEntrega ? `Comprar Tudo (${lot.quantity})` : `Lote Todo (${lot.quantity})`}
@@ -600,17 +600,17 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
                   {isProntaEntrega ? (
                     <div className="space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-950 border border-emerald-500/30 rounded-xl">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-100 dark:bg-slate-950 border border-emerald-500/30 rounded-xl">
                         <div>
-                          <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                            <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                             <span>Valor Total Fixo ({effectiveQty} {effectiveQty === 1 ? 'unidade' : 'unidades'} × ${unitReferenceUsd.toLocaleString()}):</span>
                           </span>
                           <div className="flex items-baseline gap-2 mt-0.5">
-                            <span className="text-xl font-black text-emerald-400 font-mono">
+                            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                               $ {fixedTotalUsd.toLocaleString()} USD
                             </span>
-                            <span className="text-[11px] text-slate-400 font-mono">
+                            <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">
                               (aprox. R$ {(fixedTotalUsd * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 0 })})
                             </span>
                           </div>
@@ -629,7 +629,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                     <>
                       <div className="flex items-center gap-2">
                         <div className="relative flex-1">
-                          <span className="absolute left-3 top-2.5 text-slate-400 font-mono font-bold">$</span>
+                          <span className="absolute left-3 top-2.5 text-slate-600 dark:text-slate-400 font-mono font-bold">$</span>
                           <input
                             type="number"
                             min={minBid}
@@ -639,7 +639,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                               setBidError(null);
                               setBidValue(e.target.value);
                             }}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-white focus:outline-none focus:border-amber-400"
+                            className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-3 py-2 text-sm font-mono text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
                             placeholder={
                               verizon
                                 ? 'Informe seu valor em USD (ex: 1200)'
@@ -663,9 +663,9 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       </div>
 
                       {parsedBid > 0 && (
-                        <div className="text-[11px] text-slate-400 font-mono flex items-center justify-between">
+                        <div className="text-[11px] text-slate-600 dark:text-slate-400 font-mono flex items-center justify-between">
                           <span>Equivalente aproximado (PTAX):</span>
-                          <span className="text-slate-200 font-semibold">
+                          <span className="text-slate-800 dark:text-slate-200 font-semibold">
                             {isAssurant
                               ? `aprox. R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ' / un.' : ''}`
                               : `aprox. R$ ${(parsedBid * usdRate).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}${effectiveQty > 1 ? ` (~$${Math.round(parsedBid / effectiveQty).toLocaleString()} / un.)` : ''}`}
@@ -677,7 +677,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         {isDiscountAuction ? (
                           <>
-                            <span className="text-[11px] text-slate-400">Sugestões:</span>
+                            <span className="text-[11px] text-slate-600 dark:text-slate-400">Sugestões:</span>
                             {[5, 10, 15, 25].map((delta) => {
                               const targetVal = Math.max(1, baseBidUsd - delta);
                               const isActive = parsedBid === targetVal;
@@ -692,7 +692,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                                   className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors ${
                                     isActive
                                       ? 'bg-amber-500 text-slate-950 font-bold'
-                                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                                   }`}
                                   title={`Aplicar $${targetVal.toLocaleString()} USD`}
                                 >
@@ -703,7 +703,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                           </>
                         ) : (
                           <>
-                            <span className="text-[11px] text-slate-400">Sugestões:</span>
+                            <span className="text-[11px] text-slate-600 dark:text-slate-400">Sugestões:</span>
                             {[5, 10, 15, 25].map((inc) => {
                               const targetVal =
                                 baseBidUsd > 0
@@ -721,7 +721,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                                   className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors ${
                                     isActive
                                       ? 'bg-amber-500 text-slate-950 font-bold'
-                                      : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                                      : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                                   }`}
                                   title={`Aplicar $${targetVal.toLocaleString()} USD`}
                                 >
@@ -734,7 +734,7 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                         <button
                           type="button"
                           onClick={onOpenSystem}
-                          className="ml-auto text-amber-400 hover:text-amber-300 text-[11px] underline"
+                          className="ml-auto text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 text-[11px] underline"
                         >
                           Configurar no Nosso Sistema ➔
                         </button>
@@ -748,34 +748,34 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
           {/* Expandable Mix Summary (Models, GBs & Colors) */}
           {mix.hasExpandableDetails && (
-            <div className="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="bg-slate-100/80 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
               <button
                 type="button"
                 onClick={() => setMixExpanded(prev => !prev)}
-                className="w-full px-4 py-3 flex items-center justify-between gap-3 bg-slate-900/70 hover:bg-slate-900 transition-colors text-left"
+                className="w-full px-4 py-3 flex items-center justify-between gap-3 bg-white/85 dark:bg-slate-900/70 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors text-left"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Layers className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="font-bold text-white text-xs">
+                  <Layers className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="font-bold text-slate-900 dark:text-white text-xs">
                     Resumo do Lote Mesclado / Mix de Modelos ({mix.groupedItems.length} variações)
                   </span>
                   {mix.hasMixedModels && (
-                    <span className="px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/35 text-purple-300 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/35 text-purple-700 dark:text-purple-300 text-[10px] font-bold">
                       {mix.uniqueModels.length} Modelos
                     </span>
                   )}
                   {mix.hasMixedStorages && (
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/35 text-cyan-300 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/35 text-cyan-700 dark:text-cyan-300 text-[10px] font-bold">
                       {mix.uniqueStorages.length} GBs ({mix.uniqueStorages.join(', ')})
                     </span>
                   )}
                   {mix.hasMixedColors && (
-                    <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 text-amber-300 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
                       {mix.uniqueColors.length} Cores
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-amber-400 text-[11px] font-bold shrink-0">
+                <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[11px] font-bold shrink-0">
                   <span>{mixExpanded ? 'Recolher' : 'Expandir'}</span>
                   <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${mixExpanded ? 'rotate-180' : ''}`} />
                 </div>
@@ -787,12 +787,12 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                 }`}
               >
                 <div className="overflow-hidden">
-                  <div className="p-4 space-y-3 border-t border-slate-800/80">
+                  <div className="p-4 space-y-3 border-t border-slate-200/80 dark:border-slate-800/80">
                     {mix.uniqueColors.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                        <span className="text-slate-400 font-semibold mr-1">Cores presentes:</span>
+                        <span className="text-slate-600 dark:text-slate-400 font-semibold mr-1">Cores presentes:</span>
                         {mix.uniqueColors.map(col => (
-                          <span key={col} className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-200">
+                          <span key={col} className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200">
                             ● {col}
                           </span>
                         ))}
@@ -803,23 +803,23 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       {mix.groupedItems.map(entry => (
                         <div
                           key={entry.key}
-                          className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2"
+                          className="p-2.5 rounded-lg bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2"
                         >
                           <div className="min-w-0">
-                            <span className="font-semibold text-white block truncate">{entry.model}</span>
+                            <span className="font-semibold text-slate-900 dark:text-white block truncate">{entry.model}</span>
                             <div className="flex flex-wrap items-center gap-1 mt-1 text-[10px]">
-                              <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 font-mono font-semibold">
+                              <span className="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 font-mono font-semibold">
                                 {entry.storage}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
                                 {entry.color}
                               </span>
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 font-bold">
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold">
                                 {entry.grade}
                               </span>
                             </div>
                           </div>
-                          <span className="px-2 py-1 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono font-bold text-xs shrink-0">
+                          <span className="px-2 py-1 rounded bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 font-mono font-bold text-xs shrink-0">
                             {entry.qty}x
                           </span>
                         </div>
@@ -835,11 +835,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
           <div className="space-y-3 pt-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   Manifesto Técnico — Aparelhos do Lote ({expandedManifest.units.length}{expandedManifest.isTruncated ? ` exibidos de ${expandedManifest.totalLotQuantity}` : ''} {expandedManifest.totalLotQuantity === 1 ? 'aparelho' : 'aparelhos'})
                 </h3>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
                   Relação individual de cada aparelho com modelo, capacidade, cor, grade, bateria, tela, carcaça, iCloud e IMEI.
                 </p>
               </div>
@@ -847,14 +847,14 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={handleDownloadXlsx}
-                  className="px-3.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/35 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Exportar Planilha XLSX (USAFAST LEILÕES)</span>
                 </button>
                 <button
                   onClick={handleDownloadPdf}
-                  className="px-3.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-700 dark:text-amber-300 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   <span>Exportar Manifesto (PDF)</span>
@@ -862,10 +862,10 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950/60 max-h-80 overflow-y-auto">
+            <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-100/80 dark:bg-slate-950/60 max-h-80 overflow-y-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900/95 text-slate-400 text-[11px] sticky top-0 z-10">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 text-slate-600 dark:text-slate-400 text-[11px] sticky top-0 z-10">
                     <th className="py-2.5 px-3 font-semibold">Aparelho</th>
                     <th className="py-2.5 px-3 font-semibold">Modelo & Descrição</th>
                     <th className="py-2.5 px-3 font-semibold">Armazenamento</th>
@@ -880,34 +880,34 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                     <th className="py-2.5 px-3 font-semibold">Part #</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-800 dark:text-slate-200">
                   {visibleManifestUnits.map((dev) => (
                     <tr key={dev.id} className="hover:bg-slate-900/40 transition-colors">
-                      <td className="py-2 px-3 font-mono font-bold text-amber-300 whitespace-nowrap">
+                      <td className="py-2 px-3 font-mono font-bold text-amber-700 dark:text-amber-300 whitespace-nowrap">
                         #{dev.unitIndex}
                       </td>
                       <td className="py-2 px-3">
-                        <span className="font-semibold text-white block whitespace-nowrap">{dev.model}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white block whitespace-nowrap">{dev.model}</span>
                         {dev.itemDescription && (
-                          <span className="text-[10px] text-slate-400 font-mono block truncate max-w-[200px]" title={dev.itemDescription}>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono block truncate max-w-[200px]" title={dev.itemDescription}>
                             {dev.itemDescription}
                           </span>
                         )}
                       </td>
                       <td className="py-2 px-3 font-mono whitespace-nowrap">{dev.storage}</td>
-                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.resolvedColor}</td>
+                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{dev.resolvedColor}</td>
                       <td className="py-2 px-3 whitespace-nowrap">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_EXPLANATIONS[dev.resolvedGrade]?.badgeColor || 'bg-amber-500/15 text-amber-300 border-amber-500/30'}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${GRADE_EXPLANATIONS[dev.resolvedGrade]?.badgeColor || 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'}`}>
                           {dev.resolvedGrade}
                         </span>
                       </td>
-                      <td className="py-2 px-3 font-mono text-emerald-400 font-semibold whitespace-nowrap">{dev.batteryHealth}%</td>
-                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.carrierStatus}</td>
-                      <td className="py-2 px-3 text-emerald-300 whitespace-nowrap">{dev.icloudStatus}</td>
-                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.screenCondition}</td>
-                      <td className="py-2 px-3 text-slate-300 whitespace-nowrap">{dev.housingCondition}</td>
-                      <td className="py-2 px-3 font-mono text-slate-400 whitespace-nowrap">{dev.imeiMasked}</td>
-                      <td className="py-2 px-3 font-mono text-slate-400 whitespace-nowrap">{dev.partNumber || '-'}</td>
+                      <td className="py-2 px-3 font-mono text-emerald-600 dark:text-emerald-400 font-semibold whitespace-nowrap">{dev.batteryHealth}%</td>
+                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{dev.carrierStatus}</td>
+                      <td className="py-2 px-3 text-emerald-700 dark:text-emerald-300 whitespace-nowrap">{dev.icloudStatus}</td>
+                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{dev.screenCondition}</td>
+                      <td className="py-2 px-3 text-slate-700 dark:text-slate-300 whitespace-nowrap">{dev.housingCondition}</td>
+                      <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">{dev.imeiMasked}</td>
+                      <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">{dev.partNumber || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -915,12 +915,12 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             </div>
 
             {expandedManifest.units.length > 100 && !showAllManifestRows && (
-              <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+              <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 px-1">
                 <span>Mostrando os primeiros 100 aparelhos de {expandedManifest.units.length}.</span>
                 <button
                   type="button"
                   onClick={() => setShowAllManifestRows(true)}
-                  className="text-amber-400 hover:text-amber-300 font-semibold underline"
+                  className="text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 font-semibold underline"
                 >
                   Mostrar todos os {expandedManifest.units.length} aparelhos
                 </button>
@@ -930,28 +930,28 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
 
           {/* Bid History Table */}
           <div className="space-y-2 pt-2">
-            <h4 className="font-semibold text-white text-xs">
+            <h4 className="font-semibold text-slate-900 dark:text-white text-xs">
               Histórico Recente de Lances deste Lote:
             </h4>
             {lot.bidsHistory.length === 0 ? (
-              <div className="p-4 border border-dashed border-slate-800 rounded-xl text-center text-slate-400 text-xs">
+              <div className="p-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-center text-slate-600 dark:text-slate-400 text-xs">
                 Nenhuma oferta registrada ainda neste lote. Seja o primeiro a informar seu valor.
               </div>
             ) : (
-              <div className="divide-y divide-slate-800/60 border border-slate-800 rounded-xl bg-slate-950/40 overflow-hidden">
+              <div className="divide-y divide-slate-200/60 dark:divide-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-100/60 dark:bg-slate-950/40 overflow-hidden">
                 {lot.bidsHistory.map(bh => (
                   <div key={bh.id} className="p-2.5 px-3.5 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-200">{bh.bidderName}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-200">{bh.bidderName}</span>
                       {bh.isAutomatic && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-mono">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono">
                           Sniper Auto
                         </span>
                       )}
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-slate-500 text-[11px]">{bh.timestamp}</span>
-                      <span className="font-mono font-bold text-white">${bh.amountUsd.toLocaleString()} USD</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">${bh.amountUsd.toLocaleString()} USD</span>
                     </div>
                   </div>
                 ))}
@@ -961,13 +961,13 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-3 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs">
-          <span className="text-slate-400">
+        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 flex items-center justify-between text-xs">
+          <span className="text-slate-600 dark:text-slate-400">
             Arrematações sujeitas a despacho aéreo express via Porto de Miami.
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-medium transition-colors"
+            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg font-medium transition-colors"
           >
             Fechar Janela
           </button>

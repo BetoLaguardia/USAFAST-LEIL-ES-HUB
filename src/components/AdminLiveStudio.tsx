@@ -139,9 +139,9 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
   return (
     <div className="space-y-5">
       {/* Studio Top Bar */}
-      <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div className="flex-1 space-y-1.5">
-          <label className="text-[11px] font-semibold text-slate-400 block">
+          <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">
             Título da Transmissão ao Vivo
           </label>
           <div className="flex items-center gap-2">
@@ -156,18 +156,18 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 }
               }}
               placeholder="Ex: Leilão Verizon Ao Vivo — Lotes iPhone 15/16"
-              className="flex-1 min-h-[40px] bg-slate-950 border border-slate-800 focus:border-amber-400 rounded-xl px-3.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none"
+              className="flex-1 min-h-[40px] bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-amber-400 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none"
             />
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <div className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs flex items-center gap-2">
-            <Users className="w-4 h-4 text-amber-400" />
-            <span className="font-mono tabular-nums font-bold text-white">
+          <div className="px-3 py-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs flex items-center gap-2">
+            <Users className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span className="font-mono tabular-nums font-bold text-slate-900 dark:text-white">
               {liveStatus.viewerCount}
             </span>
-            <span className="text-slate-400">espectadores</span>
+            <span className="text-slate-600 dark:text-slate-400">espectadores</span>
           </div>
 
           {isBroadcasting && (
@@ -176,7 +176,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
               </span>
-              <span className="font-mono tabular-nums font-bold text-rose-300">
+              <span className="font-mono tabular-nums font-bold text-rose-700 dark:text-rose-300">
                 {formatElapsed(elapsedSeconds)}
               </span>
             </div>
@@ -214,9 +214,9 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
 
       {/* Errors */}
       {(connectionError || mediaError) && (
-        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-800 dark:text-rose-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-2.5">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
             <span>{mediaError || connectionError}</span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -235,7 +235,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
               <button
                 type="button"
                 onClick={reconnectRoom}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg text-xs inline-flex items-center gap-1.5 transition-colors"
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-semibold rounded-lg text-xs inline-flex items-center gap-1.5 transition-colors"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Reconectar</span>
@@ -257,15 +257,15 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
               onClick={() => handleSelectMode(opt.mode)}
               className={`p-3.5 rounded-2xl border text-left transition-colors flex items-start gap-3 ${
                 isSelected
-                  ? 'bg-amber-500/10 border-amber-400/70 text-white'
-                  : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-900/80'
+                  ? 'bg-amber-500/10 border-amber-400/70 text-slate-900 dark:text-white'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-900/80'
               }`}
             >
               <div
                 className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                   isSelected
                     ? 'bg-amber-400 text-slate-950 border-amber-300'
-                    : 'bg-slate-950 text-amber-400 border-slate-800'
+                    : 'bg-slate-100 dark:bg-slate-950 text-amber-600 dark:text-amber-400 border-slate-200 dark:border-slate-800'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -274,7 +274,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 <div className="text-xs font-bold leading-snug">
                   {opt.label}
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
                   {opt.description}
                 </p>
               </div>
@@ -324,7 +324,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
           </div>
 
           {/* Active Broadcast Controls */}
-          <div className="p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -332,14 +332,14 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 onClick={toggleMicMute}
                 className={`min-h-[40px] px-3.5 py-2 rounded-xl border font-semibold transition-colors inline-flex items-center gap-1.5 disabled:opacity-40 ${
                   isMicMuted
-                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-300'
-                    : 'bg-slate-950 border-slate-800 text-slate-200 hover:border-slate-700'
+                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                    : 'bg-slate-100 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
                 }`}
               >
                 {isMicMuted ? (
-                  <MicOff className="w-4 h-4 text-rose-400" />
+                  <MicOff className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                 ) : (
-                  <Mic className="w-4 h-4 text-emerald-400" />
+                  <Mic className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 )}
                 <span>{isMicMuted ? 'Áudio Silenciado' : 'Áudio Ativo'}</span>
               </button>
@@ -348,9 +348,9 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 <button
                   type="button"
                   onClick={() => startBroadcast(activeMode, streamTitle)}
-                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 font-semibold transition-colors inline-flex items-center gap-1.5"
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold transition-colors inline-flex items-center gap-1.5"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+                  <RefreshCw className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                   <span>Trocar Aba / Fonte</span>
                 </button>
               )}
@@ -359,9 +359,9 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 <button
                   type="button"
                   onClick={toggleCameraFacing}
-                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 font-semibold transition-colors inline-flex items-center gap-1.5"
+                  className="min-h-[40px] px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-semibold transition-colors inline-flex items-center gap-1.5"
                 >
-                  <SwitchCamera className="w-4 h-4 text-amber-400" />
+                  <SwitchCamera className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>
                     {cameraFacing === 'environment'
                       ? 'Câmera Traseira'
@@ -371,7 +371,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
+            <div className="flex items-center gap-2 text-[11px] font-mono text-slate-600 dark:text-slate-400">
               <span
                 className={`h-2 w-2 rounded-full ${
                   connectionState === 'connected'
@@ -394,7 +394,7 @@ export const AdminLiveStudio: React.FC<AdminLiveStudioProps> = ({
                 <button
                   type="button"
                   onClick={reconnectRoom}
-                  className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] font-sans font-semibold transition-colors"
+                  className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded text-[11px] font-sans font-semibold transition-colors"
                 >
                   Reconectar
                 </button>

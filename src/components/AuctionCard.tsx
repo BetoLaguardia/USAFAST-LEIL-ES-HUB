@@ -79,7 +79,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
   const estimatedGrossProfitBrl = lot.estimatedBrazilRetailBrl - currentBidBrl;
 
   return (
-    <div className="group bg-slate-900/90 border border-slate-800 hover:border-slate-700/90 rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:shadow-xl hover:shadow-black/50">
+    <div className="group bg-white/95 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700/90 rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:shadow-xl hover:shadow-slate-300/70 dark:hover:shadow-black/50">
       {/* Top Image & Badge Container */}
       <div 
         className="relative aspect-[4/3] bg-slate-950 overflow-hidden cursor-pointer"
@@ -162,10 +162,10 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-4">
         <div>
           {/* US Auction Origin */}
-          <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+          <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 mb-1.5">
             <span className="truncate max-w-[180px]">{lot.auctionHouse}</span>
-            <span className="flex items-center gap-1 text-slate-300 shrink-0">
-              <MapPin className="w-3 h-3 text-amber-400" />
+            <span className="flex items-center gap-1 text-slate-700 dark:text-slate-300 shrink-0">
+              <MapPin className="w-3 h-3 text-amber-600 dark:text-amber-400" />
               {lot.location}
             </span>
           </div>
@@ -173,28 +173,28 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
           {/* Title */}
           <h3 
             onClick={() => onSelectLot(lot)}
-            className="text-base font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-2 cursor-pointer leading-snug"
+            className="text-base font-bold text-slate-900 dark:text-white group-hover:text-amber-300 transition-colors line-clamp-2 cursor-pointer leading-snug"
           >
             {cleanTitle}
           </h3>
 
           {/* Key Specs Breakdown */}
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
             <div className="flex items-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <Smartphone className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" />
               <span className="truncate">{lot.primaryStorage} · {lot.modelFamily}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Battery className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="font-mono text-emerald-400 font-semibold">{lot.batteryHealthRange}</span>
+              <Battery className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">{lot.batteryHealthRange}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="truncate text-slate-400">Clean ESN / FMI OFF</span>
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="truncate text-slate-600 dark:text-slate-400">Clean ESN / FMI OFF</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
-              <span className="truncate text-emerald-400">Desbloqueado</span>
+              <span className="truncate text-emerald-600 dark:text-emerald-400">Desbloqueado</span>
             </div>
           </div>
 
@@ -216,23 +216,23 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
         </div>
 
         {/* Pricing & Bids Section */}
-        <div className="pt-2 border-t border-slate-800/80 space-y-3">
+        <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800/80 space-y-3">
           {verizon && lot.currentBidUsd === 0 ? (
             <div className="flex items-end justify-between gap-2">
               <div>
-                <span className="text-[11px] text-slate-400 block">Valor do Lance (Verizon):</span>
-                <span className="text-lg sm:text-xl font-black text-emerald-400 tracking-tight block">
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 block">Valor do Lance (Verizon):</span>
+                <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight block">
                   Sem Preço Fixo
                 </span>
-                <span className="text-[11px] text-amber-300 font-semibold block">
+                <span className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold block">
                   Cliente escolhe o valor da oferta
                 </span>
               </div>
               <div className="text-right">
-                <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-300 inline-block mb-1">
+                <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-700 dark:text-red-300 inline-block mb-1">
                   Qtd Fixa: {lot.quantity} un.
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono block">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono block">
                   {lot.totalBidsCount} oferta(s)
                 </span>
               </div>
@@ -240,7 +240,7 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
           ) : (
             <div className="flex items-end justify-between">
               <div>
-                <span className="text-[11px] text-slate-400 block">
+                <span className="text-[11px] text-slate-600 dark:text-slate-400 block">
                   {verizon
                     ? 'Última Oferta (Valor Livre):'
                     : isProntaEntrega
@@ -251,28 +251,28 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
                           ? 'Lance Atual (Total Lote):'
                           : 'Lance Atual:'}
                 </span>
-                <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight block ${isProntaEntrega ? 'text-emerald-400' : 'text-amber-400'}`}>
+                <span className={`text-xl sm:text-2xl font-black font-mono tracking-tight block ${isProntaEntrega ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                   {formattedCurrentPrice}
                   {(isAssurant || isProntaEntrega) && lot.quantity > 1 && (
-                    <span className="text-xs font-normal text-slate-400"> / un.</span>
+                    <span className="text-xs font-normal text-slate-600 dark:text-slate-400"> / un.</span>
                   )}
                 </span>
                 {isProntaEntrega && lot.quantity > 1 && (
-                  <span className="text-[11px] text-emerald-300/90 font-mono block">
+                  <span className="text-[11px] text-emerald-700/90 dark:text-emerald-300/90 font-mono block">
                     {`Estoque total (${lot.quantity} un.): $ ${lot.currentBidUsd.toLocaleString()} USD`}
                   </span>
                 )}
                 {!isAssurant && !isProntaEntrega && lot.quantity > 1 && (
-                  <span className="text-[11px] text-amber-300 font-mono block">
+                  <span className="text-[11px] text-amber-700 dark:text-amber-300 font-mono block">
                     {`($ ${unitPriceUsd.toLocaleString()} USD / un.)`}
                   </span>
                 )}
                 {isAssurant && (
-                  <span className="text-[11px] text-cyan-300 font-mono font-semibold block">
+                  <span className="text-[11px] text-cyan-700 dark:text-cyan-300 font-mono font-semibold block">
                     Incremento: {incrementSize} {incrementSize === 1 ? 'un.' : 'un.'}
                   </span>
                 )}
-                <span className="text-[10px] text-slate-400 font-mono">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">
                   {currency === 'USD'
                     ? `aprox. R$ ${currentBidBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}${(isAssurant || isProntaEntrega) && lot.quantity > 1 ? ' / un.' : ''}`
                     : `≈ $ ${displayPrimaryUsd.toLocaleString()} USD${(isAssurant || isProntaEntrega) && lot.quantity > 1 ? ' / un.' : ''}`}
@@ -281,24 +281,24 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
 
               <div className="text-right">
                 {verizon ? (
-                  <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-300 inline-block mb-1">
+                  <span className="px-2 py-0.5 rounded bg-red-600/15 border border-red-500/30 text-[10px] font-bold text-red-700 dark:text-red-300 inline-block mb-1">
                     Qtd Fixa: {lot.quantity} un.
                   </span>
                 ) : isProntaEntrega ? (
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/35 text-[10px] font-bold text-emerald-300 inline-block mb-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/35 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 inline-block mb-1">
                     Compra Direta · Preço Fixo
                   </span>
                 ) : hasRetailEstimate ? (
                   <>
-                    <span className="text-[10px] text-slate-400 block">
+                    <span className="text-[10px] text-slate-600 dark:text-slate-400 block">
                       {isAssurant && lot.quantity > 1 ? 'Lucro Bruto Est. (/ un.):' : 'Lucro Bruto Est.:'}
                     </span>
-                    <span className="text-xs font-bold text-emerald-400 font-mono block">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono block">
                       aprox. + R$ {estimatedGrossProfitBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
                     </span>
                   </>
                 ) : null}
-                <span className="text-[10px] text-slate-400 font-mono block">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono block">
                   {isProntaEntrega ? `${lot.quantity} un. em estoque` : `${lot.totalBidsCount} lances dados`}
                 </span>
               </div>
@@ -309,10 +309,10 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               onClick={() => onSelectLot(lot)}
-              className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+              className="py-2 px-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
             >
               <span>Ver Manifesto</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
             </button>
 
             <button

@@ -132,15 +132,15 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+              <Flame className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               Modelos em Destaque nos Leilões dos EUA
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-600 dark:text-slate-400">
               ({safeIndex + 1} de {total} modelos)
             </span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
             Catálogo Rotativo de Lotes Ativos
           </h2>
         </div>
@@ -151,16 +151,16 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
           <button
             onClick={() => setIsAutoPlaying(prev => !prev)}
             title={isAutoPlaying ? 'Pausar rotação automática' : 'Retomar rotação automática'}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700/60"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors border border-slate-300/60 dark:border-slate-700/60"
           >
-            {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 text-emerald-400" />}
+            {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
           </button>
 
           {/* Previous Button */}
           <button
             onClick={handlePrev}
             aria-label="Modelo anterior"
-            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 transition-all border border-slate-700 flex items-center gap-1 active:scale-95 shadow-sm"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-all border border-slate-300 dark:border-slate-700 flex items-center gap-1 active:scale-95 shadow-sm"
           >
             <ChevronLeft className="w-5 h-5" />
             <span className="hidden sm:inline text-xs font-semibold">Anterior</span>
@@ -178,16 +178,16 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
 
           <button
             onClick={onViewAllAuctions}
-            className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors border border-slate-800 text-xs font-medium"
+            className="hidden md:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-200/80 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white transition-colors border border-slate-200 dark:border-slate-800 text-xs font-medium"
           >
             <span>Ver Todos ({total})</span>
-            <ExternalLink className="w-3.5 h-3.5 text-amber-400" />
+            <ExternalLink className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
           </button>
         </div>
       </div>
 
       {/* Main Carousel Feature Card */}
-      <div className="relative rounded-3xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900/90 via-slate-900/60 to-slate-950 p-4 sm:p-6 lg:p-8 shadow-2xl backdrop-blur-sm">
+      <div className="relative rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-gradient-to-b from-white/95 dark:from-slate-900/90 via-slate-50/80 dark:via-slate-900/60 to-slate-100 dark:to-slate-950 p-4 sm:p-6 lg:p-8 shadow-2xl backdrop-blur-sm">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
           
           {/* IMAGE COLUMN WITH PROMINENT AUCTION NAME CARD */}
@@ -258,47 +258,47 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
             {/* Lot Tag & Model */}
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-mono text-slate-400 font-semibold">
+                <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">
                   #{currentLot.lotNumber}
                 </span>
-                <span className="text-slate-600">•</span>
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
+                <span className="text-slate-400 dark:text-slate-600">•</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   {currentLot.carrierStatus || '100% Factory Unlocked'}
                 </span>
-                <span className="text-slate-600">•</span>
-                <span className="text-slate-400">
+                <span className="text-slate-400 dark:text-slate-600">•</span>
+                <span className="text-slate-600 dark:text-slate-400">
                   {currentLot.location || 'Miami Hub, FL'}
                 </span>
               </div>
 
-              <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-snug">
+              <h3 className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
                 {cleanTitle}
               </h3>
             </div>
 
             {/* Spec Chips */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-              <div className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <span className="text-[10px] text-slate-400 block uppercase font-bold">Armazenamento</span>
-                <span className="text-sm font-bold text-white">{currentLot.primaryStorage || '128GB'}</span>
+              <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 block uppercase font-bold">Armazenamento</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">{currentLot.primaryStorage || '128GB'}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <span className="text-[10px] text-slate-400 block uppercase font-bold">Bateria Média</span>
-                <span className="text-sm font-bold text-emerald-400">{currentLot.batteryHealthRange || '88% - 100%'}</span>
+              <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 block uppercase font-bold">Bateria Média</span>
+                <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{currentLot.batteryHealthRange || '88% - 100%'}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <span className="text-[10px] text-slate-400 block uppercase font-bold">IMEI / ESN</span>
-                <span className="text-sm font-bold text-white">Clean ESN</span>
+              <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 block uppercase font-bold">IMEI / ESN</span>
+                <span className="text-sm font-bold text-slate-900 dark:text-white">Clean ESN</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                <span className="text-[10px] text-slate-400 block uppercase font-bold">Total Lances</span>
-                <span className="text-sm font-bold text-amber-400">{currentLot.totalBidsCount || 12} Lances</span>
+              <div className="p-2.5 rounded-xl bg-slate-100/80 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 block uppercase font-bold">Total Lances</span>
+                <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{currentLot.totalBidsCount || 12} Lances</span>
               </div>
             </div>
 
             {/* Description quote */}
-            <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
+            <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed bg-slate-100/60 dark:bg-slate-950/40 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
               {currentLot.description || 'Lote verificado de atacado americano com manifesto auditado de IMEI e testes de hardware aprovados.'}
             </p>
 
@@ -317,24 +317,24 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
             </div>
 
             {/* Price Box & Action Buttons */}
-            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-800">
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-t border-slate-200 dark:border-slate-800">
               {isVerizon && priceUsd === 0 ? (
                 <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
                     Modelo de Lance Verizon ({currentLot.quantity} un. fixas)
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
+                    <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
                       Sem Preço Fixo
                     </span>
                   </div>
-                  <span className="text-[11px] text-amber-300 font-semibold block">
+                  <span className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold block">
                     Cliente escolhe o valor da oferta · Quantidade Fixa (Lote Fechado)
                   </span>
                 </div>
               ) : (
                 <div>
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
                     {isAssurant
                       ? `Valor Unitário (Assurant · ${currentLot.quantity} un. · Inc: ${incrementSize} un.)`
                       : currentLot.quantity > 1
@@ -342,10 +342,10 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                         : 'Lance Atual no Leilão'}
                   </span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight font-mono">
+                    <span className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 tracking-tight font-mono">
                       {currentLot.quantity > 1 ? `${displayUnitPrice} / un.` : displayPrice}
                     </span>
-                    <span className="text-xs text-slate-400 font-mono">
+                    <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">
                       {isAssurant
                         ? `(${secondaryUnitPrice}${qty > 1 ? ' / un.' : ''})`
                         : currentLot.quantity > 1
@@ -354,7 +354,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                     </span>
                   </div>
                   {currentLot.estimatedBrazilRetailBrl > 0 && (
-                    <span className="text-[11px] text-emerald-400 font-medium block">
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium block">
                       Venda estimada no Brasil: aprox. R$ {currentLot.estimatedBrazilRetailBrl.toLocaleString('pt-BR')}{isAssurant && qty > 1 ? ' / un.' : ''}
                     </span>
                   )}
@@ -365,10 +365,10 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onCalculateLot(currentLot)}
-                  className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-colors border border-slate-700 flex items-center justify-center gap-1.5 text-xs font-semibold"
+                  className="p-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl transition-colors border border-slate-300 dark:border-slate-700 flex items-center justify-center gap-1.5 text-xs font-semibold"
                   title="Simular Lucro e Impostos"
                 >
-                  <Calculator className="w-4 h-4 text-emerald-400" />
+                  <Calculator className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span className="hidden sm:inline">Simular</span>
                 </button>
 
@@ -387,7 +387,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
         </div>
 
         {/* Carousel Thumbnails / Indicators */}
-        <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
+        <div className="mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between gap-2">
           {/* Thumbnails preview (up to 8 models) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
             {carouselLots.slice(0, 10).map((lot, idx) => (
@@ -397,7 +397,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                 className={`relative shrink-0 w-16 h-12 rounded-lg overflow-hidden border transition-all ${
                   safeIndex === idx 
                     ? 'border-amber-400 ring-2 ring-amber-400/30 scale-105' 
-                    : 'border-slate-800 opacity-60 hover:opacity-100'
+                    : 'border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'
                 }`}
               >
                 <img 
@@ -419,7 +419,7 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
                 key={i}
                 onClick={() => setCurrentIndex(i)}
                 className={`h-1.5 rounded-full transition-all ${
-                  safeIndex === i ? 'w-6 bg-amber-400' : 'w-1.5 bg-slate-700 hover:bg-slate-500'
+                  safeIndex === i ? 'w-6 bg-amber-400' : 'w-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-500'
                 }`}
                 aria-label={`Slide ${i + 1}`}
               />
