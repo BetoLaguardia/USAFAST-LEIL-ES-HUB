@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { LiveCaptureMode, LiveChatMessage, LiveStreamStatus } from '../types/live';
+import { wsUrl } from '../utils/basePath';
 
 const ICE_SERVERS: RTCIceServer[] = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -278,11 +279,10 @@ export function useLiveRoom({ role, enabled = true }: UseLiveRoomOptions) {
         return;
       }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/live`;
+      const liveWsUrl = wsUrl('/ws/live');
 
       setConnectionState(attempt === 0 ? 'connecting' : 'reconnecting');
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(liveWsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {

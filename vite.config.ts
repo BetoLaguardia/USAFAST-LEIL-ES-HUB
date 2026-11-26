@@ -6,7 +6,9 @@ import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const basePath = '/hub/';
   return {
+    base: basePath,
     plugins: [
       react(),
       tailwindcss(),
@@ -21,7 +23,7 @@ export default defineConfig(() => {
           'pwa-maskable-512x512.png',
         ],
         manifest: {
-          id: '/',
+          id: basePath,
           name: 'USAFAST LEILÕES HUB',
           short_name: 'USAFAST Hub',
           description:
@@ -31,24 +33,24 @@ export default defineConfig(() => {
           display: 'standalone',
           orientation: 'portrait-primary',
           lang: 'pt-BR',
-          start_url: '/',
-          scope: '/',
+          start_url: basePath,
+          scope: basePath,
           categories: ['business', 'shopping'],
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: `${basePath}pwa-192x192.png`,
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
+              src: `${basePath}pwa-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-maskable-512x512.png',
+              src: `${basePath}pwa-maskable-512x512.png`,
               sizes: '512x512',
               type: 'image/png',
               purpose: 'maskable',
@@ -58,10 +60,11 @@ export default defineConfig(() => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-          navigateFallbackDenylist: [/^\/api\//, /^\/ws\//],
+          navigateFallback: `${basePath}index.html`,
+          navigateFallbackDenylist: [/^\/(?:hub\/)?api\//, /^\/(?:hub\/)?ws\//],
           runtimeCaching: [
             {
-              urlPattern: /^\/api\/.*/i,
+              urlPattern: /^\/(?:hub\/)?api\/.*/i,
               handler: 'NetworkOnly',
             },
             {

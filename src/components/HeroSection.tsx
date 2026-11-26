@@ -1,5 +1,6 @@
 import React from 'react';
 import { Gavel, UserPlus, ShieldCheck, CheckCircle2, Layers, Calculator, MapPin, ArrowRight } from 'lucide-react';
+import { withBasePath } from '../utils/basePath';
 
 interface HeroSectionProps {
   onOpenSystem: (tab?: 'terminal' | 'register') => void;
@@ -85,7 +86,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-900 shadow-2xl">
               <img
-                src="/images/hero_auction_warehouse_iphones_1793849010124.jpg"
+                src={withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=1200&auto=format&fit=crop&q=80';
                 }}

@@ -35,6 +35,12 @@ async function startServer() {
   const httpServer = http.createServer(app);
   const liveHub = attachLiveWebSocketServer(httpServer);
   app.use(express.json({ limit: '100mb' }));
+  app.use((req, _res, next) => {
+    if (req.url === '/hub/api' || req.url.startsWith('/hub/api/')) {
+      req.url = req.url.slice('/hub'.length);
+    }
+    next();
+  });
 
   app.get('/api/health', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -227,7 +233,10 @@ async function startServer() {
       },
       appType: 'spa',
     });
-    app.get('/@vite/client', async (_req, res, next) => {
+    app.get('/', (_req, res) => {
+      res.redirect(302, '/hub/');
+    });
+    app.get(['/@vite/client', '/hub/@vite/client'], async (_req, res, next) => {
       try {
         const result = await vite.transformRequest('/@vite/client');
         if (!result?.code) return next();
@@ -245,7 +254,11 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(process.cwd(), 'dist');
+    app.use('/hub', express.static(distPath));
     app.use(express.static(distPath));
+    app.get('/', (_req, res) => {
+      res.redirect(302, '/hub/');
+    });
     app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

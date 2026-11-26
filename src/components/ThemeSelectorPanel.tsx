@@ -42,18 +42,13 @@ export const ThemeSelectorPanel: React.FC<ThemeSelectorPanelProps> = ({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label="Selecionar tema claro ou escuro"
-        className="flex items-center gap-1.5 px-2 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700/90 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-md text-[10px] sm:text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
+        className="flex items-center justify-center p-1.5 sm:px-2 sm:py-1.5 bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700/90 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-md transition-colors shrink-0"
         title="Selecionar Tema (Claro / Escuro)"
       >
         {theme === 'dark' ? (
-          <Moon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400 shrink-0" />
         ) : (
-          <Sun className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-        )}
-        {!compact && (
-          <span className="hidden sm:inline">
-            {theme === 'dark' ? 'Escuro' : 'Claro'}
-          </span>
+          <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400 shrink-0" />
         )}
       </button>
 

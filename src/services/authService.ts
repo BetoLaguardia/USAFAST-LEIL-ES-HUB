@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { SystemUser, UserAccessType } from '../types/auction';
+import { apiUrl } from '../utils/basePath';
 
 export const EMPTY_SYSTEM_USER: SystemUser = {
   name: '',
@@ -32,7 +33,7 @@ async function fetchProfileWithToken(accessToken: string): Promise<{
   user?: SystemUser;
   error?: string;
 }> {
-  const res = await fetch('/api/auth?action=me', {
+  const res = await fetch(apiUrl('/api/auth?action=me'), {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -111,7 +112,7 @@ export async function signInClientWithSupabase(
 
   let resolvedEmail = identifier.toLowerCase();
   if (!identifier.includes('@')) {
-    const res = await fetch('/api/auth', {
+    const res = await fetch(apiUrl('/api/auth'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'resolve-identifier', identifier }),
@@ -180,7 +181,7 @@ export async function registerClientWithSupabase(payload: {
   whatsappNotificationEnabled?: boolean;
   password: string;
 }): Promise<{ ok: boolean; user?: SystemUser; error?: string }> {
-  const res = await fetch('/api/auth', {
+  const res = await fetch(apiUrl('/api/auth'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -252,7 +253,7 @@ export async function fetchAdminClients(): Promise<{
     return { ok: false, clients: [], error: 'Sessão administrativa expirada.' };
   }
 
-  const res = await fetch('/api/auth?action=clients', {
+  const res = await fetch(apiUrl('/api/auth?action=clients'), {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -281,7 +282,7 @@ export async function updateAdminClientStatus(
     return { ok: false, error: 'Sessão administrativa expirada.' };
   }
 
-  const res = await fetch('/api/auth', {
+  const res = await fetch(apiUrl('/api/auth'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -316,7 +317,7 @@ export async function updateAdminClientAccessType(
     return { ok: false, error: 'Sessão administrativa expirada.' };
   }
 
-  const res = await fetch('/api/auth', {
+  const res = await fetch(apiUrl('/api/auth'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -349,7 +350,7 @@ export async function deleteAdminClient(
     return { ok: false, error: 'Sessão administrativa expirada.' };
   }
 
-  const res = await fetch('/api/auth', {
+  const res = await fetch(apiUrl('/api/auth'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

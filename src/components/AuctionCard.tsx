@@ -6,6 +6,7 @@ import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { isAssurantLot, isProntaEntregaLot, getLotUnitPriceUsd, getLotIncrementSize } from '../utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
+import { withBasePath } from '../utils/basePath';
 
 interface AuctionCardProps {
   lot: AuctionLot;
@@ -86,11 +87,11 @@ const AuctionCardComponent: React.FC<AuctionCardProps> = ({
         onClick={() => onSelectLot(lot)}
       >
         <img
-          src={lot.imageUrl}
+          src={withBasePath(lot.imageUrl)}
           alt={lot.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+            (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
           }}
         />
 

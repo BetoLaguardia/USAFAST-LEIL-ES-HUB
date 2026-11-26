@@ -1,4 +1,5 @@
 import type { AuctionLot, DeviceItem, GradeType } from '../types/auction';
+import { withBasePath } from './basePath';
 import { getDeviceImageUrl } from './deviceImages';
 import { getEstimatedWholesalePrice } from './assurantUtils';
 
@@ -379,7 +380,7 @@ export const buildTMobileAuctionLots = (
   return groupedLots.map((g, idx) => {
     const isSamsung = /samsung|galaxy|fold|flip/i.test(g.primaryModel) || /samsung/i.test(g.oem);
     const imageUrl = isSamsung
-      ? '/images/samsung_galaxy_lot_1793851025604.jpg'
+      ? withBasePath('/images/samsung_galaxy_lot_1793851025604.jpg')
       : getDeviceImageUrl(g.oem, g.primaryModel, 'iPhone');
 
     const modelFamily =
@@ -420,8 +421,8 @@ export const buildTMobileAuctionLots = (
       imageUrl,
       galleryImages: [
         imageUrl,
-        '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-        '/images/hero_auction_warehouse_iphones_1793849010124.jpg',
+        withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+        withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg'),
       ],
       description: `Lote oficial T-Mobile Live Auction Coppell (${g.ivaluaLotId}). ${
         g.uniqueModels.length > 1 ? `Mix de ${g.uniqueModels.length} modelos` : g.primaryModel

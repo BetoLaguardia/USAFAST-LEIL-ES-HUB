@@ -6,6 +6,7 @@ import { isAssurantLot, isProntaEntregaLot, isDiscountBidAuction, getAssurantPre
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, mapVerizonGradeStrict, getLotMixSummary } from '../utils/verizonUtils';
 import { buildExpandedManifestUnits, exportLotManifestXlsx, exportLotManifestPdf } from '../utils/manifestExport';
+import { withBasePath } from '../utils/basePath';
 
 interface AuctionDetailModalProps {
   lot: AuctionLot | null;
@@ -280,11 +281,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
             <div className="lg:col-span-5 space-y-3">
               <div className="aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 relative">
                 <img
-                  src={activeImage || lot.imageUrl}
+                  src={withBasePath(activeImage || lot.imageUrl)}
                   alt={lot.title}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                    (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                   }}
                 />
                 <div className="absolute top-3 left-3">
@@ -315,11 +316,11 @@ export const AuctionDetailModal: React.FC<AuctionDetailModalProps> = ({
                       }`}
                     >
                       <img
-                        src={img}
+                        src={withBasePath(img)}
                         alt="Thumbnail"
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                          (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                         }}
                       />
                     </button>

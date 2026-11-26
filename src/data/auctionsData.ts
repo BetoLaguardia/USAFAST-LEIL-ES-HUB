@@ -1,4 +1,5 @@
 import type { AuctionLot, GradeType } from '../types/auction.ts';
+import { withBasePath } from '../utils/basePath.ts';
 
 export const GRADE_EXPLANATIONS: Record<GradeType, {
   label: string;
@@ -143,11 +144,11 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 4 + 1000 * 60 * 23).toISOString(),
-    imageUrl: '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
+    imageUrl: withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg'),
     galleryImages: [
-      '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-      '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+      withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg'),
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+      withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
     ],
     description: 'Palete inspecionado contendo 10 unidades originais de iPhone 16 Pro Max 256GB Grade DNA. Devolução de operadora corporativa americana (Verizon Wireless Surplus). Aparelhos com película protetora após laudo.',
     diagnosticReport: {
@@ -193,10 +194,10 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 1 + 1000 * 60 * 42).toISOString(),
-    imageUrl: '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
+    imageUrl: withBasePath('/images/iphone_15_pro_natural_titanium_1793849011192.jpg'),
     galleryImages: [
-      '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
+      withBasePath('/images/iphone_15_pro_natural_titanium_1793849011192.jpg'),
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
     ],
     description: 'Cinco unidades de iPhone 15 Pro com carcaça em titânio e chip A17 Pro. Grade DNB: micro-riscos leves, bateria média de 91%, telas originais Apple com True Tone 100% ativo.',
     diagnosticReport: {
@@ -237,9 +238,9 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 9200,
     totalBidsCount: 34,
     endTime: new Date(Date.now() + 1000 * 60 * 38).toISOString(),
-    imageUrl: '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
+    imageUrl: withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg'),
     galleryImages: [
-      '/images/iphone_16_pro_max_grade_a_1793849011033.jpg'
+      withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg')
     ],
     description: 'Unidade individual de alta capacidade (512GB). 100% de saúde de bateria, com laudo Assurant Unlocked. Acompanha embalagem com cabo USB-C trançado.',
     diagnosticReport: {
@@ -280,10 +281,10 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 7 + 1000 * 60 * 15).toISOString(),
-    imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
+    imageUrl: withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
     galleryImages: [
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-      '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+      withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
     ],
     description: 'Volume com 25 unidades de iPhone 15 128GB com Dynamic Island. Padrão Verizon DNB 100% funcionais, sem trincos na tela.',
     diagnosticReport: {
@@ -330,10 +331,10 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 2 + 1000 * 60 * 50).toISOString(),
-    imageUrl: '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
+    imageUrl: withBasePath('/images/iphone_15_pro_natural_titanium_1793849011192.jpg'),
     galleryImages: [
-      '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
-      '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+      withBasePath('/images/iphone_15_pro_natural_titanium_1793849011192.jpg'),
+      withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
     ],
     description: 'Oito unidades de iPhone 15 Pro Max 256GB com acabamento impecável, laudo Verizon DNA 100% testado e baterias com 100% de capacidade.',
     diagnosticReport: {
@@ -380,9 +381,9 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 5 + 1000 * 60 * 10).toISOString(),
-    imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
+    imageUrl: withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
     galleryImages: [
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
     ],
     description: 'Aparelhos provenientes de surplus corporativo Verizon Wireless. Todos os aparelhos foram higienizados e resetados com FMI OFF e laudo de IMEI limpo pela GSMA.',
     diagnosticReport: {
@@ -429,9 +430,9 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 3 + 1000 * 60 * 5).toISOString(),
-    imageUrl: '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
+    imageUrl: withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg'),
     galleryImages: [
-      '/images/iphone_16_pro_max_grade_a_1793849011033.jpg'
+      withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg')
     ],
     description: 'Três unidades de iPhone 16 Pro 256GB com acabamento em Titânio Natural e Botão de Controle de Câmera capacitivo. Condição DNA sem qualquer detalhe, baterias com 100% e 1 a 3 ciclos.',
     diagnosticReport: {
@@ -470,9 +471,9 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 0,
     totalBidsCount: 0,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 6 + 1000 * 60 * 40).toISOString(),
-    imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
+    imageUrl: withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
     galleryImages: [
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
     ],
     description: 'Doze unidades de iPhone 14 Pro Max com tela intacta sem trincos, padrão Verizon DNC. Excelente margem de lucro para assistência técnica que faz revitalização ou revenda econômica.',
     diagnosticReport: {
@@ -520,10 +521,10 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 6400,
     totalBidsCount: 6,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 48).toISOString(),
-    imageUrl: '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
+    imageUrl: withBasePath('/images/iphone_15_pro_natural_titanium_1793849011192.jpg'),
     galleryImages: [
-      '/images/iphone_15_pro_natural_titanium_1793849011192.jpg',
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
+      withBasePath('/images/iphone_15_pro_natural_titanium_1793849011192.jpg'),
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
     ],
     description: 'Lote Assurant 100% UNLOCKED com acréscimo de +$5 USD/un já aplicado. Aparelhos testados e liberados para todas as operadoras.',
     diagnosticReport: {
@@ -561,9 +562,9 @@ export const INITIAL_AUCTIONS: AuctionLot[] = [
     estimatedBrazilRetailBrl: 4500,
     totalBidsCount: 4,
     endTime: new Date(Date.now() + 1000 * 60 * 60 * 60).toISOString(),
-    imageUrl: '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
+    imageUrl: withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
     galleryImages: [
-      '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
+      withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
     ],
     description: 'Lote Assurant 100% UNLOCKED com acréscimo de +$5 USD/un já aplicado.',
     diagnosticReport: {

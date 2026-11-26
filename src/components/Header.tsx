@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Gavel, ShieldCheck, DollarSign, Layers, Users, Lock, Menu, X, UserCheck, Globe, Radio, Sun, Moon } from 'lucide-react';
 import { Language, TRANSLATIONS } from '../utils/i18n';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -51,7 +52,53 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
+  const [langMenuPos, setLangMenuPos] = useState<{ top: number; right: number }>({ top: 88, right: 16 });
+  const langButtonRef = useRef<HTMLButtonElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
   const t = TRANSLATIONS[language];
+
+  useEffect(() => {
+    if (!langMenuOpen) return;
+
+    const updatePosition = () => {
+      const btn = langButtonRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      setLangMenuPos({
+        top: Math.round(rect.bottom + 6),
+        right: Math.max(8, Math.round(window.innerWidth - rect.right)),
+      });
+    };
+
+    updatePosition();
+
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        langButtonRef.current &&
+        !langButtonRef.current.contains(target) &&
+        langMenuRef.current &&
+        !langMenuRef.current.contains(target)
+      ) {
+        setLangMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLangMenuOpen(false);
+    };
+
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [langMenuOpen]);
 
   const handleNavClick = (page: AppPage) => {
     if (page === 'leiloes' && !isClientAuthenticated && !isAdminAuthenticated) {
@@ -241,8 +288,10 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Language Selector Dropdown */}
           <div className="relative">
             <button
+              ref={langButtonRef}
               type="button"
               onClick={() => setLangMenuOpen(!langMenuOpen)}
+              aria-expanded={langMenuOpen}
               className="flex items-center gap-1 px-1.5 py-1 sm:px-2.5 sm:py-1.5 bg-slate-100 dark:bg-slate-800/90 hover:bg-slate-200 dark:hover:bg-slate-700/90 text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-slate-700 rounded-md text-[10px] sm:text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
               title="Selecionar Idioma / Select Language / Seleccionar Idioma"
             >
@@ -250,40 +299,47 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{language === 'pt' ? '🇧🇷 PT' : language === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}</span>
             </button>
 
-            {langMenuOpen && (
-              <div className="absolute right-0 mt-1 w-32 sm:w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl py-1 z-50 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectLanguage('pt');
-                    setLangMenuOpen(false);
-                  }}
-                  className={`w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${language === 'pt' ? 'text-amber-600 dark:text-amber-400 font-bold bg-amber-50/70 dark:bg-slate-800/50' : 'text-slate-800 dark:text-slate-200'}`}
+            {langMenuOpen &&
+              typeof document !== 'undefined' &&
+              createPortal(
+                <div
+                  ref={langMenuRef}
+                  style={{ top: `${langMenuPos.top}px`, right: `${langMenuPos.right}px` }}
+                  className="fixed w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xl py-1 z-[9999] text-xs font-semibold"
                 >
-                  <span>🇧🇷</span> Português
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectLanguage('es');
-                    setLangMenuOpen(false);
-                  }}
-                  className={`w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${language === 'es' ? 'text-amber-600 dark:text-amber-400 font-bold bg-amber-50/70 dark:bg-slate-800/50' : 'text-slate-800 dark:text-slate-200'}`}
-                >
-                  <span>🇪🇸</span> Español
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectLanguage('en');
-                    setLangMenuOpen(false);
-                  }}
-                  className={`w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${language === 'en' ? 'text-amber-600 dark:text-amber-400 font-bold bg-amber-50/70 dark:bg-slate-800/50' : 'text-slate-800 dark:text-slate-200'}`}
-                >
-                  <span>🇺🇸</span> English
-                </button>
-              </div>
-            )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectLanguage('pt');
+                      setLangMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${language === 'pt' ? 'text-amber-600 dark:text-amber-400 font-bold bg-amber-50/70 dark:bg-slate-800/50' : 'text-slate-800 dark:text-slate-200'}`}
+                  >
+                    <span>🇧🇷</span> Português
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectLanguage('es');
+                      setLangMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${language === 'es' ? 'text-amber-600 dark:text-amber-400 font-bold bg-amber-50/70 dark:bg-slate-800/50' : 'text-slate-800 dark:text-slate-200'}`}
+                  >
+                    <span>🇪🇸</span> Español
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectLanguage('en');
+                      setLangMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 text-left flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 ${language === 'en' ? 'text-amber-600 dark:text-amber-400 font-bold bg-amber-50/70 dark:bg-slate-800/50' : 'text-slate-800 dark:text-slate-200'}`}
+                  >
+                    <span>🇺🇸</span> English
+                  </button>
+                </div>,
+                document.body
+              )}
           </div>
 
           <button
@@ -325,26 +381,28 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectTheme('light')}
-                className={`px-2.5 py-1 rounded-md font-bold inline-flex items-center gap-1 transition-colors ${
+                aria-label="Tema claro"
+                title="Tema claro"
+                className={`p-1.5 rounded-md inline-flex items-center justify-center transition-colors ${
                   theme === 'light'
                     ? 'bg-amber-400 text-slate-950'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 <Sun className="w-3.5 h-3.5" />
-                <span>Claro</span>
               </button>
               <button
                 type="button"
                 onClick={() => onSelectTheme('dark')}
-                className={`px-2.5 py-1 rounded-md font-bold inline-flex items-center gap-1 transition-colors ${
+                aria-label="Tema escuro"
+                title="Tema escuro"
+                className={`p-1.5 rounded-md inline-flex items-center justify-center transition-colors ${
                   theme === 'dark'
                     ? 'bg-amber-400 text-slate-950'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 <Moon className="w-3.5 h-3.5" />
-                <span>Escuro</span>
               </button>
             </div>
           </div>

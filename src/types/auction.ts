@@ -93,6 +93,18 @@ export interface AdminOffer {
   lotId: string;
   lotNumber: string;
   lotTitle: string;
+  auctionHouse?: string;
+  sourceType?: AuctionLot['sourceType'];
+  modelFamily?: string;
+  quantity?: number;
+  lotTotalQuantity?: number;
+  unitPriceUsd?: number;
+  grade?: string;
+  primaryStorage?: string;
+  colorHighlights?: string[];
+  carrierStatus?: string;
+  location?: string;
+  isDirectPurchase?: boolean;
   clientName: string;
   clientEmail: string;
   clientPhone?: string;
@@ -100,6 +112,7 @@ export interface AdminOffer {
   amountUsd: number;
   amountBrl: number;
   timestamp: string;
+  createdAt?: string;
   status: OfferStatusType;
   counterOfferUsd?: number;
   adminNote?: string;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { withBasePath } from '../utils/basePath';
 import { 
   UserCheck, 
   Gavel, 
@@ -674,10 +675,10 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     <div key={lot.id} className="p-4 space-y-3">
                       <div className="flex items-start gap-3">
                         <img
-                          src={lot.imageUrl}
+                          src={withBasePath(lot.imageUrl)}
                           alt={lot.title}
                           onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                            (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                           }}
                           onClick={() => onSelectLot(lot)}
                           className="w-16 h-16 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
@@ -824,11 +825,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                                 title="Clique para ver fotos e laudo do lote"
                               >
                                 <img 
-                                  src={lot.imageUrl} 
+                                  src={withBasePath(lot.imageUrl)} 
                                   alt={lot.title} 
                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
                                   onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                                    (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                                   }}
                                 />
                                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent" />
@@ -1099,11 +1100,11 @@ export const ClientePage: React.FC<ClientePageProps> = ({
                     {/* Photo & Badge */}
                     <div className="relative aspect-[4/3] bg-slate-950 overflow-hidden">
                       <img
-                        src={lot.imageUrl}
+                        src={withBasePath(lot.imageUrl)}
                         alt={lot.title}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                          (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                         }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-black/30 pointer-events-none" />

@@ -122,8 +122,9 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
       return;
     }
     const amountToBid = customBidAmount > 0 ? customBidAmount : minRequiredBid;
-    onPlaceQuickBid(currentSelectedLot.id, amountToBid);
-    setBidSuccessNotice(`Lance de $${amountToBid.toLocaleString()} USD registrado com sucesso no lote ${currentSelectedLot.lotNumber}!`);
+    const qtyToBid = isVerizonSelected ? currentSelectedLot.quantity : clampedQtySelected;
+    onPlaceQuickBid(currentSelectedLot.id, amountToBid, qtyToBid);
+    setBidSuccessNotice(`Lance de $${amountToBid.toLocaleString()} USD (${qtyToBid} un.) registrado com sucesso no lote ${currentSelectedLot.lotNumber}!`);
     setTimeout(() => setBidSuccessNotice(null), 3500);
   };
 

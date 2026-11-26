@@ -28,6 +28,7 @@ import {
 import { Language, TRANSLATIONS } from './utils/i18n';
 import { fetchLivePtaxRate } from './utils/ptaxService';
 import { stripLotPrefix } from './utils/deviceImages';
+import { apiUrl, getPageUrl, normalizeLotMedia, parsePageFromPathname, withBasePath } from './utils/basePath';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, getLotMixSummary, VERIZON_GRADES, normalizeVerizonLot, mapVerizonGradeStrict } from './utils/verizonUtils';
 import { isAssurantLot, isProntaEntregaLot, getLotUnitPriceUsd, getLotTotalPriceUsd, getLotFixedTotalForQtyUsd, getLotIncrementSize } from './utils/assurantUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './components/LotMixExpandable';
@@ -60,8 +61,46 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  // Navigation Page State
-  const [currentPage, setCurrentPage] = useState<AppPage>('home');
+  // Navigation Page State (synchronized with /hub/ browser pathname)
+  const [currentPage, setCurrentPageState] = useState<AppPage>(() =>
+    typeof window !== 'undefined' ? parsePageFromPathname(window.location.pathname) : 'home'
+  );
+
+  const setCurrentPage = (page: AppPage, options?: { replace?: boolean }) => {
+    setCurrentPageState(page);
+    if (typeof window === 'undefined') return;
+    try {
+      const targetPath = getPageUrl(page);
+      if (window.location.pathname !== targetPath) {
+        if (options?.replace) {
+          window.history.replaceState({ page }, '', `${targetPath}${window.location.search}${window.location.hash}`);
+        } else {
+          window.history.pushState({ page }, '', targetPath);
+        }
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch {}
+  };
+
+  useEffect(() => {
+    try {
+      const resolved = parsePageFromPathname(window.location.pathname);
+      const canonical = getPageUrl(resolved);
+      if (window.location.pathname !== canonical) {
+        window.history.replaceState(
+          { page: resolved },
+          '',
+          `${canonical}${window.location.search}${window.location.hash}`
+        );
+      }
+    } catch {}
+
+    const handlePopState = () => {
+      setCurrentPageState(parsePageFromPathname(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Auction State with Persistent LocalStorage
   const [auctions, setAuctions] = useState<AuctionLot[]>(() => {
@@ -85,10 +124,10 @@ export default function App() {
             return true;
           });
           // Sanitize titles and normalize Verizon grades strictly to DNA/DNB/DNC/DND
-          parsed = parsed.map((a: any) => normalizeVerizonLot({
+          parsed = parsed.map((a: any) => normalizeLotMedia(normalizeVerizonLot({
             ...a,
             title: stripLotPrefix(a.title)
-          }));
+          })));
           const hasAssurant = parsed.some((a: any) => a.sourceType === 'ASSURANT');
           if (!hasAssurant) {
             const defaultAssurant = INITIAL_AUCTIONS.filter(a => a.sourceType === 'ASSURANT');
@@ -377,7 +416,7 @@ export default function App() {
       let lastError: unknown = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const res = await fetch('/api/auctions', {
+          const res = await fetch(apiUrl('/api/auctions'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -479,7 +518,7 @@ export default function App() {
       const banned = /govdeals|copart|liquidation\.com|apple certified/i;
       return (lots || [])
         .filter(l => !banned.test(l.auctionHouse || '') && !banned.test(l.title || '') && !banned.test(l.sourceType || '') && isLotUnlockedOnly(l))
-        .map(l => normalizeVerizonLot({ ...l, title: stripLotPrefix(l.title) }));
+        .map(l => normalizeLotMedia(normalizeVerizonLot({ ...l, title: stripLotPrefix(l.title) })));
     };
 
     const loadInitialAuctions = async () => {
@@ -492,7 +531,7 @@ export default function App() {
         const collected: any[] = [];
 
         while (true) {
-          const res = await fetch(`/api/auctions?limit=${pageSize}&offset=${offset}`, { cache: 'no-store' });
+          const res = await fetch(apiUrl(`/api/auctions?limit=${pageSize}&offset=${offset}`), { cache: 'no-store' });
           if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
           }
@@ -674,14 +713,17 @@ export default function App() {
         ? `${targetLot.title} (${bidQty} de ${targetLot.quantity} un.)`
         : targetLot.title;
       const recordedTitle = isProntaEntrega ? `[COMPRA DIRETA] ${lotTitleWithQty}` : lotTitleWithQty;
-      const nowLabel = new Date().toLocaleString('pt-BR');
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const nowLabel = `${dateStr} às ${timeStr}`;
 
       const updatedBids = [
         {
           lotId,
           lotTitle: recordedTitle,
           amountUsd: effectiveAmountUsd,
-          timestamp: 'Agora mesmo',
+          timestamp: nowLabel,
           status: 'vencendo' as const
         },
         ...userBids.filter(b => b.lotId !== lotId)
@@ -700,13 +742,30 @@ export default function App() {
           lotId,
           lotNumber: targetLot.lotNumber || `US-${lotId.slice(-5)}`,
           lotTitle: recordedTitle,
+          auctionHouse: targetLot.auctionHouse,
+          sourceType: targetLot.sourceType,
+          modelFamily: targetLot.modelFamily,
+          quantity: bidQty,
+          lotTotalQuantity: targetLot.quantity,
+          unitPriceUsd: isProntaEntrega
+            ? getLotUnitPriceUsd(targetLot)
+            : bidQty > 0
+            ? Math.round((effectiveAmountUsd / bidQty) * 100) / 100
+            : effectiveAmountUsd,
+          grade: isVerizonLot(targetLot) ? mapVerizonGradeStrict(targetLot.grade) : targetLot.grade,
+          primaryStorage: targetLot.primaryStorage,
+          colorHighlights: targetLot.colorHighlights,
+          carrierStatus: targetLot.carrierStatus,
+          location: targetLot.location,
+          isDirectPurchase: isProntaEntrega,
           clientName: currentUser.name || 'Arrematante Autorizado',
           clientEmail: currentUser.email || 'cliente@usafastleiloes.com',
           clientPhone: currentUser.phone || undefined,
           clientWhatsapp: currentUser.whatsapp || currentUser.phone || undefined,
           amountUsd: effectiveAmountUsd,
           amountBrl: Math.round(effectiveAmountUsd * usdRate),
-          timestamp: 'Agora mesmo',
+          timestamp: nowLabel,
+          createdAt: now.toISOString(),
           status: isProntaEntrega ? 'Aceita' : 'Vencendo',
           isAutoSniper: false
         };
@@ -718,7 +777,7 @@ export default function App() {
       } catch (e) {}
 
       // Dispatch email notification to registered Admin emails via server API
-      fetch('/api/notify-offer', {
+      fetch(apiUrl('/api/notify-offer'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1779,10 +1838,10 @@ export default function App() {
                                 )}
                               </button>
                               <img
-                                src={lot.imageUrl}
+                                src={withBasePath(lot.imageUrl)}
                                 alt={cleanTitle}
                                 onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                                  (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                                 }}
                                 onClick={() => setSelectedLotForDetail(lot)}
                                 className="w-16 h-16 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
@@ -1964,10 +2023,10 @@ export default function App() {
                                       className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-slate-950 overflow-hidden border border-slate-200 dark:border-slate-800 cursor-pointer relative group shrink-0"
                                     >
                                       <img
-                                        src={lot.imageUrl}
+                                        src={withBasePath(lot.imageUrl)}
                                         alt={cleanTitle}
                                         onError={(e) => {
-                                          (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                                          (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                                         }}
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                                       />

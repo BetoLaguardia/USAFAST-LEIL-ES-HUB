@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { supabase } from '../services/supabaseClient.ts';
 import * as XLSX from 'xlsx';
 import { getDeviceImageUrl, stripLotPrefix } from '../utils/deviceImages';
+import { apiUrl, withBasePath } from '../utils/basePath';
 import { fetchLivePtaxRate } from '../utils/ptaxService';
 import { getMarketplaceNumber, isLotUnlockedOnly, isVerizonLot, mapVerizonGradeStrict, parseBstockColorFromDesc, sanitizeSupplierStrings, sanitizeVerizonTitle, VERIZON_GRADES } from '../utils/verizonUtils';
 import { isAssurantLot, getEstimatedWholesalePrice } from '../utils/assurantUtils';
@@ -48,13 +49,15 @@ import {
   Laptop,
   Mail,
   Send,
-  Radio
+  Radio,
+  Calendar
 } from 'lucide-react';
 import { AdminLiveStudio } from '../components/AdminLiveStudio';
 import { AuctionLot, GradeType, SystemUser, AdminOffer, UserAccessType } from '../types/auction';
 import { apiService, PhpApiConfig } from '../services/apiService';
 import { fetchAdminClients, updateAdminClientAccessType, updateAdminClientStatus, deleteAdminClient } from '../services/authService';
 import { downloadOfficialInvoicePdf, downloadClientInvoicePdf, InvoiceLineItem } from '../utils/generatePdfInvoice';
+import { resolveOfferCharacteristics } from '../utils/offerUtils';
 import {
   exportAuctionsCatalogXlsx,
   exportAuctionsCatalogPdf,
@@ -485,7 +488,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const handleLoadAttachedVerizonCsv = async () => {
     setIsLoadingVerizon(true);
     try {
-      const res = await fetch('/assets/aistudio/verizon_listings_official.csv');
+      const res = await fetch(withBasePath('/assets/aistudio/verizon_listings_official.csv'));
       if (!res.ok) {
         throw new Error('Não foi possível ler o arquivo local anexado.');
       }
@@ -531,7 +534,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({
   const handleLoadAttachedTMobileCsv = async () => {
     setIsLoadingTMobile(true);
     try {
-      const res = await fetch('/assets/aistudio/BUYER_AUCTION_NOV_10_T-MOBILE_COPPELL_LOT_DETAIL_11_05_26_with_COLOR_8c29e0d0.csv');
+      const res = await fetch(withBasePath('/assets/aistudio/BUYER_AUCTION_NOV_10_T-MOBILE_COPPELL_LOT_DETAIL_11_05_26_with_COLOR_8c29e0d0.csv'));
       if (!res.ok) {
         throw new Error('Não foi possível ler a planilha T-Mobile anexada.');
       }
@@ -1834,7 +1837,7 @@ $285.00
   const handleLoadOfficialStockCsv = async () => {
     setIsLoadingStockCsv(true);
     try {
-      const res = await fetch('/assets/aistudio/Stock_List_Filtered_11052026_cd908cec.csv');
+      const res = await fetch(withBasePath('/assets/aistudio/Stock_List_Filtered_11052026_cd908cec.csv'));
       if (!res.ok) throw new Error('Não foi possível ler o arquivo da planilha anexada.');
       const text = await res.text();
       const rows = parseCsvText(text);
@@ -1856,7 +1859,7 @@ $285.00
   const handleLoadMarketplace3Csv = async () => {
     setIsLoadingMarketplace3(true);
     try {
-      const res = await fetch('/assets/marketplace3_stocklist_1119.csv');
+      const res = await fetch(withBasePath('/assets/marketplace3_stocklist_1119.csv'));
       if (!res.ok) throw new Error('Não foi possível ler a planilha Marketplace 3 anexada.');
       const text = await res.text();
       const rows = parseCsvText(text);
@@ -1981,8 +1984,8 @@ $285.00
             imageUrl: g.imageUrl,
             galleryImages: [
               g.imageUrl,
-              '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-              '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+              withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+              withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
             ],
             description: `Lote oficial de atacado Apple Desbloqueado contendo ${g.totalQuantity} aparelho(s) (${g.modelFamily} ${g.capacity}). Classificação técnica ${g.grade}. 100% desbloqueado de fábrica e auditado pelo hub USAFAST.`,
             diagnosticReport: {
@@ -2057,8 +2060,8 @@ $285.00
             imageUrl,
             galleryImages: [
               imageUrl,
-              '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-              '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+              withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+              withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
             ],
             description: `Item #${it.itemNumber} - ${it.make || 'Apple'} ${it.model} ${it.capacity}. Quantidade: ${it.availableQuantity}. ${it.description}. Grade ${it.grade}. Status: ${isWifiOnly ? 'Wi-Fi / UNLOCKED' : '100% UNLOCKED'}.`,
             diagnosticReport: {
@@ -2806,7 +2809,7 @@ $285.00
 
           const isSamsung = /samsung|galaxy|fold|flip/i.test(primaryModel) || /samsung/i.test(oem);
           const imageUrl = isSamsung
-            ? '/images/samsung_galaxy_lot_1793851025604.jpg'
+            ? withBasePath('/images/samsung_galaxy_lot_1793851025604.jpg')
             : getDeviceImageUrl(oem, primaryModel, 'iPhone');
 
           const rawTitle = `${oem} ${primaryModel} ${cap} ${color} - ${mappedGrade}`;
@@ -2837,8 +2840,8 @@ $285.00
             imageUrl,
             galleryImages: [
               imageUrl,
-              '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-              '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+              withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+              withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
             ],
             description: `Lote oficial VERIZON (Quantidade Fixa: ${q} un. | Sem Preço Fixo - Cliente escolhe o valor): ${primaryModel} ${cap} ${color}. Padrão Verizon ${mappedGrade}. IMEI Clean ESN auditado.`,
             diagnosticReport: {
@@ -2878,15 +2881,15 @@ $285.00
         newLots = verizonGroupedLots.map((g, idx) => {
           const isSamsung = /samsung|galaxy|fold|flip/i.test(g.primaryModel) || /samsung/i.test(g.oem);
           const imageUrl = isSamsung
-            ? '/images/samsung_galaxy_lot_1793851025604.jpg'
+            ? withBasePath('/images/samsung_galaxy_lot_1793851025604.jpg')
             : g.totalQty > 8
-              ? '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
-              : '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+              ? withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
+              : withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
 
           const galleryImages = [
             imageUrl,
-            '/images/iphone_lot_wholesale_inspection_1793849011081.jpg',
-            '/images/hero_auction_warehouse_iphones_1793849010124.jpg'
+            withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg'),
+            withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')
           ];
 
           const primaryStorage = g.uniqueCapacities.length > 0
@@ -3077,10 +3080,10 @@ $285.00
           estimatedBrazilRetailBrl,
           totalBidsCount: isVzRow ? 0 : Math.floor(Math.random() * 20) + 1,
           endTime: new Date(Date.now() + 1000 * 60 * 60 * (Math.floor(Math.random() * 8) + 2)).toISOString(),
-          imageUrl: quantity > 1 ? '/images/iphone_lot_wholesale_inspection_1793849011081.jpg' : '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
+          imageUrl: quantity > 1 ? withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg') : withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg'),
           galleryImages: [
-            '/images/iphone_16_pro_max_grade_a_1793849011033.jpg',
-            '/images/iphone_lot_wholesale_inspection_1793849011081.jpg'
+            withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg'),
+            withBasePath('/images/iphone_lot_wholesale_inspection_1793849011081.jpg')
           ],
           description: `Lote importado via planilha administrativa. Contém ${quantity} aparelho(s) com certificação Clean ESN e laudo de 30 pontos.`,
           diagnosticReport: {
@@ -3203,6 +3206,24 @@ $285.00
     return [];
   });
 
+  React.useEffect(() => {
+    const syncOffers = () => {
+      try {
+        const saved = localStorage.getItem('us_admin_offers_v1');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) setOffersList(parsed);
+        }
+      } catch (e) {}
+    };
+    window.addEventListener('offers_updated', syncOffers);
+    window.addEventListener('storage', syncOffers);
+    return () => {
+      window.removeEventListener('offers_updated', syncOffers);
+      window.removeEventListener('storage', syncOffers);
+    };
+  }, []);
+
   const [counterOfferEditingId, setCounterOfferEditingId] = useState<string | null>(null);
   const [counterOfferUsdInput, setCounterOfferUsdInput] = useState<string>('');
   const [counterOfferNoteInput, setCounterOfferNoteInput] = useState<string>('');
@@ -3247,7 +3268,7 @@ $285.00
   const syncNotificationEmailsToServer = async (emailsToSave: string[]) => {
     try {
       const headers = await getAdminAuthHeaders();
-      const resp = await fetch('/api/notify-offer', {
+      const resp = await fetch(apiUrl('/api/notify-offer'), {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'save-config', emails: emailsToSave }),
@@ -3268,7 +3289,7 @@ $285.00
     (async () => {
       try {
         const headers = await getAdminAuthHeaders();
-        const resp = await fetch('/api/notify-offer?action=config', {
+        const resp = await fetch(apiUrl('/api/notify-offer?action=config'), {
           method: 'GET',
           headers,
         });
@@ -3356,7 +3377,7 @@ $285.00
     try {
       await syncNotificationEmailsToServer(notificationEmails);
       const headers = await getAdminAuthHeaders();
-      const resp = await fetch('/api/notify-offer', {
+      const resp = await fetch(apiUrl('/api/notify-offer'), {
         method: 'POST',
         headers,
         body: JSON.stringify({ action: 'send-test' }),
@@ -3464,14 +3485,14 @@ $285.00
   };
 
   const handleGenerateOfferInvoice = (offer: AdminOffer) => {
-    const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
+    const info = resolveOfferCharacteristics(offer, auctions, usdRate);
     const clientObj = clientsList.find(
       c =>
         (c.email && offer.clientEmail && c.email.toLowerCase() === offer.clientEmail.toLowerCase()) ||
         (c.name && offer.clientName && c.name.toLowerCase() === offer.clientName.toLowerCase())
     );
-    const qty = lot?.quantity || 1;
-    const grade = lot ? (isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade) : 'Grade A';
+    const qty = info.quantity;
+    const grade = info.grade !== '-' ? info.grade : 'Grade A';
     const finalUsd = offer.status === 'Contra-Oferta' && offer.counterOfferUsd ? offer.counterOfferUsd : offer.amountUsd;
 
     const invoiceUser: SystemUser = clientObj || {
@@ -3482,7 +3503,7 @@ $285.00
       whatsapp: offer.clientWhatsapp || offer.clientPhone || '-',
       biddingLimitUsd: 0,
       verifiedStatus: true,
-      registeredDate: offer.timestamp || new Date().toLocaleDateString('pt-BR')
+      registeredDate: info.fullDateTimeLabel || new Date().toLocaleDateString('pt-BR')
     };
 
     const isApprovedOffer = offer.status === 'Aceita' || offer.status === 'Homologada / Arrematada';
@@ -3490,7 +3511,7 @@ $285.00
       invoiceNumber: `INV-${offer.lotNumber.replace(/[^A-Z0-9]/gi, '')}-${String(Date.now()).slice(-4)}`,
       date: new Date().toLocaleDateString('pt-BR'),
       lotNumber: offer.lotNumber,
-      lotTitle: stripLotPrefix(offer.lotTitle || lot?.title || offer.lotNumber),
+      lotTitle: info.lotTitleClean || offer.lotNumber,
       quantity: qty,
       grade,
       totalUsd: finalUsd,
@@ -3543,13 +3564,13 @@ $285.00
         : clientOffers;
 
     const items: InvoiceLineItem[] = selectedOffers.map(offer => {
-      const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
-      const qty = lot?.quantity || 1;
-      const grade = lot ? (isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade) : 'Grade A';
+      const info = resolveOfferCharacteristics(offer, auctions, usdRate);
+      const qty = info.quantity;
+      const grade = info.grade !== '-' ? info.grade : 'Grade A';
       const finalUsd = offer.status === 'Contra-Oferta' && offer.counterOfferUsd ? offer.counterOfferUsd : offer.amountUsd;
       return {
         lotNumber: offer.lotNumber,
-        lotTitle: stripLotPrefix(offer.lotTitle || lot?.title || offer.lotNumber),
+        lotTitle: info.lotTitleClean || offer.lotNumber,
         grade,
         quantity: qty,
         totalUsd: finalUsd,
@@ -4176,49 +4197,130 @@ $285.00
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] bg-slate-100/60 dark:bg-slate-950/40">
-                    <th className="py-2.5 px-3">Horário</th>
-                    <th className="py-2.5 px-3">Lote</th>
-                    <th className="py-2.5 px-3">Arrematante</th>
-                    <th className="py-2.5 px-3">Oferta (USD)</th>
-                    <th className="py-2.5 px-3">Valor (BRL)</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3 text-right">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-                  {offersList.slice(0, 5).map(offer => (
-                    <tr key={offer.id} className="hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400 font-mono text-[11px]">{offer.timestamp}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">{offer.lotNumber}</td>
-                      <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">{offer.clientName}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">${offer.amountUsd.toLocaleString()} USD</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-700 dark:text-slate-300">aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</td>
-                      <td className="py-2.5 px-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          offer.status === 'Vencendo'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                            : offer.status === 'Homologada / Arrematada'
-                            ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'
-                        }`}>
-                          {offer.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-right">
-                        <button
-                          onClick={() => handleUpdateOfferStatus(offer.id, 'Homologada / Arrematada')}
-                          className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white border border-emerald-500/40 rounded text-[11px] font-medium transition-colors"
-                        >
-                          Homologar
-                        </button>
-                      </td>
+              {offersList.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-600 dark:text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                  Nenhuma oferta ou compra direta registrada até o momento. Assim que os clientes enviarem lances, todas as características aparecerão aqui em tempo real.
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 text-[11px] bg-slate-100/60 dark:bg-slate-950/40">
+                      <th className="py-2.5 px-3">Data e Horário</th>
+                      <th className="py-2.5 px-3">Leilão / Lote</th>
+                      <th className="py-2.5 px-3">Modelo e Características</th>
+                      <th className="py-2.5 px-3 text-center">Quantidade</th>
+                      <th className="py-2.5 px-3">Arrematante</th>
+                      <th className="py-2.5 px-3">Oferta (USD / BRL)</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3 text-right">Ação</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                    {offersList.slice(0, 5).map(offer => {
+                      const info = resolveOfferCharacteristics(offer, auctions, usdRate);
+                      return (
+                        <tr key={offer.id} className="hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors align-top">
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1 text-[11px]">
+                              <Calendar className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                              {info.date}
+                            </span>
+                            <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                              {info.time}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="flex flex-wrap items-center gap-1 mb-0.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase border ${info.auctionBadgeClass}`}>
+                                {info.auctionBadgeLabel}
+                              </span>
+                              {info.isDirectPurchase && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                  COMPRA DIRETA
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-mono font-bold text-amber-600 dark:text-amber-400 block">{offer.lotNumber}</span>
+                            <span className="text-[10px] text-slate-600 dark:text-slate-400 block truncate max-w-[160px]" title={info.auctionHouse}>
+                              {info.auctionHouse}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 min-w-[210px]">
+                            <span className="font-bold text-slate-900 dark:text-white block">{info.modelFamily}</span>
+                            <span className="text-[10px] text-slate-600 dark:text-slate-400 block truncate max-w-[230px]" title={info.lotTitleClean}>
+                              {info.lotTitleClean}
+                            </span>
+                            {info.mixSummaryText && (
+                              <span className="text-[10px] text-purple-700 dark:text-purple-300 block mt-0.5">
+                                Mix: {info.mixSummaryText}
+                              </span>
+                            )}
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                              <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-amber-300 font-mono text-[10px] font-semibold">
+                                {info.grade}
+                              </span>
+                              {info.storage && info.storage !== '-' && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-cyan-700 dark:text-cyan-300 font-mono text-[10px]">
+                                  {info.storage}
+                                </span>
+                              )}
+                              {info.colorsText !== '-' && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] truncate max-w-[110px]" title={info.colorsText}>
+                                  {info.colorsText}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                            <span className="font-mono font-black text-slate-900 dark:text-white text-xs block">
+                              {info.quantity} un.
+                            </span>
+                            {info.isPartialLot && (
+                              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono block">
+                                de {info.lotTotalQuantity} un.
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-slate-900 dark:text-white block">{offer.clientName}</span>
+                            <span className="text-[10px] text-slate-600 dark:text-slate-400 block truncate max-w-[150px]">{offer.clientEmail}</span>
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 block">
+                              ${info.amountUsd.toLocaleString()} USD
+                            </span>
+                            <span className="font-mono text-[10px] text-slate-600 dark:text-slate-400 block">
+                              aprox. R$ {info.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              offer.status === 'Vencendo' || offer.status === 'Aceita'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                                : offer.status === 'Homologada / Arrematada'
+                                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                                : offer.status === 'Recusada'
+                                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'
+                            }`}>
+                              {offer.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                            <button
+                              onClick={() => handleUpdateOfferStatus(offer.id, 'Homologada / Arrematada')}
+                              className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-700 dark:text-emerald-300 hover:text-white border border-emerald-500/40 rounded text-[11px] font-medium transition-colors"
+                            >
+                              Homologar
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
@@ -6365,193 +6467,256 @@ $285.00
           </div>
 
           <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white/80 dark:bg-slate-900/60">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 text-[11px]">
-                  <th className="py-3 px-3">Data / Hora</th>
-                  <th className="py-3 px-3">Lote</th>
-                  <th className="py-3 px-3">Modelo</th>
-                  <th className="py-3 px-3">Qtd</th>
-                  <th className="py-3 px-3">Grade</th>
-                  <th className="py-3 px-3">Cor</th>
-                  <th className="py-3 px-3">Incremento</th>
-                  <th className="py-3 px-3">Arrematante / Cliente</th>
-                  <th className="py-3 px-3">Valor USD</th>
-                  <th className="py-3 px-3">Valor BRL (PTAX)</th>
-                  <th className="py-3 px-3">Status da Oferta</th>
-                  <th className="py-3 px-3 text-right">Gerenciar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-                {filteredOffersList.map(offer => {
-                  const lot = auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
-                  return (
-                  <tr key={offer.id} className="hover:bg-slate-200/50 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{offer.timestamp}</td>
-                    <td className="py-3 px-3">
-                      <span className="font-mono font-bold text-amber-600 dark:text-amber-400 block">{offer.lotNumber}</span>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-400 truncate max-w-[140px] block">{offer.lotTitle}</span>
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white">
-                      {lot?.modelFamily || offer.lotTitle}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-slate-800 dark:text-slate-200">
-                      {lot?.quantity ? `${lot.quantity} un.` : '-'}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-amber-300 font-mono text-[11px]">
-                        {lot?.grade || '-'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-slate-700 dark:text-slate-300">
-                      {lot?.colorHighlights?.join(', ') || '-'}
-                    </td>
-                    <td className="py-3 px-3 font-mono text-emerald-600 dark:text-emerald-400">
-                      +$25 USD
-                      {lot && isAssurantLot(lot) && (
-                        <span className="block text-[10px] text-cyan-700 dark:text-cyan-300">Inc: {lot.incrementSize || 1} un.</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="font-semibold text-slate-900 dark:text-white block">{offer.clientName}</span>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-400">{offer.clientEmail}</span>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-bold text-amber-600 dark:text-amber-400">
-                      ${offer.amountUsd.toLocaleString()} USD
-                    </td>
-                    <td className="py-3 px-3 font-mono text-slate-800 dark:text-slate-200">
-                      aprox. R$ {offer.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${
-                        offer.status === 'Aceita' || offer.status === 'Vencendo'
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                          : offer.status === 'Contra-Oferta'
-                          ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40'
-                          : offer.status === 'Em Análise' || offer.status === 'Homologada / Arrematada'
-                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
-                          : offer.status === 'Recusada'
-                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'
-                      }`}>
-                        {offer.status}
-                      </span>
-                      {offer.status === 'Contra-Oferta' && offer.counterOfferUsd && (
-                        <div className="text-[10px] text-indigo-300 font-mono mt-1">
-                          Contra: ${offer.counterOfferUsd.toLocaleString()} USD
+            {filteredOffersList.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-600 dark:text-slate-400">
+                Nenhuma oferta computada encontrada para o filtro selecionado.
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-950/80 text-slate-600 dark:text-slate-400 text-[11px]">
+                    <th className="py-3 px-3">Data e Horário</th>
+                    <th className="py-3 px-3">Leilão / Lote</th>
+                    <th className="py-3 px-3">Modelo &amp; Características</th>
+                    <th className="py-3 px-3 text-center">Quantidade</th>
+                    <th className="py-3 px-3">Arrematante / Cliente</th>
+                    <th className="py-3 px-3">Valor USD / BRL</th>
+                    <th className="py-3 px-3">Status da Oferta</th>
+                    <th className="py-3 px-3 text-right">Gerenciar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
+                  {filteredOffersList.map(offer => {
+                    const info = resolveOfferCharacteristics(offer, auctions, usdRate);
+                    const lot = info.lot;
+                    return (
+                    <tr key={offer.id} className="hover:bg-slate-200/50 dark:hover:bg-slate-800/40 transition-colors align-top">
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span className="font-mono font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                          {info.date}
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                          {info.time}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 min-w-[165px]">
+                        <div className="flex flex-wrap items-center gap-1 mb-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase border ${info.auctionBadgeClass}`}>
+                            {info.auctionBadgeLabel}
+                          </span>
+                          {info.isDirectPurchase && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                              Compra Direta
+                            </span>
+                          )}
                         </div>
-                      )}
-                      {offer.adminNote && (
-                        <div className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 max-w-[180px] truncate" title={offer.adminNote}>
-                          Obs: {offer.adminNote}
+                        <span className="font-mono font-bold text-amber-600 dark:text-amber-400 block">{offer.lotNumber}</span>
+                        <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 block">{info.auctionHouse}</span>
+                        {info.location && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block">{info.location}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 min-w-[230px]">
+                        <span className="font-bold text-slate-900 dark:text-white block text-xs">{info.modelFamily}</span>
+                        <span className="text-[11px] text-slate-600 dark:text-slate-400 block max-w-[260px]" title={info.lotTitleClean}>
+                          {info.lotTitleClean}
+                        </span>
+                        {info.mixSummaryText && (
+                          <span className="text-[10px] text-purple-700 dark:text-purple-300 font-medium block mt-0.5">
+                            Mix de Modelos: {info.mixSummaryText}
+                          </span>
+                        )}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-amber-700 dark:text-amber-300 font-mono text-[10px] font-bold">
+                            {info.grade}
+                          </span>
+                          {info.storage && info.storage !== '-' && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-cyan-700 dark:text-cyan-300 font-mono text-[10px] font-semibold">
+                              {info.storage}
+                            </span>
+                          )}
+                          {info.colorsText !== '-' && (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px]">
+                              Cor: {info.colorsText}
+                            </span>
+                          )}
+                          {info.carrierStatus && (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 text-[10px]">
+                              {info.carrierStatus}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      <div className="flex flex-wrap items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleUpdateOfferStatus(offer.id, 'Aceita')}
-                          className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold"
-                          title="Aceitar oferta"
-                        >
-                          Aceita
-                        </button>
-                        <button
-                          onClick={() => handleUpdateOfferStatus(offer.id, 'Em Análise')}
-                          className="px-2 py-1 bg-amber-600/80 hover:bg-amber-500 text-white rounded text-[11px] font-semibold"
-                          title="Colocar em análise"
-                        >
-                          Em Análise
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCounterOfferEditingId(counterOfferEditingId === offer.id ? null : offer.id);
-                            setCounterOfferUsdInput(String(offer.counterOfferUsd || Math.round(offer.amountUsd * 1.05)));
-                            setCounterOfferNoteInput(offer.adminNote || '');
-                          }}
-                          className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-semibold"
-                          title="Enviar contra-oferta"
-                        >
-                          Contra-Oferta
-                        </button>
-                        <button
-                          onClick={() => handleUpdateOfferStatus(offer.id, 'Recusada')}
-                          className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[11px] font-semibold"
-                          title="Recusar oferta"
-                        >
-                          Recusada
-                        </button>
-                        {(() => {
-                          const clientObj = clientsList.find(c => c.email === offer.clientEmail);
-                          const phone = (offer.clientWhatsapp || clientObj?.whatsapp || clientObj?.phone || '5511999999999').replace(/\D/g, '');
-                          const msg = encodeURIComponent(
-                            `Olá ${offer.clientName}, sua oferta no lote ${offer.lotNumber} ($${offer.amountUsd} USD) está com status: *${offer.status}*${offer.counterOfferUsd ? ` (Contra-oferta: $${offer.counterOfferUsd} USD)` : ''}.`
-                          );
-                          const isHighlighted = lastUpdatedOfferId === offer.id;
-                          return (
-                            <a
-                              href={`https://wa.me/${phone}?text=${msg}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
-                                isHighlighted
-                                  ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-300 shadow-lg shadow-emerald-500/30 animate-pulse'
-                                  : 'bg-emerald-500/20 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-slate-950 border border-emerald-500/40'
-                              }`}
-                              title="Enviar aviso no WhatsApp do cliente"
-                            >
-                              Enviar WhatsApp
-                            </a>
-                          );
-                        })()}
-                        <button
-                          type="button"
-                          onClick={() => handleGenerateOfferInvoice(offer)}
-                          className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 rounded text-[11px] font-bold transition-colors flex items-center gap-1"
-                          title="Gerar Invoice Oficial em PDF para este cliente/lote"
-                        >
-                          <Receipt className="w-3 h-3" />
-                          <span>Invoice PDF</span>
-                        </button>
-                      </div>
-                      {counterOfferEditingId === offer.id && (
-                        <div className="mt-2 p-2.5 bg-slate-100 dark:bg-slate-950 border border-indigo-500/40 rounded-lg flex flex-col sm:flex-row items-center justify-end gap-2">
-                          <input
-                            type="number"
-                            value={counterOfferUsdInput}
-                            onChange={(e) => setCounterOfferUsdInput(e.target.value)}
-                            placeholder="Valor USD"
-                            className="w-28 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white font-mono"
-                          />
-                          <input
-                            type="text"
-                            value={counterOfferNoteInput}
-                            onChange={(e) => setCounterOfferNoteInput(e.target.value)}
-                            placeholder="Observação opcional..."
-                            className="w-44 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white"
-                          />
+                      </td>
+                      <td className="py-3 px-3 text-center whitespace-nowrap">
+                        <span className="font-mono font-black text-slate-900 dark:text-white text-sm block">
+                          {info.quantity} un.
+                        </span>
+                        {info.isPartialLot && (
+                          <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-mono">
+                            de {info.lotTotalQuantity} un. no lote
+                          </span>
+                        )}
+                        {lot && isAssurantLot(lot) && (
+                          <span className="block text-[10px] text-cyan-700 dark:text-cyan-300 font-mono">
+                            Inc: {lot.incrementSize || 1} un.
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="font-semibold text-slate-900 dark:text-white block">{offer.clientName}</span>
+                        <span className="text-[10px] text-slate-600 dark:text-slate-400 block">{offer.clientEmail}</span>
+                        {(offer.clientWhatsapp || offer.clientPhone) && (
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono block">
+                            WhatsApp: {offer.clientWhatsapp || offer.clientPhone}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span className="font-mono font-bold text-amber-600 dark:text-amber-400 block">
+                          ${info.amountUsd.toLocaleString()} USD
+                        </span>
+                        {info.quantity > 1 && (
+                          <span className="font-mono text-[10px] text-slate-600 dark:text-slate-400 block">
+                            ~${info.unitPriceUsd.toLocaleString()} / un.
+                          </span>
+                        )}
+                        <span className="font-mono text-[11px] text-slate-800 dark:text-slate-200 block mt-0.5">
+                          aprox. R$ {info.amountBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-bold border inline-block whitespace-nowrap ${
+                          offer.status === 'Aceita' || offer.status === 'Vencendo'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                            : offer.status === 'Contra-Oferta'
+                            ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40'
+                            : offer.status === 'Em Análise' || offer.status === 'Homologada / Arrematada'
+                            ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                            : offer.status === 'Recusada'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700'
+                        }`}>
+                          {offer.status}
+                        </span>
+                        {offer.status === 'Contra-Oferta' && offer.counterOfferUsd && (
+                          <div className="text-[10px] text-indigo-300 font-mono mt-1">
+                            Contra: ${offer.counterOfferUsd.toLocaleString()} USD
+                          </div>
+                        )}
+                        {offer.adminNote && (
+                          <div className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5 max-w-[180px] truncate" title={offer.adminNote}>
+                            Obs: {offer.adminNote}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <div className="flex flex-wrap items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleUpdateOfferStatus(offer.id, 'Aceita')}
+                            className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-semibold"
+                            title="Aceitar oferta"
+                          >
+                            Aceita
+                          </button>
+                          <button
+                            onClick={() => handleUpdateOfferStatus(offer.id, 'Em Análise')}
+                            className="px-2 py-1 bg-amber-600/80 hover:bg-amber-500 text-white rounded text-[11px] font-semibold"
+                            title="Colocar em análise"
+                          >
+                            Em Análise
+                          </button>
                           <button
                             onClick={() => {
-                              const val = Number(counterOfferUsdInput);
-                              if (!val || val <= 0) {
-                                showNotice('Informe um valor válido em USD para a contra-oferta.', 'error');
-                                return;
-                              }
-                              handleUpdateOfferStatus(offer.id, 'Contra-Oferta', val, counterOfferNoteInput.trim() || undefined);
-                              setCounterOfferEditingId(null);
+                              setCounterOfferEditingId(counterOfferEditingId === offer.id ? null : offer.id);
+                              setCounterOfferUsdInput(String(offer.counterOfferUsd || Math.round(offer.amountUsd * 1.05)));
+                              setCounterOfferNoteInput(offer.adminNote || '');
                             }}
-                            className="px-2.5 py-1 bg-indigo-500 hover:bg-indigo-400 text-white rounded text-[11px] font-bold"
+                            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-semibold"
+                            title="Enviar contra-oferta"
                           >
-                            Enviar
+                            Contra-Oferta
+                          </button>
+                          <button
+                            onClick={() => handleUpdateOfferStatus(offer.id, 'Recusada')}
+                            className="px-2 py-1 bg-rose-600/80 hover:bg-rose-500 text-white rounded text-[11px] font-semibold"
+                            title="Recusar oferta"
+                          >
+                            Recusada
+                          </button>
+                          {(() => {
+                            const clientObj = clientsList.find(c => c.email === offer.clientEmail);
+                            const phone = (offer.clientWhatsapp || clientObj?.whatsapp || clientObj?.phone || '5511999999999').replace(/\D/g, '');
+                            const msg = encodeURIComponent(
+                              `Olá ${offer.clientName}, sua oferta no lote ${offer.lotNumber} (${info.auctionHouse} · ${info.modelFamily} · ${info.quantity} un. · $${offer.amountUsd} USD) está com status: *${offer.status}*${offer.counterOfferUsd ? ` (Contra-oferta: $${offer.counterOfferUsd} USD)` : ''}.`
+                            );
+                            const isHighlighted = lastUpdatedOfferId === offer.id;
+                            return (
+                              <a
+                                href={`https://wa.me/${phone}?text=${msg}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-all ${
+                                  isHighlighted
+                                    ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-300 shadow-lg shadow-emerald-500/30 animate-pulse'
+                                    : 'bg-emerald-500/20 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-slate-950 border border-emerald-500/40'
+                                }`}
+                                title="Enviar aviso no WhatsApp do cliente"
+                              >
+                                Enviar WhatsApp
+                              </a>
+                            );
+                          })()}
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateOfferInvoice(offer)}
+                            className="px-2.5 py-1 bg-sky-500/20 hover:bg-sky-500 text-sky-300 hover:text-slate-950 border border-sky-500/40 rounded text-[11px] font-bold transition-colors flex items-center gap-1"
+                            title="Gerar Invoice Oficial em PDF para este cliente/lote"
+                          >
+                            <Receipt className="w-3 h-3" />
+                            <span>Invoice PDF</span>
                           </button>
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {counterOfferEditingId === offer.id && (
+                          <div className="mt-2 p-2.5 bg-slate-100 dark:bg-slate-950 border border-indigo-500/40 rounded-lg flex flex-col sm:flex-row items-center justify-end gap-2">
+                            <input
+                              type="number"
+                              value={counterOfferUsdInput}
+                              onChange={(e) => setCounterOfferUsdInput(e.target.value)}
+                              placeholder="Valor USD"
+                              className="w-28 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white font-mono"
+                            />
+                            <input
+                              type="text"
+                              value={counterOfferNoteInput}
+                              onChange={(e) => setCounterOfferNoteInput(e.target.value)}
+                              placeholder="Observação opcional..."
+                              className="w-44 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-xs text-slate-900 dark:text-white"
+                            />
+                            <button
+                              onClick={() => {
+                                const val = Number(counterOfferUsdInput);
+                                if (!val || val <= 0) {
+                                  showNotice('Informe um valor válido em USD para a contra-oferta.', 'error');
+                                  return;
+                                }
+                                handleUpdateOfferStatus(offer.id, 'Contra-Oferta', val, counterOfferNoteInput.trim() || undefined);
+                                setCounterOfferEditingId(null);
+                              }}
+                              className="px-2.5 py-1 bg-indigo-500 hover:bg-indigo-400 text-white rounded text-[11px] font-bold"
+                            >
+                              Enviar
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
         );

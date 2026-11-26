@@ -17,6 +17,7 @@ import { AuctionLot } from '../types/auction';
 import { stripLotPrefix } from '../utils/deviceImages';
 import { isVerizonLot, isTMobileLot, getMarketplaceNumber, isLotUnlockedOnly, mapVerizonGradeStrict } from '../utils/verizonUtils';
 import { LotMixBadgesAndTrigger, LotMixExpandablePanel } from './LotMixExpandable';
+import { withBasePath } from '../utils/basePath';
 
 interface ModelCarouselProps {
   auctions: AuctionLot[];
@@ -194,11 +195,11 @@ export const ModelCarousel: React.FC<ModelCarouselProps> = ({
           <div className="lg:col-span-5 relative group">
             <div className="relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-950 shadow-inner">
               <img
-                src={currentLot.imageUrl}
+                src={withBasePath(currentLot.imageUrl)}
                 alt={cleanTitle}
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+                  (e.currentTarget as HTMLImageElement).src = withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/30 pointer-events-none" />

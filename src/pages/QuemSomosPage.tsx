@@ -1,5 +1,6 @@
 import React from 'react';
 import { ShieldCheck, MapPin, Award, CheckCircle2, Building2, Globe2, Truck, ArrowRight, Gavel, Users, Clock } from 'lucide-react';
+import { withBasePath } from '../utils/basePath';
 
 interface QuemSomosPageProps {
   onNavigateLeiloes: () => void;
@@ -30,7 +31,7 @@ export const QuemSomosPage: React.FC<QuemSomosPageProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         <div className="lg:col-span-7 rounded-2xl overflow-hidden border border-slate-800 bg-slate-900 shadow-2xl relative">
           <img
-            src="/images/hero_auction_warehouse_iphones_1793849010124.jpg"
+            src={withBasePath('/images/hero_auction_warehouse_iphones_1793849010124.jpg')}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=1200&auto=format&fit=crop&q=80';
             }}

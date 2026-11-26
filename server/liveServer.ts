@@ -80,10 +80,13 @@ function isOriginAllowed(req: IncomingMessage): boolean {
       return true;
     }
 
-    // Cloud Run / AI Studio preview & deployed URLs behind reverse proxy
+    // Cloud Run / AI Studio preview, Cloudflare proxy & Vercel origins
     if (
       parsedOrigin.protocol === 'https:' &&
-      originHostname.endsWith('.run.app')
+      (originHostname.endsWith('.run.app') ||
+        originHostname === 'usafastleilao.com' ||
+        originHostname.endsWith('.usafastleilao.com') ||
+        originHostname.endsWith('.vercel.app'))
     ) {
       return true;
     }
@@ -219,7 +222,7 @@ export function attachLiveWebSocketServer(httpServer: HttpServer) {
       return;
     }
 
-    if (pathname !== '/ws/live') {
+    if (pathname !== '/ws/live' && pathname !== '/hub/ws/live') {
       return;
     }
 

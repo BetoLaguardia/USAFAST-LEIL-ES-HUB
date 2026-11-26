@@ -1,4 +1,5 @@
 // Banco de dados de imagens reais por marca e modelo para importação automática de lotes
+import { withBasePath } from './basePath';
 
 /**
  * Remove prefixos como 'Lote', 'Lotes', 'Lote Master', 'Palete Atacado', etc. antes do nome do modelo
@@ -120,5 +121,5 @@ export function getDeviceImageUrl(make?: string, model?: string, deviceType?: st
     return 'https://fdn2.gsmarena.com/vv/bigpic/motorola-edge-50-pro.jpg';
   }
 
-  return '/images/iphone_16_pro_max_grade_a_1793849011033.jpg';
+  return withBasePath('/images/iphone_16_pro_max_grade_a_1793849011033.jpg');
 }

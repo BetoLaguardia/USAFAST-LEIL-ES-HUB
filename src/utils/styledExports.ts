@@ -13,6 +13,7 @@ import {
   mapVerizonGradeStrict
 } from './verizonUtils';
 import { escapeHtml, printHtmlToPdf } from './pdfPrint';
+import { resolveOfferCharacteristics } from './offerUtils';
 
 export interface ClientBidExportItem {
   lotId: string;
@@ -943,22 +944,25 @@ function resolveAdminOffersData(params: {
         });
 
   const enriched = filteredOffers.map(offer => {
-    const lot = params.auctions.find(a => a.lotNumber === offer.lotNumber || a.id === offer.lotId);
+    const info = resolveOfferCharacteristics(offer, params.auctions, safeRate);
     const client = params.clients.find(
       c =>
         (c.email && offer.clientEmail && c.email.toLowerCase() === offer.clientEmail.toLowerCase()) ||
         (c.name && offer.clientName && c.name.toLowerCase() === offer.clientName.toLowerCase())
     );
-    const qty = lot?.quantity || 1;
-    const grade = lot ? (isVerizonLot(lot) ? mapVerizonGradeStrict(lot.grade) : lot.grade) : 'Grade A';
-    const amountBrl = offer.amountBrl > 0 ? offer.amountBrl : offer.amountUsd * safeRate;
 
     return {
       ...offer,
-      modelFamily: lot?.modelFamily || stripLotPrefix(offer.lotTitle),
-      quantity: qty,
-      grade,
-      amountBrl,
+      timestamp: info.fullDateTimeLabel,
+      auctionHouse: info.auctionHouse,
+      auctionBadgeLabel: info.auctionBadgeLabel,
+      modelFamily: info.modelFamily,
+      lotTitleClean: info.lotTitleClean,
+      storage: info.storage,
+      colorsText: info.colorsText,
+      quantity: info.quantity,
+      grade: info.grade,
+      amountBrl: info.amountBrl,
       whatsapp: offer.clientWhatsapp || client?.whatsapp || client?.phone || offer.clientPhone || '-',
       cpfCnpj: client?.cpfCnpj || '-',
       consultantName: client?.consultantName || '-'
@@ -1034,9 +1038,10 @@ export function exportAdminOffersXlsx(params: {
       ? `Todos os Clientes (${clientSummaries.length} arrematantes)`
       : `Cliente: ${selectedClientObj?.name || enriched[0]?.clientName || params.selectedClientEmail}`;
 
-  const COLS = 13;
+  const COLS = 14;
   const headers = [
     'Data / Hora',
+    'Leilão',
     'Lote',
     'Título / Modelo',
     'Qtd',
@@ -1059,15 +1064,16 @@ export function exportAdminOffersXlsx(params: {
       'Total Ofertas:', `${enriched.length}`, '',
       'Aceitas/Vencendo:', `${acceptedCount}`, '',
       'Volume USD:', `$ ${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2 })}`, '',
-      'Volume BRL (PTAX):', `R$ ${totalBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`, '', ''
+      'Volume BRL (PTAX):', `R$ ${totalBrl.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`, '', '', ''
     ],
     Array(COLS).fill(''),
     [`OFERTAS COMPUTADAS POR CLIENTE (${enriched.length} REGISTROS)`, ...Array(COLS - 1).fill('')],
     headers,
     ...enriched.map(o => [
       o.timestamp,
+      o.auctionHouse,
       o.lotNumber,
-      `${stripLotPrefix(o.lotTitle)}${o.modelFamily && o.modelFamily !== stripLotPrefix(o.lotTitle) ? ` (${o.modelFamily})` : ''}`,
+      `${o.lotTitleClean}${o.modelFamily && o.modelFamily !== o.lotTitleClean ? ` (${o.modelFamily})` : ''}`,
       o.quantity,
       o.grade,
       o.clientName,
@@ -1081,6 +1087,7 @@ export function exportAdminOffersXlsx(params: {
     ]),
     [
       'TOTAIS CONSOLIDADOS',
+      '',
       `${enriched.length} ofertas`,
       '',
       enriched.reduce((acc, o) => acc + o.quantity, 0),
@@ -1129,8 +1136,8 @@ export function exportAdminOffersXlsx(params: {
   styleSectionRow(ws, 5, COLS);
 
   for (let c = 0; c < COLS; c++) {
-    const center = c === 3 || c === 4;
-    const right = c === 8 || c === 9 || c === 11;
+    const center = c === 4 || c === 5;
+    const right = c === 9 || c === 10 || c === 12;
     applyStyle(ws, 6, c, {
       fill: { fgColor: { rgb: '0F172A' } },
       font: { name: 'Calibri', sz: 10, bold: true, color: { rgb: 'FFFFFF' } },
@@ -1143,22 +1150,22 @@ export function exportAdminOffersXlsx(params: {
     const r = 7 + i;
     const bg = i % 2 === 0 ? 'FFFFFF' : 'F8FAFC';
     for (let c = 0; c < COLS; c++) {
-      const center = c === 3 || c === 4;
-      const right = c === 8 || c === 9 || c === 11;
+      const center = c === 4 || c === 5;
+      const right = c === 9 || c === 10 || c === 12;
       const addr = XLSX.utils.encode_cell({ r, c });
       const isNum = ws[addr] && typeof ws[addr].v === 'number';
       applyStyle(ws, r, c, {
-        fill: { fgColor: { rgb: c === 10 ? 'FFFBEB' : bg } },
+        fill: { fgColor: { rgb: c === 11 ? 'FFFBEB' : bg } },
         font: {
           name: 'Calibri',
           sz: 10,
-          bold: c === 1 || c === 5 || c === 8 || c === 10,
-          color: { rgb: c === 1 ? 'B45309' : c === 8 || c === 9 ? '047857' : '1E293B' }
+          bold: c === 2 || c === 6 || c === 9 || c === 11,
+          color: { rgb: c === 2 ? 'B45309' : c === 9 || c === 10 ? '047857' : '1E293B' }
         },
         alignment: { horizontal: center ? 'center' : right ? 'right' : 'left', vertical: 'center' },
         border: BORDER_THIN,
-        ...(isNum && (c === 8 || c === 11) ? { numFmt: '"$"#,##0.00' } : {}),
-        ...(isNum && c === 9 ? { numFmt: '"R$ "#,##0.00' } : {})
+        ...(isNum && (c === 9 || c === 12) ? { numFmt: '"$"#,##0.00' } : {}),
+        ...(isNum && c === 10 ? { numFmt: '"R$ "#,##0.00' } : {})
       });
     }
   }
@@ -1167,17 +1174,18 @@ export function exportAdminOffersXlsx(params: {
     applyStyle(ws, totalsIdx, c, {
       fill: { fgColor: { rgb: '1E293B' } },
       font: { name: 'Calibri', sz: 10, bold: true, color: { rgb: 'FBBF24' } },
-      alignment: { horizontal: c === 3 ? 'center' : c === 8 || c === 9 ? 'right' : 'left', vertical: 'center' },
+      alignment: { horizontal: c === 4 ? 'center' : c === 9 || c === 10 ? 'right' : 'left', vertical: 'center' },
       border: BORDER_HEADER,
-      ...(c === 8 ? { numFmt: '"$"#,##0.00' } : {}),
-      ...(c === 9 ? { numFmt: '"R$ "#,##0.00' } : {})
+      ...(c === 9 ? { numFmt: '"$"#,##0.00' } : {}),
+      ...(c === 10 ? { numFmt: '"R$ "#,##0.00' } : {})
     });
   }
 
   styleFooterRow(ws, lastIdx, COLS);
 
   ws['!cols'] = [
-    { wch: 18 },
+    { wch: 20 },
+    { wch: 22 },
     { wch: 15 },
     { wch: 34 },
     { wch: 8 },
@@ -1343,8 +1351,8 @@ export function exportAdminOffersPdf(params: {
       (o, idx) => `
       <tr class="${idx % 2 === 1 ? 'alt' : ''}">
         <td class="muted">${escapeHtml(o.timestamp)}</td>
-        <td class="mono bold amber-text">${escapeHtml(o.lotNumber)}</td>
-        <td><div class="bold">${escapeHtml(stripLotPrefix(o.lotTitle))}</div><div class="sub">${escapeHtml(o.modelFamily)}</div></td>
+        <td><div class="bold">${escapeHtml(o.auctionHouse)}</div><div class="sub mono amber-text">${escapeHtml(o.lotNumber)}</div></td>
+        <td><div class="bold">${escapeHtml(o.modelFamily)}</div><div class="sub">${escapeHtml(o.lotTitleClean)}${o.storage && o.storage !== '-' ? ` · ${escapeHtml(o.storage)}` : ''}</div></td>
         <td class="center mono">${o.quantity}</td>
         <td class="center"><span class="grade-pill">${escapeHtml(o.grade)}</span></td>
         <td><div class="bold">${escapeHtml(o.clientName)}</div><div class="sub">${escapeHtml(o.clientEmail)}</div></td>
@@ -1436,8 +1444,8 @@ export function exportAdminOffersPdf(params: {
           <thead>
             <tr>
               <th>Data / Hora</th>
-              <th>Lote</th>
-              <th>Título / Modelo</th>
+              <th>Leilão / Lote</th>
+              <th>Modelo / Título</th>
               <th class="center">Qtd</th>
               <th class="center">Grade</th>
               <th>Cliente / Arrematante</th>
