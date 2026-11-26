@@ -15,7 +15,7 @@ import {
   ArrowLeft,
   Clock
 } from 'lucide-react';
-import { SystemUser, UserAccessType } from '../types/auction';
+import { SystemUser } from '../types/auction';
 import {
   registerClientWithSupabase,
   signInAdminWithSupabase,
@@ -199,7 +199,6 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
   const [regPhone, setRegPhone] = useState('');
   const [regDoc, setRegDoc] = useState('');
   const [regConsultant, setRegConsultant] = useState('');
-  const [regUserType, setRegUserType] = useState<UserAccessType>('client');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [regAcceptTerms, setRegAcceptTerms] = useState(false);
@@ -258,7 +257,6 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
       phone: regPhone.trim(),
       cpfCnpj: regDoc.trim(),
       consultantName: regConsultant.trim(),
-      requestedUserType: regUserType,
       whatsappNotificationEnabled: regWhatsappNotify,
       password: regPassword
     });
@@ -550,25 +548,6 @@ export const ClientLoginGate: React.FC<ClientLoginGateProps> = ({
                     />
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-slate-700 dark:text-slate-300 text-xs font-semibold block mb-1">
-                  Tipo de Cadastro / Acesso Solicitado: *
-                </label>
-                <select
-                  required
-                  value={regUserType}
-                  onChange={e => setRegUserType(e.target.value as UserAccessType)}
-                  className="w-full bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-400 transition-colors"
-                >
-                  <option value="client">Cliente Normal (Painel do Cliente)</option>
-                  <option value="admin_credenciado">Admin Credenciado (Dashboard Geral e Ofertas Computadas)</option>
-                  <option value="admin_geral">Admin Geral (Acesso Administrativo Completo)</option>
-                </select>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  O nível final de acesso será liberado após aprovação do Admin Geral.
-                </p>
               </div>
 
               <div>

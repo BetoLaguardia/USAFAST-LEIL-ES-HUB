@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Gavel, UserCheck, Shield, MapPin, CheckCircle2, AlertTriangle, ArrowRight, DollarSign, Clock, RefreshCw, Send, Lock, FileSpreadsheet, FileText, ShoppingBag } from 'lucide-react';
-import { AuctionLot, SystemUser, UserAccessType } from '../types/auction';
+import { AuctionLot, SystemUser } from '../types/auction';
 import { isAssurantLot, isProntaEntregaLot, isDiscountBidAuction, getAssurantPreviousApprovedBid, getLotIncrementSize, getLotUnitPriceUsd, getLotFixedTotalForQtyUsd } from '../utils/assurantUtils';
 import { isVerizonLot } from '../utils/verizonUtils';
 import { registerClientWithSupabase } from '../services/authService';
@@ -38,7 +38,6 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
     cpfCnpj: currentUser.cpfCnpj || '',
     phone: currentUser.phone || '',
     consultantName: currentUser.consultantName || '',
-    requestedUserType: 'client' as UserAccessType,
     password: '',
     companyType: 'lojista',
     monthlyVolume: '10-30',
@@ -100,7 +99,6 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
       cpfCnpj: formData.cpfCnpj.trim(),
       phone: formData.phone.trim(),
       consultantName: formData.consultantName.trim(),
-      requestedUserType: formData.requestedUserType,
       whatsappNotificationEnabled: true,
       password: formData.password,
     });
@@ -672,19 +670,6 @@ export const AuctionSystemModal: React.FC<AuctionSystemModalProps> = ({
                         <option value="1-5">1 a 5 aparelhos por mês</option>
                         <option value="10-30">10 a 30 aparelhos (Lotes Pequenos)</option>
                         <option value="50+">50+ aparelhos (Paletes Fechados de Atacado)</option>
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-xs text-slate-700 dark:text-slate-300 block mb-1">Tipo de Cadastro / Acesso Solicitado *</label>
-                      <select
-                        required
-                        value={formData.requestedUserType}
-                        onChange={e => setFormData({ ...formData, requestedUserType: e.target.value as UserAccessType })}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-400"
-                      >
-                        <option value="client">Cliente Normal (Acesso ao Painel do Cliente)</option>
-                        <option value="admin_credenciado">Admin Credenciado (Dashboard Geral e Ofertas Computadas)</option>
-                        <option value="admin_geral">Admin Geral (Acesso Administrativo Completo)</option>
                       </select>
                     </div>
                   </div>

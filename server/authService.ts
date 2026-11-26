@@ -322,7 +322,6 @@ export async function registerClientInSupabase(payload: {
   cpfCnpj?: string;
   phone?: string;
   consultantName?: string;
-  requestedUserType?: UserAccessType;
   whatsappNotificationEnabled?: boolean;
   password?: string;
 }) {
@@ -336,7 +335,7 @@ export async function registerClientInSupabase(payload: {
   const cpfCnpj = String(payload.cpfCnpj || '').trim();
   const phone = String(payload.phone || '').trim();
   const consultantName = String(payload.consultantName || '').trim();
-  const requestedUserType = normalizeUserType(payload.requestedUserType);
+  const requestedUserType: UserAccessType = 'client';
   const password = String(payload.password || '');
 
   if (!name || !email || !cpfCnpj || !phone || !consultantName) {

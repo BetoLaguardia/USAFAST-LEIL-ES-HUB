@@ -177,7 +177,6 @@ export async function registerClientWithSupabase(payload: {
   cpfCnpj: string;
   phone: string;
   consultantName: string;
-  requestedUserType?: UserAccessType;
   whatsappNotificationEnabled?: boolean;
   password: string;
 }): Promise<{ ok: boolean; user?: SystemUser; error?: string }> {
