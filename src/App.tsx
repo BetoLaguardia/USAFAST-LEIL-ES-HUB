@@ -1399,7 +1399,7 @@ export default function App() {
                               : 'text-emerald-300 hover:bg-emerald-500/15'
                           }`}
                         >
-                          Pronta Entrega ({auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Lotes)
+                          Pronta Entrega ({auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Modelos)
                         </button>
                       )}
 
@@ -1416,7 +1416,7 @@ export default function App() {
                               : 'text-purple-300 hover:bg-purple-500/15'
                           }`}
                         >
-                          MacBooks ({auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Lotes)
+                          MacBooks ({auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Modelos)
                         </button>
                       )}
 
