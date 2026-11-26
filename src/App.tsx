@@ -1311,7 +1311,7 @@ export default function App() {
                             : 'text-slate-300 hover:text-white hover:bg-slate-900'
                         }`}
                       >
-                        {t.allAuctionsFilter} ({auctions.length.toLocaleString('pt-BR')})
+                        {t.allAuctionsFilter} ({auctions.length.toLocaleString('pt-BR')} Lotes)
                       </button>
 
                       <button
@@ -1330,7 +1330,7 @@ export default function App() {
                             : 'text-red-300 hover:bg-red-500/15'
                         }`}
                       >
-                        {t.verizonBadge} ({auctions.filter(isVerizonLot).length.toLocaleString('pt-BR')})
+                        {t.verizonBadge} ({auctions.filter(isVerizonLot).length.toLocaleString('pt-BR')} Lotes)
                       </button>
 
                       <button
@@ -1345,7 +1345,7 @@ export default function App() {
                             : 'text-blue-300 hover:bg-blue-500/15'
                         }`}
                       >
-                        {t.assurantBadge} ({auctions.filter(a => a.sourceType === 'ASSURANT' || /assurant/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')})
+                        {t.assurantBadge} ({auctions.filter(a => a.sourceType === 'ASSURANT' || /assurant/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Lotes)
                       </button>
 
                       <button
@@ -1360,13 +1360,13 @@ export default function App() {
                             : 'text-fuchsia-300 hover:bg-fuchsia-500/15'
                         }`}
                       >
-                        T-MOBILE ({auctions.filter(isTMobileLot).length.toLocaleString('pt-BR')})
+                        T-MOBILE ({auctions.filter(isTMobileLot).length.toLocaleString('pt-BR')} Lotes)
                       </button>
 
                       {(['MARKETPLACE_1', 'MARKETPLACE_2', 'MARKETPLACE_3', ...(auctions.some(a => getMarketplaceNumber(a) === 4) ? (['MARKETPLACE_4'] as const) : [])] as const).map((mktKey) => {
                         const num = Number(mktKey.replace('MARKETPLACE_', ''));
                         const mktCount = auctions.filter(a => getMarketplaceNumber(a) === num).length;
-                        const label = `Marketplace ${num} (${mktCount.toLocaleString('pt-BR')})`;
+                        const label = `Marketplace ${num} (${mktCount.toLocaleString('pt-BR')} Lotes)`;
                         return (
                           <button
                             key={mktKey}
@@ -1399,7 +1399,7 @@ export default function App() {
                               : 'text-emerald-300 hover:bg-emerald-500/15'
                           }`}
                         >
-                          Pronta Entrega ({auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')})
+                          Pronta Entrega ({auctions.filter(a => a.sourceType === 'STOCK_APPLE' || /pronta entrega|stock hub/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Lotes)
                         </button>
                       )}
 
@@ -1416,7 +1416,7 @@ export default function App() {
                               : 'text-purple-300 hover:bg-purple-500/15'
                           }`}
                         >
-                          MacBooks ({auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')})
+                          MacBooks ({auctions.filter(a => a.sourceType === 'MACBOOKS' || /macbook/i.test(a.auctionHouse || '')).length.toLocaleString('pt-BR')} Lotes)
                         </button>
                       )}
 
@@ -1522,7 +1522,7 @@ export default function App() {
                 {availableImportedModels.length > 0 && (
                   <div className="flex items-center gap-2 pt-2 border-t border-slate-800/60 overflow-x-auto pb-0.5">
                     <span className="text-[11px] text-slate-500 font-medium whitespace-nowrap shrink-0">
-                      Principais:
+                      Principais modelos:
                     </span>
                     <button
                       type="button"
